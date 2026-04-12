@@ -4,6 +4,30 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v0.4.0 — 2026-04-12
+
+**Theme:** Agent-oriented analysis and AI repository evaluation.
+
+### Added
+- Agent impact analysis module (`AgentImpactAnalyzer`) for evaluating how repositories influence AI Agent effectiveness
+- New data models: `AgentMechanism`, `ContextEconomics`, `AgentImpactReport` with full serialization
+- Research synthesis document on analyzing AI-oriented repositories
+- Agent artifact detection covering 14+ patterns across 7 AI agent platforms
+- Mechanism decomposition with 5 detection categories: behavioral instruction, context compression, safety, distribution, persistence
+- Context economics estimation with token overhead, savings ratio, and break-even analysis
+- 45 new tests for the Agent impact analyzer with 100% pass rate
+
+### Changed
+- Caveman showcase completely rewritten with Agent-oriented focus — mechanism decomposition, context economics, semantic preservation, behavioral impact analysis
+- Showcase index updated to reflect Agent-oriented analysis capabilities
+- Analysis module exports expanded with Agent impact types
+
+### Improved
+- V3 Analysis now supports dual-track mode: traditional code analysis + Agent impact analysis
+- Documentation coverage for AI repository evaluation methodology
+
+---
+
 ## v0.3.0 — 2026-04-12
 
 **Theme:** Documentation completeness and international polish.
