@@ -1,0 +1,703 @@
+/* ==========================================================================
+   NieR: Automata Theme for MkDocs Material
+   Post-apocalyptic elegance · Industrial minimalism · Warm and muted
+   ========================================================================== */
+
+/* --- Google Fonts --- */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+/* ==========================================================================
+   Light Mode (default scheme) — Warm cream/parchment
+   ========================================================================== */
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color:          #454138;
+  --md-primary-fg-color--light:   #57544A;
+  --md-primary-fg-color--dark:    #3A3730;
+  --md-primary-bg-color:          #E8E2C8;
+  --md-primary-bg-color--light:   #F0ECD8;
+
+  --md-accent-fg-color:           #C4A35A;
+  --md-accent-fg-color--transparent: rgba(196, 163, 90, 0.12);
+  --md-accent-bg-color:           #FFF;
+  --md-accent-bg-color--light:    rgba(196, 163, 90, 0.1);
+
+  --md-default-fg-color:          #454138;
+  --md-default-fg-color--light:   #57544A;
+  --md-default-fg-color--lighter: #706B5F;
+  --md-default-fg-color--lightest: rgba(69, 65, 56, 0.12);
+  --md-default-bg-color:          #E8E2C8;
+  --md-default-bg-color--light:   #DAD4BB;
+  --md-default-bg-color--lighter: #F0ECD8;
+  --md-default-bg-color--lightest: #F5F1E0;
+
+  --md-code-fg-color:             #454138;
+  --md-code-bg-color:             #CFC9B2;
+  --md-code-hl-color:             rgba(196, 163, 90, 0.2);
+  --md-code-hl-number-color:      #8A6D3B;
+  --md-code-hl-special-color:     #7B5E2E;
+  --md-code-hl-function-color:    #6B5B3E;
+  --md-code-hl-constant-color:    #8A6D3B;
+  --md-code-hl-keyword-color:     #5A4E38;
+  --md-code-hl-string-color:      #7A6E4E;
+  --md-code-hl-name-color:        #454138;
+  --md-code-hl-operator-color:    #706B5F;
+  --md-code-hl-punctuation-color: #57544A;
+  --md-code-hl-comment-color:     #9E8E6C;
+  --md-code-hl-generic-color:     #454138;
+  --md-code-hl-variable-color:    #5A4E38;
+
+  --md-typeset-color:             #454138;
+  --md-typeset-a-color:           #C4A35A;
+
+  --md-typeset-mark-color:        rgba(196, 163, 90, 0.3);
+  --md-typeset-del-color:         rgba(150, 80, 60, 0.15);
+  --md-typeset-ins-color:         rgba(100, 140, 80, 0.15);
+  --md-typeset-kbd-color:         #DAD4BB;
+  --md-typeset-kbd-accent-color:  #CFC9B2;
+  --md-typeset-kbd-border-color:  #B8A67E;
+
+  --md-admonition-fg-color:       #454138;
+  --md-admonition-bg-color:       #F0ECD8;
+
+  --md-footer-fg-color:           #E8E2C8;
+  --md-footer-fg-color--light:    rgba(232, 226, 200, 0.7);
+  --md-footer-fg-color--lighter:  rgba(232, 226, 200, 0.4);
+  --md-footer-bg-color:           #454138;
+  --md-footer-bg-color--dark:     #3A3730;
+
+  --md-shadow-z1: 0 2px 6px rgba(69, 65, 56, 0.08), 0 1px 2px rgba(69, 65, 56, 0.06);
+  --md-shadow-z2: 0 6px 16px rgba(69, 65, 56, 0.10), 0 2px 4px rgba(69, 65, 56, 0.06);
+  --md-shadow-z3: 0 12px 32px rgba(69, 65, 56, 0.12), 0 4px 8px rgba(69, 65, 56, 0.08);
+
+  --nier-border-color:            #9E8E6C;
+  --nier-border-subtle:           rgba(158, 142, 108, 0.4);
+  --nier-surface:                 #DAD4BB;
+  --nier-surface-raised:          #E8E2C8;
+  --nier-hud-accent:              rgba(196, 163, 90, 0.6);
+  --nier-transition:              0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================================================
+   Dark Mode (slate scheme) — Deep charcoal
+   ========================================================================== */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:          #DAD4BB;
+  --md-primary-fg-color--light:   #E8E2C8;
+  --md-primary-fg-color--dark:    #CFC9B2;
+  --md-primary-bg-color:          #1A1814;
+  --md-primary-bg-color--light:   #2B2922;
+
+  --md-accent-fg-color:           #C4A35A;
+  --md-accent-fg-color--transparent: rgba(196, 163, 90, 0.12);
+  --md-accent-bg-color:           #1A1814;
+  --md-accent-bg-color--light:    rgba(196, 163, 90, 0.08);
+
+  --md-default-fg-color:          #DAD4BB;
+  --md-default-fg-color--light:   #B8A67E;
+  --md-default-fg-color--lighter: #8A7E68;
+  --md-default-fg-color--lightest: rgba(218, 212, 187, 0.12);
+  --md-default-bg-color:          #1A1814;
+  --md-default-bg-color--light:   #2B2922;
+  --md-default-bg-color--lighter: #222018;
+  --md-default-bg-color--lightest: #151310;
+
+  --md-code-fg-color:             #DAD4BB;
+  --md-code-bg-color:             #222018;
+  --md-code-hl-color:             rgba(196, 163, 90, 0.15);
+  --md-code-hl-number-color:      #D4B87A;
+  --md-code-hl-special-color:     #C4A35A;
+  --md-code-hl-function-color:    #D4C4A0;
+  --md-code-hl-constant-color:    #D4B87A;
+  --md-code-hl-keyword-color:     #E8D8B0;
+  --md-code-hl-string-color:      #B8A67E;
+  --md-code-hl-name-color:        #DAD4BB;
+  --md-code-hl-operator-color:    #8A7E68;
+  --md-code-hl-punctuation-color: #B8A67E;
+  --md-code-hl-comment-color:     #5A5347;
+  --md-code-hl-generic-color:     #DAD4BB;
+  --md-code-hl-variable-color:    #E8D8B0;
+
+  --md-typeset-color:             #DAD4BB;
+  --md-typeset-a-color:           #C4A35A;
+
+  --md-typeset-mark-color:        rgba(196, 163, 90, 0.25);
+  --md-typeset-del-color:         rgba(180, 80, 60, 0.2);
+  --md-typeset-ins-color:         rgba(120, 160, 80, 0.2);
+  --md-typeset-kbd-color:         #2B2922;
+  --md-typeset-kbd-accent-color:  #222018;
+  --md-typeset-kbd-border-color:  #5A5347;
+
+  --md-admonition-fg-color:       #DAD4BB;
+  --md-admonition-bg-color:       #2B2922;
+
+  --md-footer-fg-color:           #DAD4BB;
+  --md-footer-fg-color--light:    rgba(218, 212, 187, 0.7);
+  --md-footer-fg-color--lighter:  rgba(218, 212, 187, 0.4);
+  --md-footer-bg-color:           #151310;
+  --md-footer-bg-color--dark:     #0E0D0A;
+
+  --md-shadow-z1: 0 2px 6px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --md-shadow-z2: 0 6px 16px rgba(0, 0, 0, 0.30), 0 2px 4px rgba(0, 0, 0, 0.15);
+  --md-shadow-z3: 0 12px 32px rgba(0, 0, 0, 0.35), 0 4px 8px rgba(0, 0, 0, 0.20);
+
+  --nier-border-color:            #5A5347;
+  --nier-border-subtle:           rgba(90, 83, 71, 0.5);
+  --nier-surface:                 #2B2922;
+  --nier-surface-raised:          #33302A;
+  --nier-hud-accent:              rgba(196, 163, 90, 0.4);
+  --nier-transition:              0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+:root {
+  --md-text-font: "Noto Sans", "Noto Sans SC", sans-serif;
+  --md-code-font: "JetBrains Mono", monospace;
+}
+
+.md-typeset {
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.75;
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6 {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.md-typeset h1 {
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   Header — Clean with subtle bottom border
+   ========================================================================== */
+.md-header {
+  background-color: var(--md-primary-bg-color);
+  border-bottom: 1px solid var(--nier-border-subtle);
+  box-shadow: none;
+  transition: background-color var(--nier-transition), border-color var(--nier-transition);
+}
+
+[data-md-color-scheme="slate"] .md-header {
+  background-color: #151310;
+}
+
+.md-header__title {
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.md-header__button {
+  color: var(--md-primary-fg-color);
+  transition: color var(--nier-transition), opacity var(--nier-transition);
+}
+
+.md-header__button:hover {
+  opacity: 0.7;
+}
+
+/* ==========================================================================
+   Navigation — Precise and deliberate
+   ========================================================================== */
+.md-nav__link {
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  transition: color var(--nier-transition);
+}
+
+.md-nav__link:hover {
+  color: var(--md-accent-fg-color);
+}
+
+.md-nav__link--active,
+.md-nav__link--active:hover {
+  color: var(--md-accent-fg-color);
+  font-weight: 500;
+}
+
+.md-nav__item--active > .md-nav__link {
+  color: var(--md-accent-fg-color);
+}
+
+.md-tabs {
+  background-color: var(--md-primary-bg-color);
+  border-bottom: 1px solid var(--nier-border-subtle);
+  transition: background-color var(--nier-transition);
+}
+
+[data-md-color-scheme="slate"] .md-tabs {
+  background-color: #151310;
+}
+
+.md-tabs__link {
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  opacity: 0.65;
+  transition: opacity var(--nier-transition), color var(--nier-transition);
+}
+
+.md-tabs__link:hover,
+.md-tabs__link--active {
+  opacity: 1;
+  color: var(--md-accent-fg-color);
+}
+
+/* Sidebar navigation */
+.md-sidebar {
+  transition: background-color var(--nier-transition);
+}
+
+.md-sidebar__scrollwrap {
+  scrollbar-width: thin;
+  scrollbar-color: var(--nier-border-subtle) transparent;
+}
+
+/* ==========================================================================
+   Links — Amber accent, subtle underline on hover
+   ========================================================================== */
+.md-typeset a {
+  color: var(--md-typeset-a-color);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color var(--nier-transition), border-color var(--nier-transition);
+}
+
+.md-typeset a:hover {
+  color: var(--md-accent-fg-color);
+  border-bottom-color: var(--md-accent-fg-color);
+}
+
+/* ==========================================================================
+   Code Blocks — Slightly rounded, subtle border
+   ========================================================================== */
+.md-typeset code,
+.md-typeset pre code,
+.md-typeset kbd {
+  font-size: 0.82em;
+}
+
+.md-typeset pre {
+  border: 1px solid var(--nier-border-subtle);
+  border-radius: 4px;
+  transition: border-color var(--nier-transition);
+}
+
+.md-typeset code {
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+}
+
+.md-typeset .highlight {
+  border-radius: 4px;
+}
+
+.md-typeset .highlight code {
+  border-radius: 0;
+  padding: 0;
+}
+
+.md-typeset .highlighttable {
+  border: 1px solid var(--nier-border-subtle);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.md-typeset .highlighttable .linenodiv {
+  background-color: var(--nier-border-subtle);
+}
+
+.md-typeset .md-clipboard {
+  color: var(--md-default-fg-color--lighter);
+  transition: color var(--nier-transition);
+}
+
+.md-typeset .md-clipboard:hover {
+  color: var(--md-accent-fg-color);
+}
+
+/* ==========================================================================
+   Admonitions — Clean, mechanical feel with thin left border
+   ========================================================================== */
+.md-typeset .admonition,
+.md-typeset details {
+  border: none;
+  border-left: 3px solid var(--md-accent-fg-color);
+  border-radius: 0 4px 4px 0;
+  box-shadow: var(--md-shadow-z1);
+  background-color: var(--md-admonition-bg-color);
+  overflow: hidden;
+  transition: box-shadow var(--nier-transition), background-color var(--nier-transition);
+}
+
+.md-typeset .admonition:hover,
+.md-typeset details:hover {
+  box-shadow: var(--md-shadow-z2);
+}
+
+.md-typeset .admonition-title,
+.md-typeset details summary {
+  background-color: transparent;
+  border-bottom: 1px solid var(--nier-border-subtle);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.md-typeset .admonition-title::before,
+.md-typeset details summary::before {
+  transition: color var(--nier-transition);
+}
+
+/* ==========================================================================
+   Tables — Clean geometric lines
+   ========================================================================== */
+.md-typeset table:not([class]) {
+  border: 1px solid var(--nier-border-subtle);
+  border-radius: 4px;
+  overflow: hidden;
+  display: table;
+}
+
+.md-typeset table:not([class]) th {
+  background-color: var(--nier-surface);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 0.82em;
+  border-bottom: 2px solid var(--nier-border-color);
+  transition: background-color var(--nier-transition);
+}
+
+.md-typeset table:not([class]) td {
+  border-bottom: 1px solid var(--nier-border-subtle);
+  transition: background-color var(--nier-transition);
+}
+
+.md-typeset table:not([class]) tr:hover td {
+  background-color: var(--md-accent-fg-color--transparent);
+}
+
+.md-typeset table:not([class]) tr:last-child td {
+  border-bottom: none;
+}
+
+/* ==========================================================================
+   Search — Clean, minimal border
+   ========================================================================== */
+.md-search__input {
+  background-color: var(--md-default-bg-color--light);
+  border-radius: 4px;
+  transition: background-color var(--nier-transition), border-color var(--nier-transition);
+}
+
+[data-md-color-scheme="default"] .md-search__input {
+  border: 1px solid var(--nier-border-subtle);
+}
+
+.md-search__input::placeholder {
+  letter-spacing: 0.02em;
+}
+
+.md-search__input:hover,
+.md-search__input:focus {
+  border-color: var(--md-accent-fg-color);
+}
+
+.md-search-result__meta {
+  background-color: var(--nier-surface);
+  border-bottom: 1px solid var(--nier-border-subtle);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.md-search-result__item {
+  border-bottom: 1px solid var(--nier-border-subtle);
+}
+
+/* ==========================================================================
+   Content Tabs — Geometric, clean active state
+   ========================================================================== */
+.md-typeset .tabbed-labels > label {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 0.82em;
+  border-bottom: 2px solid transparent;
+  opacity: 0.6;
+  transition: opacity var(--nier-transition),
+              color var(--nier-transition),
+              border-color var(--nier-transition);
+}
+
+.md-typeset .tabbed-labels > label:hover {
+  opacity: 1;
+  color: var(--md-accent-fg-color);
+}
+
+.md-typeset .tabbed-labels > .tabbed-labels__active,
+.md-typeset .tabbed-set > input:checked + label {
+  opacity: 1;
+  color: var(--md-accent-fg-color);
+  border-bottom-color: var(--md-accent-fg-color);
+}
+
+.md-typeset .tabbed-content {
+  border: 1px solid var(--nier-border-subtle);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  padding: 1em;
+}
+
+/* ==========================================================================
+   Footer — Minimal
+   ========================================================================== */
+.md-footer {
+  border-top: 1px solid var(--nier-border-subtle);
+  transition: background-color var(--nier-transition);
+}
+
+.md-footer-meta {
+  background-color: var(--md-footer-bg-color--dark);
+}
+
+.md-footer-nav__link {
+  transition: opacity var(--nier-transition);
+}
+
+.md-footer-nav__link:hover {
+  opacity: 0.8;
+}
+
+/* ==========================================================================
+   Theme Toggle — Integrated feel
+   ========================================================================== */
+.md-header__option label {
+  transition: color var(--nier-transition), transform var(--nier-transition);
+}
+
+.md-header__option label:hover {
+  color: var(--md-accent-fg-color);
+  transform: scale(1.1);
+}
+
+/* ==========================================================================
+   Scroll-to-top
+   ========================================================================== */
+.md-top {
+  background-color: var(--md-accent-fg-color);
+  color: var(--md-primary-bg-color);
+  border-radius: 4px;
+  box-shadow: var(--md-shadow-z2);
+  transition: background-color var(--nier-transition),
+              box-shadow var(--nier-transition),
+              transform var(--nier-transition);
+}
+
+.md-top:hover {
+  background-color: var(--nier-border-color);
+  box-shadow: var(--md-shadow-z3);
+  transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   NieR: Automata Special Touches — HUD-like geometric accents
+   ========================================================================== */
+
+/* Subtle HUD corner accents on the main content area */
+.md-content__inner {
+  position: relative;
+}
+
+.md-content__inner::before,
+.md-content__inner::after {
+  content: "";
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  opacity: 0.35;
+  transition: opacity var(--nier-transition);
+}
+
+.md-content__inner::before {
+  top: 0;
+  left: -4px;
+  border-top: 2px solid var(--nier-hud-accent);
+  border-left: 2px solid var(--nier-hud-accent);
+}
+
+.md-content__inner::after {
+  bottom: 0;
+  right: -4px;
+  border-bottom: 2px solid var(--nier-hud-accent);
+  border-right: 2px solid var(--nier-hud-accent);
+}
+
+.md-content__inner:hover::before,
+.md-content__inner:hover::after {
+  opacity: 0.55;
+}
+
+/* Geometric separator for h2 headings */
+.md-typeset h2 {
+  padding-bottom: 0.4em;
+  border-bottom: 1px solid var(--nier-border-subtle);
+  position: relative;
+}
+
+.md-typeset h2::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 48px;
+  height: 2px;
+  background-color: var(--md-accent-fg-color);
+  transition: width var(--nier-transition);
+}
+
+.md-typeset h2:hover::after {
+  width: 72px;
+}
+
+/* Decorative thin line above h1 */
+.md-typeset h1 {
+  position: relative;
+  padding-top: 0.6em;
+}
+
+.md-typeset h1::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 32px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    var(--md-accent-fg-color) 0%,
+    transparent 100%
+  );
+}
+
+/* HUD-like accent on blockquotes */
+.md-typeset blockquote {
+  border-left: 3px solid var(--md-accent-fg-color);
+  background-color: var(--md-admonition-bg-color);
+  padding: 0.8em 1.2em;
+  border-radius: 0 4px 4px 0;
+  position: relative;
+  transition: background-color var(--nier-transition);
+}
+
+/* Horizontal rules with NieR style */
+.md-typeset hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--nier-border-color) 15%,
+    var(--nier-border-color) 50%,
+    var(--nier-border-color) 85%,
+    transparent 100%
+  );
+  position: relative;
+}
+
+.md-typeset hr::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--nier-border-color);
+  background-color: var(--md-default-bg-color);
+}
+
+/* ==========================================================================
+   Language Selector — Clean dropdown
+   ========================================================================== */
+.md-select__inner {
+  border: 1px solid var(--nier-border-subtle);
+  border-radius: 4px;
+  box-shadow: var(--md-shadow-z2);
+}
+
+.md-select__link {
+  transition: color var(--nier-transition), background-color var(--nier-transition);
+}
+
+.md-select__link:hover {
+  color: var(--md-accent-fg-color);
+}
+
+/* ==========================================================================
+   Smooth Transitions — All interactive elements
+   ========================================================================== */
+.md-nav__link,
+.md-tabs__link,
+.md-typeset a,
+.md-footer-nav__link,
+.md-search__input,
+.md-source,
+.md-header__button,
+.md-icon {
+  transition: color var(--nier-transition),
+              opacity var(--nier-transition),
+              background-color var(--nier-transition),
+              border-color var(--nier-transition);
+}
+
+/* ==========================================================================
+   Mermaid Diagrams — Themed
+   ========================================================================== */
+.md-typeset .mermaid {
+  background-color: var(--md-default-bg-color--lighter);
+  border: 1px solid var(--nier-border-subtle);
+  border-radius: 4px;
+  padding: 1em;
+}
+
+/* ==========================================================================
+   Version Selector
+   ========================================================================== */
+.md-version__current {
+  letter-spacing: 0.02em;
+}
+
+/* ==========================================================================
+   Scrollbar Styling
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--nier-border-subtle);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--nier-border-color);
+}
