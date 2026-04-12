@@ -179,6 +179,25 @@ class TestLoadFromFile:
         assert cfg.sandbox_timeout == 600
         assert cfg.sandbox_max_concurrent == 8
 
+    def test_load_eval_sandbox_and_timeout_aliases(self, write_toml):
+        p = write_toml("""\
+            [eval]
+            sandbox = true
+            timeout = 60
+        """)
+        cfg = load(str(p))
+        assert cfg.sandbox_enabled is True
+        assert cfg.default_timeout == 60
+
+    def test_samples_config_file_loads(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        path = repo_root / "samples" / "config" / "nines.toml"
+        cfg = load(str(path))
+        assert cfg.default_scorer == "composite"
+        assert cfg.sandbox_enabled is True
+        assert cfg.default_timeout == 60
+        assert cfg.arxiv_max_results == 50
+
 
 # ---------------------------------------------------------------------------
 # test_env_override
