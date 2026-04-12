@@ -163,6 +163,8 @@ refactor/eval-runner-pipeline
 !!! warning "受保护分支"
     禁止直接推送到 `main`、`master`、`yc_dev` 或 `production`。请始终创建功能分支并提交 PR/MR。
 
+<a id="commit-messages-zh"></a>
+
 ### 提交消息
 
 遵循约定式提交风格：
@@ -196,6 +198,8 @@ test: add integration tests for MAPIM cycle
 6. 批准后合并
 
 ---
+
+<a id="module-ownership-zh"></a>
 
 ## 模块所有权
 

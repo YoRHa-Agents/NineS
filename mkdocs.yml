@@ -104,6 +104,7 @@ nav:
     - Self-Evaluation Dimensions: architecture/self-eval-dimensions.md
   - Development:
     - Contributing: development/contributing.md
+    - Development Plan: development/plan.md
     - Roadmap: development/roadmap.md
   - About:
     - Design Philosophy: design-philosophy.md
