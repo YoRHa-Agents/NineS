@@ -101,3 +101,58 @@ def test_development_plan_pages_exist(repo_root: Path) -> None:
     plan_zh = repo_root / "docs/development/plan.zh.md"
     assert plan_en.is_file() and plan_en.stat().st_size > 0
     assert plan_zh.is_file() and plan_zh.stat().st_size > 0
+
+
+def _get_i18n_languages(mkdocs_data: dict) -> list[dict]:
+    for plugin in mkdocs_data.get("plugins", []):
+        if isinstance(plugin, dict) and "i18n" in plugin:
+            return plugin["i18n"].get("languages", [])
+    return []
+
+
+def test_no_hardcoded_alternate_links(mkdocs_data: dict) -> None:
+    """extra.alternate must not be set — the i18n plugin auto-generates it."""
+    extra = mkdocs_data.get("extra", {})
+    assert "alternate" not in extra, (
+        "extra.alternate should be removed; mkdocs-static-i18n with "
+        "reconfigure_material auto-generates correct language switcher links"
+    )
+
+
+def test_zh_locale_has_nav_translations(mkdocs_data: dict) -> None:
+    languages = _get_i18n_languages(mkdocs_data)
+    zh_configs = [lang for lang in languages if lang.get("locale") == "zh"]
+    assert zh_configs, "zh locale not found in i18n plugin config"
+    zh = zh_configs[0]
+    nav_tr = zh.get("nav_translations", {})
+    required_keys = ["Home", "User Guide", "Architecture", "Development", "About"]
+    for key in required_keys:
+        assert key in nav_tr, f"missing nav_translations key: {key}"
+        assert nav_tr[key], f"empty translation for: {key}"
+
+
+def test_zh_locale_has_theme_language(mkdocs_data: dict) -> None:
+    languages = _get_i18n_languages(mkdocs_data)
+    zh_configs = [lang for lang in languages if lang.get("locale") == "zh"]
+    assert zh_configs, "zh locale not found in i18n plugin config"
+    zh = zh_configs[0]
+    theme = zh.get("theme", {})
+    assert theme.get("language") == "zh", (
+        "zh locale must set theme.language to 'zh' for Material UI localization"
+    )
+
+
+def test_zh_docs_no_zh_md_links(repo_root: Path) -> None:
+    """Chinese docs should link to *.md (not *.zh.md); the i18n plugin resolves locale."""
+    docs = repo_root / "docs"
+    link_re = re.compile(r"\]\([^)]*\.zh\.md[^)]*\)")
+    violations: list[str] = []
+    for zh_file in docs.rglob("*.zh.md"):
+        content = zh_file.read_text(encoding="utf-8")
+        matches = link_re.findall(content)
+        if matches:
+            rel = zh_file.relative_to(repo_root)
+            violations.extend(f"{rel}: {m}" for m in matches)
+    assert not violations, (
+        f"Found .zh.md internal links (should use .md):\n" + "\n".join(violations)
+    )
