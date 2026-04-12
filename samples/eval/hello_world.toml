@@ -1,0 +1,15 @@
+[task]
+id = "00000000-0000-0000-0000-000000000001"
+name = "hello-world-check"
+description = "Verify a simple greeting function"
+dimension = "code_quality"
+difficulty = 1
+
+[task.input]
+type = "code"
+language = "python"
+source = "def greet(name): return f'Hello, {name}!'"
+
+[task.expected]
+type = "text"
+value = "Hello, World!"

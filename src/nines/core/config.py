@@ -438,6 +438,16 @@ def _try_extract_field(
     section_data: dict[str, Any], field_name: str, flat: dict[str, Any]
 ) -> None:
     """Try multiple key variants to extract a field from section data."""
+    # Short TOML keys (e.g. ``timeout``) must win over merged defaults that also
+    # carry the canonical key (e.g. ``default_timeout`` from defaults.toml).
+    _PRIORITY_ALIAS: dict[str, str] = {
+        "default_timeout": "timeout",
+    }
+    priority_alias = _PRIORITY_ALIAS.get(field_name)
+    if priority_alias and priority_alias in section_data:
+        flat[field_name] = section_data[priority_alias]
+        return
+
     if field_name in section_data:
         flat[field_name] = section_data[field_name]
         return
@@ -446,8 +456,10 @@ def _try_extract_field(
         "eval_timeout": ["default_timeout"],
         "eval_max_retries": ["max_retries"],
         "eval_parallel": ["parallel_workers"],
+        "sandbox_enabled": ["sandbox"],
+        "default_timeout": ["timeout"],
         "github_token": ["token"],
-        "arxiv_max_results": ["max_results_per_query", "max_results"],
+        "arxiv_max_results": ["max_results", "max_results_per_query"],
         "collection_interval": ["ttl_seconds"],
         "max_file_size": ["max_file_size_kb"],
         "supported_languages": ["target_languages"],

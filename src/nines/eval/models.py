@@ -169,24 +169,44 @@ class TaskDefinition:
             raise EvalError(f"Invalid TOML: {exc}") from exc
 
         task_data = raw.get("task", raw)
+        input_config = task_data.get("input_config")
+        if not input_config and "input" in task_data:
+            input_config = task_data["input"]
+        if not isinstance(input_config, dict):
+            input_config = {}
+
         expected_raw = task_data.get("expected")
-        if isinstance(expected_raw, dict) and list(expected_raw.keys()) == ["value"]:
-            expected_raw = expected_raw["value"]
+        if isinstance(expected_raw, dict):
+            keys = set(expected_raw.keys())
+            if keys == {"value"}:
+                expected_raw = expected_raw["value"]
+            elif "value" in expected_raw and expected_raw.get("type") in (
+                None,
+                "text",
+                "code",
+                "pattern",
+            ):
+                expected_raw = expected_raw["value"]
 
         criteria = [
             ScoringCriterion.from_dict(c)
             for c in task_data.get("scoring_criteria", [])
         ]
 
+        metadata = dict(task_data.get("metadata", {}))
+        for meta_key in ("difficulty", "tags", "timeout_seconds", "version"):
+            if meta_key in task_data and meta_key not in metadata:
+                metadata[meta_key] = task_data[meta_key]
+
         return cls(
             id=task_data.get("id", ""),
             name=task_data.get("name", ""),
             description=task_data.get("description", ""),
             dimension=task_data.get("dimension", ""),
-            input_config=task_data.get("input_config", {}),
+            input_config=input_config,
             expected=expected_raw,
             scoring_criteria=criteria,
-            metadata=task_data.get("metadata", {}),
+            metadata=metadata,
         )
 
 

@@ -1,0 +1,37 @@
+[project]
+name = "my-agent-project"
+description = "Example NineS project configuration"
+
+[eval]
+default_scorer = "composite"
+sandbox = true
+timeout = 60
+seed = 42
+
+[eval.scorers.composite]
+weights = { exact = 0.4, fuzzy = 0.3, rubric = 0.3 }
+
+[collect]
+store = "./data/collections"
+incremental = true
+
+[collect.github]
+per_page = 30
+rate_limit = 30
+
+[collect.arxiv]
+max_results = 50
+
+[analyze]
+depth = "standard"
+output_format = "markdown"
+
+[self_eval]
+max_iterations = 10
+convergence_threshold = 0.001
+
+[self_eval.weights]
+v1 = 0.30
+v2 = 0.25
+v3 = 0.25
+system = 0.20
