@@ -1,0 +1,154 @@
+{% extends "main.html" %}
+
+{% block tabs %}
+  {{ super() }}
+
+  <style>
+    .md-main__inner { margin: 0; }
+    .md-content { display: none; }
+    @media screen and (min-width: 60em) { .md-sidebar--secondary { display: none; } }
+    @media screen and (min-width: 76.25em) { .md-sidebar--primary { display: none; } }
+  </style>
+
+  <section class="nx-hero">
+    <div class="nx-hero__inner">
+      <div class="nx-hero__badge">v{{ config.extra.nines_version }}</div>
+      <h1 class="nx-hero__title">NineS</h1>
+      <p class="nx-hero__subtitle">Multi-Vertex AI Agent Evaluation, Collection, Analysis &amp; Self-Iteration</p>
+      <p class="nx-hero__tagline">A self-improving toolkit that evaluates, learns from, and iterates on AI agent capabilities — through 19 measurable dimensions and the MAPIM cycle.</p>
+      <div class="nx-hero__actions">
+        <a href="quick-start/" class="md-button md-button--primary nx-btn">Get Started</a>
+        <a href="{{ config.repo_url }}" class="md-button nx-btn nx-btn--outline">View on GitHub</a>
+      </div>
+    </div>
+    <div class="nx-hero__decoration"></div>
+  </section>
+
+  <section class="nx-section nx-vertices">
+    <div class="nx-section__inner">
+      <h2 class="nx-section__title">Three-Vertex Capability Model</h2>
+      <p class="nx-section__desc">Three interconnected vertices form a self-reinforcing loop — each vertex feeds data to the others, creating emergent intelligence.</p>
+      <div class="nx-vertex-grid">
+        <div class="nx-vertex-card">
+          <div class="nx-vertex-card__tag">V1</div>
+          <h3>Evaluation</h3>
+          <p>Structured evaluations with multiple scoring strategies, matrix evaluation across N axes, and reliability metrics like pass@k.</p>
+          <ul>
+            <li>TOML task definitions</li>
+            <li>Exact / Fuzzy / Rubric / Composite scorers</li>
+            <li>Sandboxed execution with pollution detection</li>
+            <li>Markdown &amp; JSON reports</li>
+          </ul>
+        </div>
+        <div class="nx-vertex-card">
+          <div class="nx-vertex-card__tag">V2</div>
+          <h3>Collection</h3>
+          <p>Discover, fetch, and track external data sources with incremental collection and snapshot-based change detection.</p>
+          <ul>
+            <li>GitHub REST + GraphQL</li>
+            <li>arXiv search &amp; metadata</li>
+            <li>SQLite storage with FTS5</li>
+            <li>Token-bucket rate limiting</li>
+          </ul>
+        </div>
+        <div class="nx-vertex-card">
+          <div class="nx-vertex-card__tag">V3</div>
+          <h3>Analysis</h3>
+          <p>Analyze codebases into structured knowledge through AST parsing, pattern detection, and multi-strategy decomposition.</p>
+          <ul>
+            <li>Cyclomatic complexity</li>
+            <li>Cross-file dependency graphs</li>
+            <li>Functional / concern / layer decomposition</li>
+            <li>Knowledge indexing &amp; search</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="nx-section nx-features">
+    <div class="nx-section__inner">
+      <h2 class="nx-section__title">Key Features</h2>
+      <div class="nx-feature-grid">
+        <div class="nx-feature">
+          <div class="nx-feature__icon">⟳</div>
+          <h3>Self-Iteration (MAPIM)</h3>
+          <p>Closed-loop self-improvement across 19 dimensions. Measure → Analyze → Plan → Improve → Measure.</p>
+        </div>
+        <div class="nx-feature">
+          <div class="nx-feature__icon">⬡</div>
+          <h3>Sandboxed Execution</h3>
+          <p>Three-layer isolation — process, venv, and tmpdir — with pollution detection across 4 dimensions.</p>
+        </div>
+        <div class="nx-feature">
+          <div class="nx-feature__icon">◈</div>
+          <h3>19 Evaluation Dimensions</h3>
+          <p>From scoring accuracy to structure recognition to system-wide convergence rate.</p>
+        </div>
+        <div class="nx-feature">
+          <div class="nx-feature__icon">⊞</div>
+          <h3>Extensible Scorers</h3>
+          <p>Protocol-based scoring with registry and entry-point plugin discovery. No inheritance required.</p>
+        </div>
+        <div class="nx-feature">
+          <div class="nx-feature__icon">◎</div>
+          <h3>Deterministic Execution</h3>
+          <p>Master seed propagation ensures every evaluation run is exactly reproducible.</p>
+        </div>
+        <div class="nx-feature">
+          <div class="nx-feature__icon">⌘</div>
+          <h3>Agent Skill Support</h3>
+          <p>Install NineS as a skill into Cursor or Claude Code with a single <code>nines install</code> command.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="nx-section nx-quickstart">
+    <div class="nx-section__inner">
+      <h2 class="nx-section__title">Quick Start</h2>
+      <p class="nx-section__desc">Get running in under a minute.</p>
+      <div class="nx-code-block">
+        <pre><code><span class="nx-comment"># Clone and install</span>
+git clone https://github.com/YoRHa-Agents/NineS.git &amp;&amp; cd NineS
+uv sync
+
+<span class="nx-comment"># Run your first evaluation</span>
+uv run nines eval samples/eval/hello_world.toml
+
+<span class="nx-comment"># Analyze a codebase</span>
+uv run nines analyze ./src/nines --depth standard
+
+<span class="nx-comment"># Run self-evaluation across all 19 dimensions</span>
+uv run nines self-eval</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="nx-section nx-explore">
+    <div class="nx-section__inner">
+      <h2 class="nx-section__title">Explore</h2>
+      <div class="nx-explore-grid">
+        <a href="user-guide/" class="nx-explore-card">
+          <h3>User Guide</h3>
+          <p>In-depth guides for evaluation, collection, analysis, and self-iteration workflows.</p>
+        </a>
+        <a href="showcase/" class="nx-explore-card">
+          <h3>Showcase</h3>
+          <p>Real-world examples and sample tasks demonstrating NineS in action.</p>
+        </a>
+        <a href="architecture/overview/" class="nx-explore-card">
+          <h3>Architecture</h3>
+          <p>System design, module dependencies, and the three-vertex data flow model.</p>
+        </a>
+        <a href="evaluation-criteria/" class="nx-explore-card">
+          <h3>Evaluation Criteria</h3>
+          <p>All 19 dimensions, scoring methodology, and convergence detection.</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+{% endblock %}
+
+{% block content %}{% endblock %}

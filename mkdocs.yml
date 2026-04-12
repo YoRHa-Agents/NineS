@@ -31,9 +31,11 @@ theme:
   icon:
     repo: fontawesome/brands/github
   language: en
+  custom_dir: docs/overrides
 
 extra_css:
   - stylesheets/nier.css
+  - stylesheets/home.css
 
 plugins:
   - i18n:
@@ -130,6 +132,7 @@ markdown_extensions:
       permalink: true
 
 extra:
+  nines_version: "0.3.0"
   version:
     provider: mike
   social:

@@ -1,0 +1,363 @@
+/* ==========================================================================
+   NineS Landing Page — NieR: Automata Edition
+   ========================================================================== */
+
+/* --- Hero --- */
+.nx-hero {
+  position: relative;
+  padding: 6rem 2rem 4rem;
+  text-align: center;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    var(--md-primary-bg-color) 0%,
+    var(--md-default-bg-color) 100%
+  );
+}
+
+.nx-hero__inner {
+  position: relative;
+  z-index: 1;
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.nx-hero__badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  margin-bottom: 1.5rem;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--md-accent-fg-color);
+  border: 1px solid var(--md-accent-fg-color);
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.nx-hero__title {
+  font-size: 4.5rem;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin: 0 0 0.75rem;
+  color: var(--md-default-fg-color);
+  line-height: 1.1;
+}
+
+.nx-hero__subtitle {
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--md-default-fg-color);
+  margin: 0 0 1rem;
+  opacity: 0.85;
+}
+
+.nx-hero__tagline {
+  font-size: 0.92rem;
+  color: var(--md-default-fg-color--light);
+  max-width: 34rem;
+  margin: 0 auto 2.5rem;
+  line-height: 1.75;
+}
+
+.nx-hero__actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.nx-btn {
+  padding: 0.7rem 2rem !important;
+  font-family: "Noto Sans", "Noto Sans SC", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.md-button.md-button--primary.nx-btn {
+  background-color: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+  color: #1a1814;
+}
+
+.md-button.md-button--primary.nx-btn:hover {
+  background-color: #b8943e;
+  border-color: #b8943e;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(196, 163, 90, 0.3);
+}
+
+.nx-btn--outline {
+  border: 1px solid var(--md-default-fg-color--lighter) !important;
+  color: var(--md-default-fg-color) !important;
+  background: transparent !important;
+}
+
+.nx-btn--outline:hover {
+  border-color: var(--md-accent-fg-color) !important;
+  color: var(--md-accent-fg-color) !important;
+  transform: translateY(-1px);
+}
+
+.nx-hero__decoration {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--md-accent-fg-color), transparent);
+}
+
+/* --- Sections --- */
+.nx-section {
+  padding: 4rem 2rem;
+}
+
+.nx-section__inner {
+  max-width: 64rem;
+  margin: 0 auto;
+}
+
+.nx-section__title {
+  font-size: 1.5rem;
+  font-weight: 300;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  margin: 0 0 0.75rem;
+  color: var(--md-default-fg-color);
+  position: relative;
+  padding-bottom: 1rem;
+}
+
+.nx-section__title::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 2px;
+  background-color: var(--md-accent-fg-color);
+}
+
+.nx-section__desc {
+  text-align: center;
+  color: var(--md-default-fg-color--light);
+  max-width: 40rem;
+  margin: 0 auto 2.5rem;
+  line-height: 1.75;
+  font-size: 0.92rem;
+}
+
+.nx-vertices {
+  background-color: var(--md-default-bg-color--lighter);
+}
+
+.nx-quickstart {
+  background-color: var(--md-default-bg-color--lighter);
+}
+
+.nx-explore {
+  padding-bottom: 5rem;
+}
+
+/* --- Vertex Cards --- */
+.nx-vertex-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.nx-vertex-card {
+  background-color: var(--md-default-bg-color);
+  border: 1px solid var(--nier-border-subtle, rgba(158, 142, 108, 0.4));
+  border-radius: 4px;
+  padding: 1.5rem;
+  position: relative;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.nx-vertex-card:hover {
+  border-color: var(--md-accent-fg-color);
+  box-shadow: 0 4px 16px rgba(196, 163, 90, 0.12);
+}
+
+.nx-vertex-card__tag {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--md-accent-fg-color);
+  border: 1px solid var(--md-accent-fg-color);
+  padding: 0.15rem 0.5rem;
+  border-radius: 2px;
+}
+
+.nx-vertex-card h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  margin: 0 0 0.5rem;
+  color: var(--md-default-fg-color);
+}
+
+.nx-vertex-card p {
+  font-size: 0.85rem;
+  color: var(--md-default-fg-color--light);
+  line-height: 1.65;
+  margin: 0 0 0.75rem;
+}
+
+.nx-vertex-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.nx-vertex-card li {
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color--lighter);
+  padding: 0.2rem 0 0.2rem 1rem;
+  position: relative;
+}
+
+.nx-vertex-card li::before {
+  content: "›";
+  position: absolute;
+  left: 0;
+  color: var(--md-accent-fg-color);
+  font-weight: 700;
+}
+
+/* --- Feature Grid --- */
+.nx-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.nx-feature {
+  padding: 1.25rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.nx-feature:hover {
+  border-color: var(--nier-border-subtle, rgba(158, 142, 108, 0.4));
+  background-color: var(--md-default-bg-color--lighter);
+}
+
+.nx-feature__icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--md-accent-fg-color);
+  line-height: 1;
+}
+
+.nx-feature h3 {
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0 0 0.4rem;
+  color: var(--md-default-fg-color);
+}
+
+.nx-feature p {
+  font-size: 0.82rem;
+  color: var(--md-default-fg-color--light);
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* --- Quick Start Code Block --- */
+.nx-code-block {
+  max-width: 40rem;
+  margin: 0 auto;
+  background-color: var(--md-code-bg-color);
+  border: 1px solid var(--nier-border-subtle, rgba(158, 142, 108, 0.4));
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.nx-code-block pre {
+  margin: 0;
+  padding: 1.5rem;
+}
+
+.nx-code-block code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.78rem;
+  line-height: 1.85;
+  color: var(--md-code-fg-color);
+}
+
+.nx-comment {
+  color: var(--md-code-hl-comment-color);
+}
+
+/* --- Explore Grid --- */
+.nx-explore-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+
+.nx-explore-card {
+  display: block;
+  padding: 1.25rem;
+  border: 1px solid var(--nier-border-subtle, rgba(158, 142, 108, 0.4));
+  border-radius: 4px;
+  text-decoration: none !important;
+  color: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.nx-explore-card:hover {
+  border-color: var(--md-accent-fg-color);
+  box-shadow: 0 4px 12px rgba(196, 163, 90, 0.1);
+  transform: translateY(-2px);
+}
+
+.nx-explore-card h3 {
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0 0 0.3rem;
+  color: var(--md-accent-fg-color);
+}
+
+.nx-explore-card p {
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color--light);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .nx-hero { padding: 4rem 1.5rem 3rem; }
+  .nx-hero__title { font-size: 2.8rem; letter-spacing: 0.1em; }
+  .nx-hero__subtitle { font-size: 0.95rem; }
+  .nx-vertex-grid { grid-template-columns: 1fr; }
+  .nx-feature-grid { grid-template-columns: 1fr; }
+  .nx-explore-grid { grid-template-columns: 1fr; }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .nx-hero__title { font-size: 3.5rem; }
+  .nx-feature-grid { grid-template-columns: repeat(2, 1fr); }
+  .nx-explore-grid { grid-template-columns: repeat(2, 1fr); }
+}
