@@ -8,14 +8,21 @@ Thumbs.db
 *.swp
 *.swo
 
-# Build
-build/
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
 dist/
-out/
+build/
 
-# Dependencies
-node_modules/
-vendor/
+# Virtual environments
+.venv/
+
+# Tool caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
 
 # Environment
 .env
@@ -25,5 +32,16 @@ vendor/
 # Logs
 *.log
 
+# NineS generated outputs
+data/
+reports/
+
+# Build outputs
+site/
+.coverage
+
 # Local directories
 .local/
+
+# Temp scripts
+run_tests.sh

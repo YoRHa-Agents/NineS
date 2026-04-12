@@ -1,0 +1,193 @@
+# ============================================================================
+# NineS Default Configuration
+# ============================================================================
+# Built-in defaults for the NineS AI Agent Capability Evaluation Framework.
+# These values are overridden by user-level (~/.config/nines/config.toml),
+# project-level (./nines.toml), and environment variables (NINES_*).
+# ============================================================================
+
+# ── General ──────────────────────────────────────────────────────────────────
+
+[general]
+log_level = "INFO"                   # DEBUG | INFO | WARNING | ERROR | CRITICAL
+log_format = "structured"            # "structured" (JSON lines) | "human" (colored text)
+output_dir = "./reports"             # Default output directory for reports
+data_dir = "./data"                  # Default data directory for baselines, golden sets
+db_path = "./data/nines.db"          # SQLite database file path
+no_color = false                     # Disable ANSI color output
+verbose = false                      # Enable verbose/debug output globally
+
+# ── Evaluation (V1) ─────────────────────────────────────────────────────────
+
+[eval]
+default_scorer = "composite"         # "exact" | "fuzzy" | "rubric" | "composite"
+default_timeout = 120                # Per-task execution timeout in seconds
+parallel_workers = 1                 # Number of parallel evaluation workers
+sandbox_enabled = true               # Enable sandbox isolation by default
+report_formats = ["json", "markdown"]
+store_results = true
+
+[eval.scorers.fuzzy]
+similarity_threshold = 0.8
+algorithm = "token_overlap"
+
+[eval.scorers.composite]
+chain = ["exact", "fuzzy"]
+waterfall = true
+namespace_prefix = true
+
+[eval.matrix]
+max_cells = 1000
+sampling_strategy = "pairwise"
+default_trials = 3
+
+[eval.reliability]
+min_trials = 3
+report_pass_at_k = [1, 3]
+report_pass_hat_k = [3]
+report_pass3 = true
+
+# ── Collection (V2) ─────────────────────────────────────────────────────────
+
+[collect]
+default_limit = 50
+incremental = true
+
+[collect.github]
+api_version = "2022-11-28"
+use_graphql = true
+search_rate_limit = 30
+core_rate_limit = 5000
+backoff_threshold_pct = 10
+
+[collect.arxiv]
+rate_limit_interval = 3.0
+max_results_per_query = 100
+sort_by = "relevance"
+
+[collect.cache]
+enabled = true
+ttl_seconds = 3600
+max_entries = 10000
+
+[collect.tracking]
+default_refresh_interval = "24h"
+bookmark_table = "tracking_bookmarks"
+
+# ── Analysis (V3) ────────────────────────────────────────────────────────────
+
+[analyze]
+default_depth = "standard"
+target_languages = ["python"]
+decompose = true
+enable_index = true
+max_file_size_kb = 500
+
+[analyze.reviewer]
+complexity_threshold = 10
+extract_docstrings = true
+resolve_imports = true
+
+[analyze.structure]
+detect_layers = true
+detect_patterns = true
+pattern_confidence_threshold = 0.5
+
+[analyze.decomposer]
+strategies = ["functional", "concern", "layer"]
+functional_granularity = "function"
+concern_categories = [
+    "error_handling",
+    "logging",
+    "validation",
+    "configuration",
+    "serialization",
+]
+
+[analyze.index]
+fts_enabled = true
+index_table = "knowledge_units"
+facets = ["language", "type", "complexity_tier", "source"]
+
+# ── Self-Evaluation & Iteration ──────────────────────────────────────────────
+
+[self_eval]
+dimensions = "all"
+stability_runs = 3
+stability_cv_threshold = 0.05
+baseline_table = "baselines"
+history_table = "score_history"
+
+[self_eval.weights]
+v1 = 0.30
+v2 = 0.25
+v3 = 0.25
+system = 0.20
+
+[iteration]
+max_rounds = 10
+max_actions_per_round = 3
+convergence_method = "majority_vote"
+dry_run = false
+
+[iteration.convergence]
+sliding_window_size = 5
+variance_threshold = 0.001
+min_improvement_rate = 0.005
+mann_kendall_confidence = 0.95
+cusum_drift = 0.5
+vote_threshold = 3
+
+# ── Sandbox ──────────────────────────────────────────────────────────────────
+
+[sandbox]
+backend = "venv"
+pool_size = 2
+default_timeout = 300
+max_memory_mb = 512
+cleanup_on_exit = true
+seed_control = true
+
+[sandbox.venv]
+python_version = "3.12"
+use_uv = true
+base_packages = []
+
+[sandbox.pollution]
+check_enabled = true
+watch_env_vars = true
+watch_files = [
+    "~/.bashrc",
+    "~/.profile",
+    "~/.gitconfig",
+]
+watch_sys_path = true
+
+# ── Orchestrator ─────────────────────────────────────────────────────────────
+
+[orchestrator]
+artifact_store_table = "artifacts"
+max_parallel_stages = 2
+stage_timeout = 600
+
+# ── Skill / Agent Integration ────────────────────────────────────────────────
+
+[skill]
+default_target = "cursor"
+manifest_version = "1.0.0"
+
+[skill.cursor]
+skill_dir = ".cursor/skills/nines"
+generate_commands = true
+
+[skill.claude]
+commands_dir = ".claude/commands/nines"
+update_claude_md = true
+
+# ── Events ───────────────────────────────────────────────────────────────────
+
+[events]
+enabled = true
+async_dispatch = false
+max_handlers_per_event = 50
+log_events = false
