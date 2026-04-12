@@ -8,15 +8,16 @@ Explore real-world examples of NineS in action. Each showcase demonstrates how t
 
 ### Caveman Repository Analysis
 
-A complete V3 analysis of an open-source Python repository, demonstrating:
+An Agent-oriented analysis of [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman), demonstrating NineS's capability to analyze AI-oriented repositories beyond traditional code metrics:
 
-- **AST-based code parsing** — Extracting functions, classes, and module structure
-- **Architectural pattern detection** — Identifying design patterns and code organization
-- **Dependency graph construction** — Mapping cross-file relationships
-- **Knowledge unit extraction** — Breaking code into searchable, reusable units
-- **Multi-strategy decomposition** — Functional, concern-based, and layer-based views
+- **Mechanism decomposition** — Identifying how compression techniques influence Agent behavior
+- **Context economics** — Quantifying token overhead vs. savings across the full interaction budget
+- **Semantic preservation** — Measuring what survives compression and what's at risk
+- **Agent behavioral impact** — Analyzing cross-platform consistency and drift resistance
+- **Abstraction & verification** — Six testable hypotheses with verification protocols
+- **Community synthesis** — Integrating real-world feedback from HN (333pts) and GitHub
 
-This showcase illustrates how `nines analyze` transforms a raw codebase into structured knowledge.
+This showcase illustrates how `nines analyze --agent-impact` evaluates AI-oriented repos for their actual effect on Agent effectiveness.
 
 ---
 

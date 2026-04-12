@@ -89,6 +89,7 @@ plugins:
             EvoBench Analysis: EvoBench 分析
             EvoBench Migration: EvoBench 迁移
             GSD Analysis: GSD 分析
+            Agent Repo Analysis: AI 仓库分析方法
             Development: 开发
             Contributing: 贡献指南
             Development Plan: 开发计划
@@ -132,7 +133,7 @@ markdown_extensions:
       permalink: true
 
 extra:
-  nines_version: "0.3.0"
+  nines_version: "0.4.0"
   version:
     provider: mike
   social:
@@ -178,6 +179,7 @@ nav:
       - EvoBench Analysis: research/evobench_analysis.md
       - EvoBench Migration: research/evobench_migration_patterns.md
       - GSD Analysis: research/gsd_analysis.md
+      - Agent Repo Analysis: research/agent_repo_analysis.md
   - Development:
     - Contributing: development/contributing.md
     - Development Plan: development/plan.md

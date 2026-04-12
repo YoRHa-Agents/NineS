@@ -5,6 +5,12 @@ Re-exports the public API so that consumers can write::
     from nines.analyzer import AnalysisPipeline, CodeReviewer, StructureAnalyzer, Decomposer
 """
 
+from nines.analyzer.agent_impact import (
+    AgentImpactAnalyzer,
+    AgentImpactReport,
+    AgentMechanism,
+    ContextEconomics,
+)
 from nines.analyzer.decomposer import (
     CONCERN_PATTERNS,
     LAYER_INDICATORS,
@@ -27,10 +33,14 @@ from nines.analyzer.structure import (
 )
 
 __all__ = [
+    "AgentImpactAnalyzer",
+    "AgentImpactReport",
+    "AgentMechanism",
     "AnalysisPipeline",
     "CONCERN_PATTERNS",
     "ClassInfo",
     "CodeReviewer",
+    "ContextEconomics",
     "Decomposer",
     "DependencyMap",
     "FileReview",
