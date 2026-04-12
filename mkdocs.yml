@@ -12,13 +12,13 @@ theme:
       accent: amber
       toggle:
         icon: material/brightness-7
-        name: Switch to dark mode
+        name: "Switch to dark mode / 切换暗色模式"
     - scheme: slate
       primary: deep purple
       accent: amber
       toggle:
         icon: material/brightness-4
-        name: Switch to light mode
+        name: "Switch to light mode / 切换亮色模式"
   features:
     - navigation.tabs
     - navigation.sections
@@ -32,7 +32,20 @@ theme:
     repo: fontawesome/brands/github
   language: en
 
+extra_css:
+  - stylesheets/nier.css
+
 plugins:
+  - i18n:
+      docs_structure: suffix
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: zh
+          name: 中文
+          build: true
   - search
   - macros:
       module_name: docs/hooks/version_hook
@@ -64,6 +77,13 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/YoRHa-Agents/NineS
+  alternate:
+    - name: English
+      link: /
+      lang: en
+    - name: 中文
+      link: /zh/
+      lang: zh
 
 nav:
   - Home: index.md
@@ -85,4 +105,7 @@ nav:
   - Development:
     - Contributing: development/contributing.md
     - Roadmap: development/roadmap.md
+  - About:
+    - Design Philosophy: design-philosophy.md
+    - Evaluation Criteria: evaluation-criteria.md
   - API Reference: api-reference.md

@@ -1,6 +1,22 @@
 # NineS
 
+> 🌐 [中文文档](https://yorha-agents.github.io/NineS/zh/) | [English Documentation](https://yorha-agents.github.io/NineS/en/)
+
 A multi-vertex evaluation, collection, analysis, and self-iteration system for AI agents.
+
+📖 **Full documentation available at [https://yorha-agents.github.io/NineS/](https://yorha-agents.github.io/NineS/)**
+
+## Design Philosophy
+
+NineS is built on the YoRHa-Agents vision of self-improving AI agent infrastructure — systems that evaluate themselves, learn from their environment, and iteratively improve through the MAPIM (Measure-Analyze-Plan-Improve-Measure) cycle. The three-vertex architecture (Evaluation, Collection, Analysis) forms a self-reinforcing loop where each vertex feeds data to the others, creating emergent intelligence. Inspired by the recursive self-awareness themes of NieR: Automata, NineS embodies the spirit of 9S — the analytical YoRHa unit driven to understand the systems around it.
+
+→ [Full Design Philosophy](https://yorha-agents.github.io/NineS/en/design-philosophy/)
+
+## Evaluation Criteria
+
+NineS tracks 19 self-evaluation dimensions across four categories (V1 Evaluation, V2 Search, V3 Analysis, System-wide) to assess and improve AI agent capabilities. Each dimension has a concrete measurement method, scoring formula, and improvement direction. The system uses composite scoring with configurable weights, statistical reliability via pass@k and Pass³ metrics, and a 4-method convergence detector to ensure the MAPIM self-improvement loop terminates at genuine stability.
+
+→ [Full Evaluation Criteria](https://yorha-agents.github.io/NineS/en/evaluation-criteria/)
 
 NineS provides a unified CLI and library for benchmarking AI agent capabilities (V1), discovering and tracking external information sources (V2), analyzing codebases into structured knowledge (V3), and running self-improvement loops via the MAPIM (Measure-Analyze-Plan-Improve-Measure) cycle.
 
