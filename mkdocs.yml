@@ -62,8 +62,6 @@ plugins:
             Analysis (V3): 分析 (V3)
             Self-Iteration: 自迭代
             CLI Reference: CLI 参考
-            Showcase: 案例展示
-            "Caveman Analysis": Caveman 仓库分析
             Architecture: 系统架构
             System Overview: 系统概述
             Module Design: 模块设计
@@ -88,6 +86,7 @@ plugins:
             EvoBench Migration: EvoBench 迁移
             GSD Analysis: GSD 分析
             Showcase: 示例展示
+            "Caveman Analysis": Caveman 仓库分析
             Growth Evaluation Plan: 成长评估计划
             V2 Iteration Plan: V2 迭代计划
             Changelog: 变更日志
@@ -151,8 +150,6 @@ nav:
     - Analysis (V3): user-guide/analysis.md
     - Self-Iteration: user-guide/self-iteration.md
     - CLI Reference: user-guide/cli-reference.md
-  - Showcase:
-    - "Caveman Analysis": showcase/caveman-analysis.md
   - Architecture:
     - System Overview: architecture/overview.md
     - Module Design: architecture/modules.md
@@ -183,6 +180,7 @@ nav:
     - Code Review Findings: review/code_review_findings.md
   - Showcase:
     - Overview: showcase/index.md
+    - "Caveman Analysis": showcase/caveman-analysis.md
   - Development:
     - Contributing: development/contributing.md
     - Development Plan: development/plan.md
