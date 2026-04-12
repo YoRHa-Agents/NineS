@@ -1,0 +1,28 @@
+[task]
+id = "00000000-0000-0000-0000-000000000002"
+name = "fizzbuzz-implementation"
+description = "Evaluate a FizzBuzz implementation for correctness"
+dimension = "code_quality"
+difficulty = 2
+
+[task.input]
+type = "code"
+language = "python"
+source = """
+def fizzbuzz(n):
+    result = []
+    for i in range(1, n + 1):
+        if i % 15 == 0:
+            result.append("FizzBuzz")
+        elif i % 3 == 0:
+            result.append("Fizz")
+        elif i % 5 == 0:
+            result.append("Buzz")
+        else:
+            result.append(str(i))
+    return result
+"""
+
+[task.expected]
+type = "text"
+value = "1, 2, Fizz, 4, Buzz, Fizz, 7, 8, Fizz, Buzz, 11, Fizz, 13, 14, FizzBuzz"

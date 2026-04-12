@@ -62,16 +62,42 @@ plugins:
             Analysis (V3): 分析 (V3)
             Self-Iteration: 自迭代
             CLI Reference: CLI 参考
-            Showcase: 案例展示
-            "Caveman Analysis": Caveman 仓库分析
             Architecture: 系统架构
             System Overview: 系统概述
             Module Design: 模块设计
             Self-Evaluation Dimensions: 自评估维度
+            Design: 设计文档
+            Architecture Design: 架构设计
+            Capability Model: 能力模型
+            Evaluation Framework: 评估框架
+            Analysis Engine: 分析引擎
+            Sandbox Design: 沙箱设计
+            Self-Evaluation Spec: 自评估规范
+            Information Pipeline: 信息管道
+            Skill Adapter: 技能适配器
+            Skill Interface Spec: 技能接口规范
+            Requirements: 需求文档
+            Review Findings: 评审发现
+            Research: 研究
+            Synthesis Report: 综合报告
+            External Frameworks: 外部框架
+            Domain Knowledge: 领域知识
+            EvoBench Analysis: EvoBench 分析
+            EvoBench Migration: EvoBench 迁移
+            GSD Analysis: GSD 分析
+            Showcase: 示例展示
+            "Caveman Analysis": Caveman 仓库分析
+            Growth Evaluation Plan: 成长评估计划
+            V2 Iteration Plan: V2 迭代计划
+            Changelog: 变更日志
+            Validation: 验证
+            MVP Acceptance: MVP 验收
             Development: 开发
             Contributing: 贡献指南
             Development Plan: 开发计划
             Roadmap: 路线图
+            Review: 评审
+            Code Review Findings: 代码评审发现
             About: 关于
             Design Philosophy: 设计理念
             Evaluation Criteria: 评估标准
@@ -94,6 +120,9 @@ markdown_extensions:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.mark
   - attr_list
   - md_in_html
@@ -121,16 +150,44 @@ nav:
     - Analysis (V3): user-guide/analysis.md
     - Self-Iteration: user-guide/self-iteration.md
     - CLI Reference: user-guide/cli-reference.md
-  - Showcase:
-    - "Caveman Analysis": showcase/caveman-analysis.md
   - Architecture:
     - System Overview: architecture/overview.md
     - Module Design: architecture/modules.md
     - Self-Evaluation Dimensions: architecture/self-eval-dimensions.md
+  - Design:
+    - Architecture Design: design/architecture.md
+    - Capability Model: design/capability_model.md
+    - Evaluation Framework: design/eval_framework.md
+    - Analysis Engine: design/analysis_engine.md
+    - Sandbox Design: design/sandbox_design.md
+    - Self-Evaluation Spec: design/self_eval_spec.md
+    - Self-Iteration: design/self_iteration.md
+    - Information Pipeline: design/info_pipeline.md
+    - Skill Adapter: design/skill_adapter.md
+    - Skill Interface Spec: design/skill_interface_spec.md
+    - Requirements: design/requirements.md
+    - Review Findings: design/review_findings.md
+  - Research:
+    - Synthesis Report: research/synthesis_report.md
+    - External Frameworks: research/external_frameworks.md
+    - Domain Knowledge: research/domain_knowledge.md
+    - EvoBench Analysis: research/evobench_analysis.md
+    - EvoBench Migration: research/evobench_migration_patterns.md
+    - GSD Analysis: research/gsd_analysis.md
+  - Validation:
+    - MVP Acceptance: validation/mvp_acceptance.md
+  - Review:
+    - Code Review Findings: review/code_review_findings.md
+  - Showcase:
+    - Overview: showcase/index.md
+    - "Caveman Analysis": showcase/caveman-analysis.md
   - Development:
     - Contributing: development/contributing.md
     - Development Plan: development/plan.md
     - Roadmap: development/roadmap.md
+    - Growth Evaluation Plan: roadmap/growth_evaluation_plan.md
+    - V2 Iteration Plan: roadmap/v2_iteration_plan.md
+    - Changelog: changelog.md
   - About:
     - Design Philosophy: design-philosophy.md
     - Evaluation Criteria: evaluation-criteria.md

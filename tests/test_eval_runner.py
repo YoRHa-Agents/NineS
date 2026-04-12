@@ -139,6 +139,30 @@ class TestTaskDefinitionToml:
         with pytest.raises(Exception):
             TaskDefinition.from_toml(Path("/nonexistent/task.toml"))
 
+    def test_from_toml_quick_start_nested_input_and_typed_expected(self) -> None:
+        """[task.input] / [task.expected] with type+value (docs/quick-start style)."""
+        toml_str = """
+[task]
+id = "00000000-0000-0000-0000-000000000001"
+name = "hello-world-check"
+description = "Verify a simple greeting function"
+dimension = "code_quality"
+difficulty = 1
+
+[task.input]
+type = "code"
+language = "python"
+source = "def greet(name): return f'Hello, {name}!'"
+
+[task.expected]
+type = "text"
+value = "Hello, World!"
+"""
+        task = TaskDefinition.from_toml(toml_str)
+        assert task.input_config.get("type") == "code"
+        assert task.expected == "Hello, World!"
+        assert task.metadata.get("difficulty") == 1
+
     def test_to_core_task_and_back(self) -> None:
         task = _make_task()
         core = task.to_core_task()
