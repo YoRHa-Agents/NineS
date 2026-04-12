@@ -2,7 +2,7 @@
 
 <!-- auto-updated: version from src/nines/__init__.py -->
 
-本文说明 NineS **如何**开展日常工程：**方法论**、**Git 工作流**、**发布**、**自动化**、**质量门槛**与**文档规范**。关于「做什么、何时做」，请参阅[路线图](roadmap.zh.md)。当前包版本为 **{{ nines_version }}**。
+本文说明 NineS **如何**开展日常工程：**方法论**、**Git 工作流**、**发布**、**自动化**、**质量门槛**与**文档规范**。关于「做什么、何时做」，请参阅[路线图](roadmap.md)。当前包版本为 **{{ nines_version }}**。
 
 ---
 
@@ -33,7 +33,7 @@ flowchart LR
 **协作约定：**
 
 - 倾向小而可审的变更，意图单一清晰。
-- 修改包边界时遵守模块依赖规则（见[贡献指南 — 模块所有权](contributing.zh.md#module-ownership-zh)）。
+- 修改包边界时遵守模块依赖规则（见[贡献指南 — 模块所有权](contributing.md#module-ownership-zh)）。
 - 遵守**禁止静默失败**策略：异常需记录、重抛或转为显式 `NinesError` 状态。
 
 ---
@@ -71,7 +71,7 @@ gitGraph
 
 1. `git checkout main && git pull`
 2. `git checkout -b feature/your-change`
-3. 使用[约定式提交消息](contributing.zh.md#commit-messages-zh)提交
+3. 使用[约定式提交消息](contributing.md#commit-messages-zh)提交
 4. 推送并针对 `main` 打开 PR
 5. 评审通过后按团队约定 squash-merge 或 merge
 
@@ -142,7 +142,7 @@ flowchart TD
 
 ## 质量门槛
 
-合入前，贡献者应满足下列门槛（命令见[贡献指南](contributing.zh.md)）。
+合入前，贡献者应满足下列门槛（命令见[贡献指南](contributing.md)）。
 
 | 门槛 | 工具 | 范围 |
 |------|------|------|
@@ -154,7 +154,7 @@ flowchart TD
 
 **Makefile 目标：** `make test`、`make lint`、`make format`、`make typecheck`、`make coverage`。
 
-**覆盖率目标（来自[路线图](roadmap.zh.md)，当前未必作为硬 CI 阈值）：**
+**覆盖率目标（来自[路线图](roadmap.md)，当前未必作为硬 CI 阈值）：**
 
 - 公共 API 文档字符串覆盖率向 **≥80%** 推进。
 - 在适用场景下 CLI 路径覆盖率向 **≥70%** 推进。
@@ -178,7 +178,7 @@ flowchart TD
 8. **评审** — 处理反馈；修改版本文件时保持 CI 通过（版本检查）
 9. **合并** — 批准后合入；文档可能按 [CI 规则](#documentation-deployment)自动部署
 
-提交消息、分支命名与评审期望见[贡献指南](contributing.zh.md)。
+提交消息、分支命名与评审期望见[贡献指南](contributing.md)。
 
 ---
 
@@ -208,7 +208,7 @@ make coverage
 
 **站点生成：** MkDocs **Material**，**后缀式 i18n**（`mkdocs-static-i18n`）：英文 `page.md`，中文 `page.zh.md`。
 
-**结构：** 页面位于 `docs/`；导航在 `mkdocs.yml` 中声明。开发类文档包括[贡献指南](contributing.zh.md)、本页与[路线图](roadmap.zh.md)。
+**结构：** 页面位于 `docs/`；导航在 `mkdocs.yml` 中声明。开发类文档包括[贡献指南](contributing.md)、本页与[路线图](roadmap.md)。
 
 **宏：** `mkdocs-macros-plugin` 加载 `docs/hooks/version_hook.py`，暴露从 `src/nines/__init__.py` 解析的 **`{{ nines_version }}`**（以及 `project_name`）。正文需要随发布更新的版本号时使用该宏。
 
@@ -226,6 +226,6 @@ make coverage
 
 | 文档 | 用途 |
 |------|------|
-| [贡献指南](contributing.zh.md) | 环境、风格、PR 清单、模块矩阵 |
-| [路线图](roadmap.zh.md) | 优先级、时间线、指标、风险 |
-| [CLI 参考](../user-guide/cli-reference.zh.md) | 含 MAPIM 迭代的 `nines` 命令 |
+| [贡献指南](contributing.md) | 环境、风格、PR 清单、模块矩阵 |
+| [路线图](roadmap.md) | 优先级、时间线、指标、风险 |
+| [CLI 参考](../user-guide/cli-reference.md) | 含 MAPIM 迭代的 `nines` 命令 |

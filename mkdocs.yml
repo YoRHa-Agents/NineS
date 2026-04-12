@@ -38,6 +38,7 @@ extra_css:
 plugins:
   - i18n:
       docs_structure: suffix
+      reconfigure_material: true
       languages:
         - locale: en
           default: true
@@ -46,6 +47,33 @@ plugins:
         - locale: zh
           name: 中文
           build: true
+          theme:
+            language: zh
+          nav_translations:
+            Home: 首页
+            Getting Started: 快速入门
+            Quick Start: 快速开始
+            Installation: 安装指南
+            Agent Skill Setup: 智能体技能配置
+            User Guide: 用户指南
+            Overview: 概述
+            Evaluation (V1): 评估 (V1)
+            Collection (V2): 采集 (V2)
+            Analysis (V3): 分析 (V3)
+            Self-Iteration: 自迭代
+            CLI Reference: CLI 参考
+            Architecture: 系统架构
+            System Overview: 系统概述
+            Module Design: 模块设计
+            Self-Evaluation Dimensions: 自评估维度
+            Development: 开发
+            Contributing: 贡献指南
+            Development Plan: 开发计划
+            Roadmap: 路线图
+            About: 关于
+            Design Philosophy: 设计理念
+            Evaluation Criteria: 评估标准
+            API Reference: API 参考
   - search
   - macros:
       module_name: docs/hooks/version_hook
@@ -77,13 +105,6 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/YoRHa-Agents/NineS
-  alternate:
-    - name: English
-      link: /
-      lang: en
-    - name: 中文
-      link: /zh/
-      lang: zh
 
 nav:
   - Home: index.md
