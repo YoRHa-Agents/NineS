@@ -1,0 +1,24 @@
+name: Version Sync Check
+
+on:
+  pull_request:
+    paths:
+      - 'src/nines/__init__.py'
+      - 'pyproject.toml'
+
+jobs:
+  check-version-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check version consistency
+        run: |
+          INIT_VERSION=$(grep -oP '__version__\s*=\s*"\K[^"]+' src/nines/__init__.py)
+          TOML_VERSION=$(grep -oP '^version\s*=\s*"\K[^"]+' pyproject.toml)
+          echo "init.py version: $INIT_VERSION"
+          echo "pyproject.toml version: $TOML_VERSION"
+          if [ "$INIT_VERSION" != "$TOML_VERSION" ]; then
+            echo "::error::Version mismatch: __init__.py ($INIT_VERSION) != pyproject.toml ($TOML_VERSION)"
+            exit 1
+          fi
+          echo "Versions are in sync: $INIT_VERSION"

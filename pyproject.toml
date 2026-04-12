@@ -1,0 +1,56 @@
+[project]
+name = "nines"
+version = "0.1.0"
+description = "NineS — A multi-vertex evaluation, collection, analysis, and self-iteration system for AI agents"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "click>=8.1",
+    "tomli>=2.0; python_version < '3.11'",
+    "tomli-w>=1.2",
+    "structlog>=24.1",
+    "httpx>=0.27",
+    "pydantic>=2.6",
+]
+
+[project.scripts]
+nines = "nines.cli.main:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nines"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+    "mypy>=1.9",
+    "tomli-w>=1.2.0",
+    "mkdocs-material>=9.5",
+    "mkdocs-macros-plugin>=1.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
