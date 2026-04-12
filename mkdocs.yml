@@ -62,6 +62,8 @@ plugins:
             Analysis (V3): 分析 (V3)
             Self-Iteration: 自迭代
             CLI Reference: CLI 参考
+            Showcase: 案例展示
+            "Caveman Analysis": Caveman 仓库分析
             Architecture: 系统架构
             System Overview: 系统概述
             Module Design: 模块设计
@@ -149,6 +151,8 @@ nav:
     - Analysis (V3): user-guide/analysis.md
     - Self-Iteration: user-guide/self-iteration.md
     - CLI Reference: user-guide/cli-reference.md
+  - Showcase:
+    - "Caveman Analysis": showcase/caveman-analysis.md
   - Architecture:
     - System Overview: architecture/overview.md
     - Module Design: architecture/modules.md
