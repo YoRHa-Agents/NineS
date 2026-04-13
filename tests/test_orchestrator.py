@@ -5,11 +5,15 @@ Covers:
   - WorkflowEngine respects dependency ordering (topological sort)
   - WorkflowEngine detects cycles
   - WorkflowEngine handles step failures gracefully
-  - Pipeline.eval_pipeline wires modules together
+  - Pipeline.eval_pipeline wires real EvalRunner
+  - Pipeline.analyze_pipeline wires real AnalysisPipeline
+  - Pipeline.benchmark_pipeline runs full workflow
+  - Pipeline error handling returns graceful failures
 """
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -22,7 +26,6 @@ from nines.core.errors import OrchestrationError
 from nines.orchestrator.engine import WorkflowEngine
 from nines.orchestrator.models import WorkflowResult, WorkflowStep
 from nines.orchestrator.pipeline import Pipeline
-
 
 # ---------------------------------------------------------------------------
 # test_workflow_sequential
@@ -37,6 +40,7 @@ def test_workflow_sequential() -> None:
         def handler(deps: dict[str, Any]) -> str:
             execution_order.append(name)
             return f"{name}_done"
+
         return handler
 
     steps = [
@@ -196,6 +200,7 @@ def test_workflow_missing_dependency() -> None:
 
 def test_workflow_step_failure_skips_dependents() -> None:
     """A failing step causes dependents to be skipped."""
+
     def fail_handler(deps: dict[str, Any]) -> None:
         raise ValueError("intentional failure")
 
@@ -237,12 +242,26 @@ def test_workflow_empty() -> None:
 # test_pipeline_eval
 # ---------------------------------------------------------------------------
 
+_TASK_TOML = """\
+[task]
+id = "eval-test-001"
+name = "Greeting Test"
+description = "Tests greeting output"
+dimension = "test"
 
-def test_pipeline_eval() -> None:
-    """Pipeline.eval_pipeline wires load->execute->score->report."""
+[task.expected]
+value = "hello world"
+"""
+
+
+def test_pipeline_eval(tmp_path: Path) -> None:
+    """Pipeline.eval_pipeline loads real tasks and runs evaluation."""
+    (tmp_path / "task_001.toml").write_text(_TASK_TOML)
+    output = tmp_path / "report.json"
+
     result = Pipeline.eval_pipeline(
-        tasks_path="/tmp/tasks",
-        output_path="/tmp/report.json",
+        tasks_path=str(tmp_path),
+        output_path=str(output),
     )
 
     assert result.success
@@ -250,12 +269,58 @@ def test_pipeline_eval() -> None:
     assert "execute" in result.steps_completed
     assert "score" in result.steps_completed
     assert "report" in result.steps_completed
-    assert result.results["report"]["output_path"] == "/tmp/report.json"
-    assert result.total_duration > 0
+    assert result.results["load"]["task_count"] == 1
+    assert result.results["execute"]["results_count"] == 1
+    assert result.results["report"]["report_generated"] is True
+    assert output.exists()
+
+    report_data = json.loads(output.read_text())
+    assert report_data["task_count"] == 1
+
+
+def test_pipeline_eval_multiple_tasks(tmp_path: Path) -> None:
+    """eval_pipeline handles multiple task files."""
+    for i in range(3):
+        toml = f"""\
+[task]
+id = "multi-{i}"
+name = "Task {i}"
+dimension = "test"
+
+[task.expected]
+value = "output-{i}"
+"""
+        (tmp_path / f"task_{i:03d}.toml").write_text(toml)
+
+    output = tmp_path / "report.json"
+    result = Pipeline.eval_pipeline(
+        tasks_path=str(tmp_path),
+        output_path=str(output),
+    )
+
+    assert result.success
+    assert result.results["load"]["task_count"] == 3
+    assert result.results["execute"]["results_count"] == 3
+
+
+def test_pipeline_eval_error_handling() -> None:
+    """eval_pipeline returns graceful failure for missing path."""
+    result = Pipeline.eval_pipeline(
+        tasks_path="/nonexistent/path/tasks",
+        output_path="/tmp/nines_test_report.json",
+    )
+
+    assert not result.success
+    assert result.errors
+
+
+# ---------------------------------------------------------------------------
+# test_pipeline_collect
+# ---------------------------------------------------------------------------
 
 
 def test_pipeline_collect() -> None:
-    """Pipeline.collect_pipeline wires discover->fetch->store."""
+    """Pipeline.collect_pipeline remains a working stub."""
     result = Pipeline.collect_pipeline(
         sources=["github", "arxiv"],
         store_path="/tmp/store",
@@ -267,17 +332,112 @@ def test_pipeline_collect() -> None:
     assert "store" in result.steps_completed
 
 
-def test_pipeline_analyze() -> None:
-    """Pipeline.analyze_pipeline wires parse->analyze->index."""
+# ---------------------------------------------------------------------------
+# test_pipeline_analyze
+# ---------------------------------------------------------------------------
+
+
+def test_pipeline_analyze(tmp_path: Path) -> None:
+    """Pipeline.analyze_pipeline runs real analysis on Python code."""
+    src = tmp_path / "sample.py"
+    src.write_text(
+        "def greet(name: str) -> str:\n    return f'Hello, {name}'\n",
+    )
+    index = tmp_path / "index.json"
+
     result = Pipeline.analyze_pipeline(
-        target_path="/tmp/code",
-        index_path="/tmp/index",
+        target_path=str(src),
+        index_path=str(index),
     )
 
     assert result.success
     assert "parse" in result.steps_completed
     assert "analyze" in result.steps_completed
     assert "index" in result.steps_completed
+    assert index.exists()
+
+    idx_data = json.loads(index.read_text())
+    assert idx_data["target"] == str(src)
+
+
+def test_pipeline_analyze_error_handling() -> None:
+    """analyze_pipeline returns graceful failure for missing path."""
+    result = Pipeline.analyze_pipeline(
+        target_path="/nonexistent/code.py",
+        index_path="/tmp/nines_test_index.json",
+    )
+
+    assert not result.success
+    assert result.errors
+
+
+# ---------------------------------------------------------------------------
+# test_pipeline_benchmark
+# ---------------------------------------------------------------------------
+
+
+def test_pipeline_benchmark_with_keypoints(tmp_path: Path) -> None:
+    """benchmark_pipeline runs full workflow with provided key points."""
+    src = tmp_path / "code.py"
+    src.write_text("x = 1\n")
+
+    kp_data = [
+        {
+            "id": "kp-test-1",
+            "category": "engineering",
+            "title": "Test Key Point",
+            "description": "A test observation about code quality",
+        },
+    ]
+
+    result = Pipeline.benchmark_pipeline(
+        target_path=str(src),
+        key_points_data=kp_data,
+        suite_id="test-suite",
+        scorer_names=["exact"],
+    )
+
+    assert result.success
+    assert "analyze" in result.steps_completed
+    assert "extract_keypoints" in result.steps_completed
+    assert "generate_benchmarks" in result.steps_completed
+    assert "evaluate" in result.steps_completed
+    assert "map_results" in result.steps_completed
+
+    kps = result.results["extract_keypoints"]["key_points"]
+    assert len(kps) == 1
+    assert kps[0].id == "kp-test-1"
+
+    mapping = result.results["map_results"]["mapping"]
+    assert "conclusions" in mapping
+
+
+def test_pipeline_benchmark_derives_keypoints(
+    tmp_path: Path,
+) -> None:
+    """benchmark_pipeline derives key points from analysis findings."""
+    src = tmp_path / "sample.py"
+    src.write_text(
+        "def greet(name: str) -> str:\n    return f'Hello, {name}'\n",
+    )
+
+    result = Pipeline.benchmark_pipeline(
+        target_path=str(src),
+        suite_id="auto-kp-suite",
+    )
+
+    assert result.success
+    assert "extract_keypoints" in result.steps_completed
+
+
+def test_pipeline_benchmark_error_handling() -> None:
+    """benchmark_pipeline returns graceful failure for bad input."""
+    result = Pipeline.benchmark_pipeline(
+        target_path="/nonexistent/code.py",
+    )
+
+    assert not result.success
+    assert result.errors
 
 
 # ---------------------------------------------------------------------------
@@ -301,7 +461,11 @@ def test_workflow_result_to_dict() -> None:
 
 def test_workflow_step_to_dict() -> None:
     """WorkflowStep.to_dict serializes name and depends_on."""
-    step = WorkflowStep(name="x", handler=lambda d: None, depends_on=["y", "z"])
+    step = WorkflowStep(
+        name="x",
+        handler=lambda d: None,
+        depends_on=["y", "z"],
+    )
     d = step.to_dict()
     assert d["name"] == "x"
     assert d["depends_on"] == ["y", "z"]

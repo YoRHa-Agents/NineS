@@ -16,6 +16,11 @@ from nines.analyzer.decomposer import (
     LAYER_INDICATORS,
     Decomposer,
 )
+from nines.analyzer.keypoint import (
+    KeyPoint,
+    KeyPointExtractor,
+    KeyPointReport,
+)
 from nines.analyzer.pipeline import AnalysisPipeline
 from nines.analyzer.reviewer import (
     ClassInfo,
@@ -42,6 +47,9 @@ __all__ = [
     "CodeReviewer",
     "ContextEconomics",
     "Decomposer",
+    "KeyPoint",
+    "KeyPointExtractor",
+    "KeyPointReport",
     "DependencyMap",
     "FileReview",
     "FileTypeCounts",

@@ -4,6 +4,38 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v0.5.0 — 2026-04-12
+
+**Theme:** Executable evaluation framework and self-driven improvement.
+
+### Added
+- Key point extraction module (`KeyPointExtractor`) — decomposes Agent impact reports into categorized, prioritized key points with validation approaches
+- Benchmark generation module (`BenchmarkGenerator`) — generates `TaskDefinition` benchmark suites from key points with per-category task templates
+- Multi-round evaluation runner (`MultiRoundRunner`) — sandboxed multi-round evaluation with convergence detection and reliability metrics (pass@k, consistency)
+- Key point → conclusion mapping module (`MappingTableGenerator`) — maps key points to effectiveness conclusions with confidence scores and recommendations
+- Five live self-evaluation evaluators: `LiveCodeCoverageEvaluator`, `LiveTestCountEvaluator`, `LiveModuleCountEvaluator`, `DocstringCoverageEvaluator`, `LintCleanlinessEvaluator`
+- New CLI command `nines benchmark` — full analysis→benchmark→evaluate→mapping workflow
+- CLI options `--agent-impact` and `--keypoints` for `nines analyze`
+- CLI options `--project-root`, `--src-dir`, `--test-dir` for `nines self-eval`
+- 18 new integration tests for benchmark workflow and enhanced analysis pipeline
+- `BenchmarkSuite` with TOML directory export (`to_toml_dir()`)
+- `MappingTable` with markdown and JSON export
+- `MultiRoundReport` with per-task summary statistics
+
+### Changed
+- Caveman showcase completely rewritten to demonstrate v0.5.0 executable evaluation methodology — key points, benchmarks, multi-round results, mapping table, lessons learnt
+- `AnalysisPipeline.run()` now accepts `agent_impact` and `keypoints` keyword arguments
+- Self-evaluation CLI wires live evaluators instead of placeholder zeros
+- Orchestrator `Pipeline` methods now wire real component calls (eval, analyze, benchmark)
+- `nines analyze` CLI now supports `--depth` option
+
+### Improved
+- Self-evaluation produces real measurements from project introspection (coverage, test counts, docstrings, lint)
+- Analysis pipeline integrates `AgentImpactAnalyzer` and `KeyPointExtractor` into the main flow
+- 914+ tests with comprehensive coverage across all new modules
+
+---
+
 ## v0.4.0 — 2026-04-12
 
 **Theme:** Agent-oriented analysis and AI repository evaluation.

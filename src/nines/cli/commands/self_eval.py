@@ -9,10 +9,12 @@ from pathlib import Path
 import click
 
 from nines.iteration.self_eval import (
-    CodeCoverageEvaluator,
-    ModuleCountEvaluator,
+    DocstringCoverageEvaluator,
+    LintCleanlinessEvaluator,
+    LiveCodeCoverageEvaluator,
+    LiveModuleCountEvaluator,
+    LiveTestCountEvaluator,
     SelfEvalRunner,
-    TestCountEvaluator,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,20 +33,43 @@ logger = logging.getLogger(__name__)
     default=None,
     help="Directory to write the self-evaluation report to.",
 )
+@click.option(
+    "--project-root",
+    type=click.Path(exists=True),
+    default=".",
+    help="Project root directory for coverage measurement.",
+)
+@click.option(
+    "--src-dir",
+    type=click.Path(exists=True),
+    default="src/nines",
+    help="Source directory for module/docstring/lint analysis.",
+)
+@click.option(
+    "--test-dir",
+    type=click.Path(exists=True),
+    default="tests",
+    help="Test directory for test discovery.",
+)
 @click.pass_context
 def self_eval_cmd(
     ctx: click.Context,
     baseline_version: str,
     output_dir: str | None,
+    project_root: str,
+    src_dir: str,
+    test_dir: str,
 ) -> None:
     """Run self-evaluation across all capability dimensions."""
     verbose = ctx.obj.get("verbose", False)
     output_format = ctx.obj.get("format", "text")
 
     runner = SelfEvalRunner()
-    runner.register_dimension("code_coverage", CodeCoverageEvaluator(coverage_pct=0.0))
-    runner.register_dimension("test_count", TestCountEvaluator(count=0))
-    runner.register_dimension("module_count", ModuleCountEvaluator(count=0))
+    runner.register_dimension("code_coverage", LiveCodeCoverageEvaluator(project_root))
+    runner.register_dimension("test_count", LiveTestCountEvaluator(test_dir))
+    runner.register_dimension("module_count", LiveModuleCountEvaluator(src_dir))
+    runner.register_dimension("docstring_coverage", DocstringCoverageEvaluator(src_dir))
+    runner.register_dimension("lint_cleanliness", LintCleanlinessEvaluator(src_dir))
 
     if verbose:
         click.echo("Running self-evaluation across all dimensions...")

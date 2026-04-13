@@ -1,11 +1,25 @@
 """Tests for the NineS CLI entry point."""
 
+from __future__ import annotations
+
+import json
+import textwrap
+from pathlib import Path
+
 from click.testing import CliRunner
 
 from nines import __version__
 from nines.cli.main import cli
 
-EXPECTED_SUBCOMMANDS = ["eval", "collect", "analyze", "self-eval", "iterate", "install"]
+EXPECTED_SUBCOMMANDS = [
+    "eval",
+    "collect",
+    "analyze",
+    "benchmark",
+    "self-eval",
+    "iterate",
+    "install",
+]
 
 
 class TestHelpOutput:
@@ -67,3 +81,164 @@ class TestAllCommandsExist:
             result = runner.invoke(cli, [cmd, "--help"])
             assert result.exit_code == 0, f"'{cmd} --help' failed"
             assert len(result.output) > 0
+
+
+def _make_sample_project(tmp_path: Path) -> Path:
+    """Create a minimal Python project for CLI tests."""
+    pkg = tmp_path / "pkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text('"""Root."""\n')
+    (pkg / "app.py").write_text(
+        textwrap.dedent("""\
+            def hello():
+                return "world"
+        """),
+    )
+    return tmp_path
+
+
+class TestAnalyzeCommand:
+    """Tests for the 'analyze' command with new flags."""
+
+    def test_analyze_help_shows_new_options(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(cli, ["analyze", "--help"])
+        assert result.exit_code == 0
+        assert "--agent-impact" in result.output
+        assert "--keypoints" in result.output
+        assert "--depth" in result.output
+
+    def test_analyze_basic_text(self, tmp_path: Path) -> None:
+        project = _make_sample_project(tmp_path)
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            ["analyze", "--target-path", str(project)],
+        )
+        assert result.exit_code == 0
+        assert "Analysis of" in result.output
+        assert "Agent mechanisms" not in result.output
+        assert "Key points" not in result.output
+
+    def test_analyze_agent_impact_text(self, tmp_path: Path) -> None:
+        project = _make_sample_project(tmp_path)
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            ["analyze", "--target-path", str(project), "--agent-impact"],
+        )
+        assert result.exit_code == 0
+        assert "Agent mechanisms:" in result.output
+        assert "Agent artifacts:" in result.output
+
+    def test_analyze_keypoints_text(self, tmp_path: Path) -> None:
+        project = _make_sample_project(tmp_path)
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            ["analyze", "--target-path", str(project), "--keypoints"],
+        )
+        assert result.exit_code == 0
+        assert "Agent mechanisms:" in result.output
+        assert "Key points:" in result.output
+
+    def test_analyze_agent_impact_json(self, tmp_path: Path) -> None:
+        project = _make_sample_project(tmp_path)
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "-f",
+                "json",
+                "analyze",
+                "--target-path",
+                str(project),
+                "--agent-impact",
+            ],
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert "agent_impact" in data["metrics"]
+
+    def test_analyze_keypoints_json(self, tmp_path: Path) -> None:
+        project = _make_sample_project(tmp_path)
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "-f",
+                "json",
+                "analyze",
+                "--target-path",
+                str(project),
+                "--keypoints",
+            ],
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert "agent_impact" in data["metrics"]
+        assert "key_points" in data["metrics"]
+
+    def test_analyze_depth_option(self, tmp_path: Path) -> None:
+        project = _make_sample_project(tmp_path)
+        runner = CliRunner()
+        for depth in ("shallow", "deep"):
+            result = runner.invoke(
+                cli,
+                [
+                    "analyze",
+                    "--target-path",
+                    str(project),
+                    "--depth",
+                    depth,
+                ],
+            )
+            assert result.exit_code == 0
+
+    def test_analyze_depth_invalid_rejected(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            ["analyze", "--target-path", ".", "--depth", "nope"],
+        )
+        assert result.exit_code != 0
+
+    def test_analyze_verbose_includes_depth(self, tmp_path: Path) -> None:
+        project = _make_sample_project(tmp_path)
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "-v",
+                "analyze",
+                "--target-path",
+                str(project),
+                "--depth",
+                "deep",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "depth=deep" in result.output
+
+    def test_analyze_output_dir_with_agent_impact(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        project = _make_sample_project(tmp_path)
+        out = tmp_path / "reports"
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "analyze",
+                "--target-path",
+                str(project),
+                "--agent-impact",
+                "--output-dir",
+                str(out),
+            ],
+        )
+        assert result.exit_code == 0
+        assert (out / "analysis_report.txt").exists()
+        content = (out / "analysis_report.txt").read_text()
+        assert "Agent mechanisms:" in content

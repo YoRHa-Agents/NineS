@@ -9,9 +9,13 @@ Covers: FR-601, FR-602.
 
 from __future__ import annotations
 
+import ast
+import json
 import logging
+import subprocess
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
@@ -244,4 +248,187 @@ class ModuleCountEvaluator:
             value=float(self._count),
             max_value=float(max(self._count, 1)),
             metadata={"unit": "modules"},
+        )
+
+
+# ---------------------------------------------------------------------------
+# Live evaluators — auto-discover metrics from the project
+# ---------------------------------------------------------------------------
+
+
+class LiveCodeCoverageEvaluator:
+    """Evaluator that runs pytest --cov and parses real coverage."""
+
+    def __init__(self, project_root: str | Path = ".") -> None:
+        self._project_root = Path(project_root)
+
+    def evaluate(self) -> DimensionScore:
+        try:
+            result = subprocess.run(
+                ["python", "-m", "pytest", "--cov=nines", "--cov-report=term-missing", "-q"],
+                capture_output=True,
+                text=True,
+                timeout=300,
+                cwd=str(self._project_root),
+            )
+            coverage_pct = self._parse_coverage(result.stdout)
+        except subprocess.TimeoutExpired:
+            logger.error("pytest --cov timed out after 300s")
+            coverage_pct = 0.0
+        except Exception as exc:
+            logger.error("Failed to run pytest --cov: %s", exc)
+            coverage_pct = 0.0
+
+        return DimensionScore(
+            name="code_coverage",
+            value=coverage_pct,
+            max_value=100.0,
+            metadata={"unit": "percent"},
+        )
+
+    @staticmethod
+    def _parse_coverage(stdout: str) -> float:
+        """Extract total coverage percentage from pytest-cov TOTAL line."""
+        for line in stdout.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("TOTAL"):
+                parts = stripped.split()
+                for part in reversed(parts):
+                    cleaned = part.rstrip("%")
+                    try:
+                        return float(cleaned)
+                    except ValueError:
+                        continue
+        logger.warning("Could not parse coverage from pytest output")
+        return 0.0
+
+
+class LiveTestCountEvaluator:
+    """Evaluator that counts test functions from test files."""
+
+    def __init__(self, test_dir: str | Path = "tests") -> None:
+        self._test_dir = Path(test_dir)
+
+    def evaluate(self) -> DimensionScore:
+        count = 0
+        files_scanned = 0
+        try:
+            for py_file in self._test_dir.rglob("test_*.py"):
+                files_scanned += 1
+                try:
+                    source = py_file.read_text(encoding="utf-8")
+                    tree = ast.parse(source, filename=str(py_file))
+                except (SyntaxError, UnicodeDecodeError) as exc:
+                    logger.warning("Skipping %s: %s", py_file, exc)
+                    continue
+                for node in ast.walk(tree):
+                    if (
+                        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                        and node.name.startswith("test_")
+                    ):
+                        count += 1
+        except Exception as exc:
+            logger.error("Failed to scan test directory %s: %s", self._test_dir, exc)
+
+        return DimensionScore(
+            name="test_count",
+            value=float(count),
+            max_value=float(max(count, 1)),
+            metadata={"unit": "tests", "files_scanned": files_scanned},
+        )
+
+
+class LiveModuleCountEvaluator:
+    """Evaluator that counts Python modules in src/nines/."""
+
+    def __init__(self, src_dir: str | Path = "src/nines") -> None:
+        self._src_dir = Path(src_dir)
+
+    def evaluate(self) -> DimensionScore:
+        count = 0
+        try:
+            for py_file in self._src_dir.rglob("*.py"):
+                if py_file.name == "__init__.py":
+                    continue
+                if "__pycache__" in py_file.parts:
+                    continue
+                count += 1
+        except Exception as exc:
+            logger.error("Failed to scan source directory %s: %s", self._src_dir, exc)
+
+        return DimensionScore(
+            name="module_count",
+            value=float(count),
+            max_value=float(max(count, 1)),
+            metadata={"unit": "modules"},
+        )
+
+
+class DocstringCoverageEvaluator:
+    """Evaluator that measures docstring coverage of public functions/classes."""
+
+    def __init__(self, src_dir: str | Path = "src/nines") -> None:
+        self._src_dir = Path(src_dir)
+
+    def evaluate(self) -> DimensionScore:
+        total = 0
+        documented = 0
+        try:
+            for py_file in self._src_dir.rglob("*.py"):
+                if "__pycache__" in py_file.parts:
+                    continue
+                try:
+                    source = py_file.read_text(encoding="utf-8")
+                    tree = ast.parse(source, filename=str(py_file))
+                except (SyntaxError, UnicodeDecodeError) as exc:
+                    logger.warning("Skipping %s: %s", py_file, exc)
+                    continue
+                for node in ast.walk(tree):
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                        if node.name.startswith("_"):
+                            continue
+                        total += 1
+                        if ast.get_docstring(node):
+                            documented += 1
+        except Exception as exc:
+            logger.error("Failed to scan source directory %s: %s", self._src_dir, exc)
+
+        pct = (documented / total * 100.0) if total > 0 else 0.0
+        return DimensionScore(
+            name="docstring_coverage",
+            value=pct,
+            max_value=100.0,
+            metadata={"unit": "percent", "total": total, "documented": documented},
+        )
+
+
+class LintCleanlinessEvaluator:
+    """Evaluator that measures lint cleanliness via ruff."""
+
+    def __init__(self, src_dir: str | Path = "src/nines") -> None:
+        self._src_dir = Path(src_dir)
+
+    def evaluate(self) -> DimensionScore:
+        violation_count = 0
+        try:
+            result = subprocess.run(
+                ["python", "-m", "ruff", "check", str(self._src_dir), "--output-format=json", "-q"],
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+            if result.stdout.strip():
+                violations = json.loads(result.stdout)
+                violation_count = len(violations)
+        except subprocess.TimeoutExpired:
+            logger.error("ruff check timed out after 300s")
+        except Exception as exc:
+            logger.error("Failed to run ruff check: %s", exc)
+
+        raw_score = max(0.0, 100.0 - violation_count * 2.0)
+        return DimensionScore(
+            name="lint_cleanliness",
+            value=raw_score,
+            max_value=100.0,
+            metadata={"unit": "score", "violation_count": violation_count},
         )

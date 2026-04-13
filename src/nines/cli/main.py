@@ -5,6 +5,7 @@ import click
 from nines import __version__
 from nines.cli.commands import (
     analyze_cmd,
+    benchmark_cmd,
     collect_cmd,
     eval_cmd,
     install_cmd,
@@ -63,6 +64,7 @@ def cli(
 cli.add_command(eval_cmd, "eval")
 cli.add_command(collect_cmd, "collect")
 cli.add_command(analyze_cmd, "analyze")
+cli.add_command(benchmark_cmd, "benchmark")
 cli.add_command(self_eval_cmd, "self-eval")
 cli.add_command(iterate_cmd, "iterate")
 cli.add_command(install_cmd, "install")
