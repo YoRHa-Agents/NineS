@@ -19,6 +19,25 @@ An Agent-oriented analysis of [JuliusBrussee/caveman](https://github.com/JuliusB
 
 This showcase illustrates how `nines analyze --agent-impact` evaluates AI-oriented repos for their actual effect on Agent effectiveness.
 
+[Read the full Caveman analysis →](caveman-analysis.md)
+
+---
+
+### DevolaFlow Repository Analysis
+
+A deep analysis of [YoRHa-Agents/DevolaFlow](https://github.com/YoRHa-Agents/DevolaFlow), demonstrating NineS's executable evaluation methodology applied to an **orchestration meta-framework** — going beyond simple tool analysis to evaluate how structural decisions shape Agent effectiveness:
+
+- **4-layer agent hierarchy** — Decomposing L0–L3 dispatch architecture and its impact on token budgets
+- **Workflow template analysis** — Evaluating 17 built-in templates for task-adaptive routing efficiency
+- **Context economics** — Quantifying token savings from layer-specific budgets vs. monolithic approaches
+- **Quality gate evaluation** — Analyzing convergence detection and multi-round reliability controls
+- **EvoBench dimension mapping** — Aligning 32 evaluation dimensions (T1–T8, M1–M8, W1–W8, TT1–TT8) with agent-facing analysis
+- **Benchmark execution** — 15 key points, 30 generated tasks, multi-round sandboxed evaluation with validated conclusions
+
+This showcase demonstrates how NineS extends analysis from simple tools (Caveman) to meta-frameworks (DevolaFlow), evaluating orchestration rules rather than just code artifacts.
+
+[Read the full DevolaFlow analysis →](devolaflow-analysis.md)
+
 ---
 
 ## Sample Evaluation Tasks

@@ -66,6 +66,7 @@ plugins:
             CLI Reference: CLI 参考
             Showcase: 示例展示
             "Caveman Analysis": Caveman 仓库分析
+            "DevolaFlow Analysis": DevolaFlow 仓库分析
             Architecture: 系统架构
             System Overview: 系统概述
             Module Design: 模块设计
@@ -133,7 +134,7 @@ markdown_extensions:
       permalink: true
 
 extra:
-  nines_version: "0.5.0"
+  nines_version: "0.6.0"
   version:
     provider: mike
   social:
@@ -156,6 +157,7 @@ nav:
   - Showcase:
     - Overview: showcase/index.md
     - "Caveman Analysis": showcase/caveman-analysis.md
+    - "DevolaFlow Analysis": showcase/devolaflow-analysis.md
   - Architecture:
     - System Overview: architecture/overview.md
     - Module Design: architecture/modules.md
