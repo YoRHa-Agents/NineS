@@ -4,6 +4,34 @@ NineS 的所有重要变更均记录于此。本项目遵循[语义化版本](ht
 
 ---
 
+## v1.1.0 — 2026-04-13
+
+**主题：** 外部项目支持与 DevolaFlow 集成反馈修复。
+
+> 基于 DevolaFlow v4.3.1 的集成测试反馈，本版本修复了 NineS 在评估外部项目时的 4 个核心问题，使 NineS 从「只能评估自身」变为「可以评估任意 Python 项目」的通用工具。
+
+### 新增
+- **`LiveCodeCoverageEvaluator` 可配置覆盖包名** — 新增 `cov_package` 参数，替代硬编码的 `--cov=nines`，评估外部项目（如 DevolaFlow）时可正确测量覆盖率
+- **覆盖率文件解析** — 新增 `coverage_file` 参数，支持直接读取 `coverage.xml`（Cobertura 格式）和 `coverage.json` 文件，无需重新执行 pytest
+- **`LiveTestCountEvaluator` 优先使用 pytest 收集** — 采用 `pytest --collect-only -q` 精确计数（含参数化测试、类方法测试等），AST 遍历作为降级回退
+- **`nines iterate` 项目上下文标志** — 新增 `--project-root`、`--src-dir`、`--test-dir`，支持自动检测源码和测试目录
+- **`nines iterate` 实时评估器** — 指定 `--project-root` 后使用 5 个实时评估器（覆盖率、测试数、模块数、文档字符串覆盖率、Lint 清洁度），替代固定 0 值的桩评估器
+- **`nines benchmark --tasks-path`** — 新增自定义 TOML 任务目录选项，跳过自动生成的通用任务，直接加载用户定义的项目特定基准测试任务
+- 新增 24 个测试用例（self_eval: 6, iterate_cmd: 14, benchmark_cmd: 4），总测试数达 1052
+
+### 变更
+- `LiveCodeCoverageEvaluator` 元数据新增 `source` 字段（`"file"` 或 `"pytest"`），标明覆盖率数据来源
+- `LiveTestCountEvaluator` 元数据新增 `method` 字段（`"pytest-collect"` 或 `"ast-walk"`），标明计数方法
+- `nines iterate` 无 `--project-root` 时输出警告并使用非零桩值（避免立即收敛至 0.0）
+- `nines iterate` 修复 `conv_result` 潜在未绑定变量错误
+
+### 改进
+- **自评分数：0.9928** — 能力维度 17/17 全部 100%，卫生 97.6%（覆盖率 90%，测试 1052，模块 65，文档 100%，Lint 98%）
+- NineS 现可作为通用项目质量扫描器，不再局限于评估自身
+- DevolaFlow 集成场景下，`nines iterate --project-root .` 可正确产出 0.976 的综合分数
+
+---
+
 ## v1.0.0 — 2026-04-13
 
 **主题：** 多运行时技能集成、19 维度能力评估与生产就绪。

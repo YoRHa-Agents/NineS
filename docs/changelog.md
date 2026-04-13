@@ -4,6 +4,34 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v1.1.0 — 2026-04-13
+
+**Theme:** External project support and DevolaFlow integration feedback fixes.
+
+> Based on integration testing feedback from DevolaFlow v4.3.1, this release fixes 4 core issues when NineS evaluates external projects, transforming NineS from "can only evaluate itself" to a general-purpose project quality scanner.
+
+### Added
+- **Configurable coverage package** in `LiveCodeCoverageEvaluator` — new `cov_package` parameter replaces hardcoded `--cov=nines`, enabling correct coverage measurement for external projects (e.g. DevolaFlow)
+- **Coverage file parsing** — new `coverage_file` parameter supports reading pre-existing `coverage.xml` (Cobertura format) and `coverage.json` files without re-running pytest
+- **`LiveTestCountEvaluator` prefers pytest collection** — uses `pytest --collect-only -q` for accurate counting (handles parameterized tests, class methods, etc.), with AST-walk fallback
+- **`nines iterate` project context flags** — new `--project-root`, `--src-dir`, `--test-dir` options with auto-detection of source and test directories
+- **`nines iterate` live evaluators** — uses 5 live evaluators (coverage, test count, modules, docstring coverage, lint) when `--project-root` is specified, replacing fixed-zero stub evaluators
+- **`nines benchmark --tasks-path`** — new custom TOML task directory option, skips auto-generated generic tasks and loads user-defined project-specific benchmark tasks directly
+- 24 new tests (self_eval: 6, iterate_cmd: 14, benchmark_cmd: 4), bringing total to 1052
+
+### Changed
+- `LiveCodeCoverageEvaluator` metadata includes `source` field (`"file"` or `"pytest"`) indicating data origin
+- `LiveTestCountEvaluator` metadata includes `method` field (`"pytest-collect"` or `"ast-walk"`) indicating counting method
+- `nines iterate` warns when no `--project-root` is given and uses non-zero stub values (avoids immediate convergence at 0.0)
+- Fixed potential `UnboundLocalError` on `conv_result` in iterate command
+
+### Improved
+- **Self-eval score: 0.9928** — capability dimensions 17/17 at 100%, hygiene 97.6% (coverage 90%, tests 1052, modules 65, docstrings 100%, lint 98%)
+- NineS now usable as a general-purpose project quality scanner, no longer limited to evaluating itself
+- In DevolaFlow integration scenario, `nines iterate --project-root .` correctly produces a 0.976 composite score
+
+---
+
 ## v1.0.0 — 2026-04-13
 
 **Theme:** Multi-runtime skill integration, 19-dimension capability evaluation, and production readiness.
