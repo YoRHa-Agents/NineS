@@ -71,7 +71,7 @@ def _default_commands() -> list[CommandDef]:
         CommandDef(
             name="nines-update",
             description="Check for and install NineS updates, refresh skill files.",
-            argument_hint="[--check] [--skip-skills] [--target <cursor|claude|all>]",
+            argument_hint="[--check] [--skip-skills] [--target <cursor|claude|all>] [--global]",
             capability="update",
         ),
     ]

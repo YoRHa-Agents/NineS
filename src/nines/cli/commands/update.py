@@ -117,12 +117,20 @@ def _refresh_skills(target: str, project_dir: Path) -> list[str]:
     default="all",
     help="Which skill targets to refresh (default: all).",
 )
+@click.option(
+    "--global",
+    "is_global",
+    is_flag=True,
+    default=False,
+    help="Refresh skill files in user home directory (~/) instead of current project.",
+)
 @click.pass_context
 def update_cmd(
     ctx: click.Context,
     check_only: bool,
     skip_skills: bool,
     target: str,
+    is_global: bool,
 ) -> None:
     """Check for and install NineS updates, refresh skill files."""
     verbose = ctx.obj.get("verbose", False)
@@ -171,8 +179,11 @@ def update_cmd(
             click.echo("Skipping skill refresh (--skip-skills).")
         return
 
-    click.echo(f"Refreshing skill files for target={target}…")
-    project_dir = Path.cwd()
+    from nines.cli.commands.install import resolve_install_dir
+
+    project_dir = resolve_install_dir(is_global)
+    scope = "global (~)" if is_global else "project"
+    click.echo(f"Refreshing skill files for target={target} ({scope})…")
 
     try:
         created = _refresh_skills(target, project_dir)

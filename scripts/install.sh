@@ -165,15 +165,17 @@ install_skills() {
         return
     fi
 
-    info "Installing agent skill files for target=${TARGET}..."
-
-    local extra_args=""
+    local scope="project"
+    local global_flag=""
     if [[ "$GLOBAL_INSTALL" == true ]]; then
-        warn "Global install not yet supported via script; installing to current project"
+        global_flag="--global"
+        scope="global (~)"
     fi
 
-    nines install --target "$TARGET"
-    ok "Skill files installed for target=${TARGET}"
+    info "Installing agent skill files for target=${TARGET} (${scope})..."
+
+    nines install --target "$TARGET" $global_flag
+    ok "Skill files installed for target=${TARGET} (${scope})"
 }
 
 print_summary() {
@@ -184,25 +186,31 @@ print_summary() {
     info "Help:    nines --help"
 
     if [[ "$NO_SKILL" == false ]]; then
+        local prefix="."
+        if [[ "$GLOBAL_INSTALL" == true ]]; then
+            prefix="~/"
+            echo ""
+            info "Installed globally to ~/  (applies to all projects)"
+        fi
         echo ""
         case "$TARGET" in
             cursor)
-                info "Cursor skill:  .cursor/skills/nines/SKILL.md"
+                info "Cursor skill:  ${prefix}.cursor/skills/nines/SKILL.md"
                 ;;
             claude)
-                info "Claude commands: .claude/commands/nines/"
+                info "Claude commands: ${prefix}.claude/commands/nines/"
                 ;;
             codex)
-                info "Codex skill:   .codex/skills/nines/SKILL.md"
+                info "Codex skill:   ${prefix}.codex/skills/nines/SKILL.md"
                 ;;
             copilot)
-                info "Copilot:       .github/copilot-instructions.md"
+                info "Copilot:       ${prefix}.github/copilot-instructions.md"
                 ;;
             all)
-                info "Cursor:   .cursor/skills/nines/SKILL.md"
-                info "Claude:   .claude/commands/nines/"
-                info "Codex:    .codex/skills/nines/SKILL.md"
-                info "Copilot:  .github/copilot-instructions.md"
+                info "Cursor:   ${prefix}.cursor/skills/nines/SKILL.md"
+                info "Claude:   ${prefix}.claude/commands/nines/"
+                info "Codex:    ${prefix}.codex/skills/nines/SKILL.md"
+                info "Copilot:  ${prefix}.github/copilot-instructions.md"
                 ;;
         esac
     fi
