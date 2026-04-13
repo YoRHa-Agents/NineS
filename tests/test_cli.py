@@ -19,6 +19,7 @@ EXPECTED_SUBCOMMANDS = [
     "self-eval",
     "iterate",
     "install",
+    "update",
 ]
 
 

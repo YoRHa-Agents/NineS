@@ -36,7 +36,8 @@ class TestCursorSkillMdGenerated:
         skill_md = tmp_path / ".cursor" / "skills" / "nines" / "SKILL.md"
         content = skill_md.read_text(encoding="utf-8")
         for cmd_name in ("nines-eval", "nines-collect", "nines-analyze",
-                         "nines-self-eval", "nines-iterate", "nines-install"):
+                         "nines-self-eval", "nines-iterate", "nines-install",
+                         "nines-update"):
             assert cmd_name in content, f"{cmd_name} missing from SKILL.md"
 
     def test_cursor_generates_command_workflow_files(self, tmp_path: Path) -> None:
@@ -48,7 +49,7 @@ class TestCursorSkillMdGenerated:
         assert (commands_dir / "eval.md").exists()
         assert (commands_dir / "collect.md").exists()
         assert (commands_dir / "analyze.md").exists()
-        assert len(written) == 7  # SKILL.md + 6 commands
+        assert len(written) == 8  # SKILL.md + 7 commands
 
     def test_cursor_custom_manifest(self, tmp_path: Path) -> None:
         manifest = SkillManifest(name="custom-nines", description="Custom NineS")
@@ -67,7 +68,7 @@ class TestClaudeCommandsGenerated:
         adapter = ClaudeAdapter()
         written = adapter.generate_commands(tmp_path)
 
-        assert len(written) == 6
+        assert len(written) == 7
 
         eval_md = tmp_path / ".claude" / "commands" / "nines" / "eval.md"
         assert eval_md.exists(), "eval.md was not created"
@@ -83,7 +84,7 @@ class TestClaudeCommandsGenerated:
 
         base = tmp_path / ".claude" / "commands" / "nines"
         for name in ("eval.md", "collect.md", "analyze.md",
-                     "self-eval.md", "iterate.md", "install.md"):
+                     "self-eval.md", "iterate.md", "install.md", "update.md"):
             assert (base / name).exists(), f"{name} missing"
 
     def test_claude_command_frontmatter(self, tmp_path: Path) -> None:
@@ -192,7 +193,7 @@ class TestCodexSkillMdGenerated:
 
         skill_md = tmp_path / ".codex" / "skills" / "nines" / "SKILL.md"
         content = skill_md.read_text(encoding="utf-8")
-        for short in ("eval", "collect", "analyze", "self-eval", "iterate", "install"):
+        for short in ("eval", "collect", "analyze", "self-eval", "iterate", "install", "update"):
             assert short in content, f"{short} missing from SKILL.md"
 
     def test_codex_generates_command_workflow_files(self, tmp_path: Path) -> None:
@@ -207,7 +208,8 @@ class TestCodexSkillMdGenerated:
         assert (commands_dir / "self-eval.md").exists()
         assert (commands_dir / "iterate.md").exists()
         assert (commands_dir / "install.md").exists()
-        assert len(written) == 7  # SKILL.md + 6 commands
+        assert (commands_dir / "update.md").exists()
+        assert len(written) == 8  # SKILL.md + 7 commands
 
     def test_codex_command_file_content(self, tmp_path: Path) -> None:
         adapter = CodexAdapter()
@@ -236,7 +238,7 @@ class TestCodexSkillMdGenerated:
         adapter = BaseCodexAdapter()
         manifest = SkillManifest()
         files = adapter.emit(manifest)
-        assert len(files) == 7
+        assert len(files) == 8
         assert files[0].relative_path == "SKILL.md"
         for f in files[1:]:
             assert f.relative_path.startswith("commands/")
@@ -273,7 +275,7 @@ class TestCopilotInstructionsGenerated:
         adapter = CopilotAdapter()
         written = adapter.generate_instructions(tmp_path)
         content = written.read_text(encoding="utf-8")
-        for short in ("eval", "collect", "analyze", "self-eval", "iterate", "install"):
+        for short in ("eval", "collect", "analyze", "self-eval", "iterate", "install", "update"):
             assert short in content, f"{short} missing from copilot-instructions.md"
 
     def test_copilot_has_prerequisites(self, tmp_path: Path) -> None:

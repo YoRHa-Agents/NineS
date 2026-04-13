@@ -12,7 +12,7 @@ DevolaFlow is a composable workflow meta-framework for AI-assisted software deve
 
 Traditional analysis would report file counts and dependency graphs — revealing nothing about actual value. What matters is how DevolaFlow's structural decisions change Agent efficiency in measurable ways.
 
-NineS {{ nines_version }} introduces an **executable evaluation methodology** that goes beyond narrative analysis. Because DevolaFlow is a meta-framework (orchestration rules, not a simple tool), the analysis focuses on how structural decisions affect agent efficiency. We decompose the repository into quantifiable key points, generate benchmark tasks, run multi-round evaluations, and map every key point to a validated conclusion.
+NineS {{ nines_version }} introduces an **executable evaluation methodology** that goes beyond narrative analysis. With multi-runtime skill installation (Cursor, Claude Code, Codex, Copilot) and self-upgrade via `nines update`, NineS now supports the full evaluation lifecycle across environments. Because DevolaFlow is a meta-framework (orchestration rules, not a simple tool), the analysis focuses on how structural decisions affect agent efficiency. We decompose the repository into quantifiable key points, generate benchmark tasks, run multi-round evaluations, and map every key point to a validated conclusion.
 
 ```mermaid
 graph LR
@@ -41,7 +41,7 @@ NineS {{ nines_version }} applies a seven-stage pipeline transforming qualitativ
 | Lessons & Recommendations | Mapping table | Actionable insights | Human synthesis |
 
 !!! abstract "Key Difference: Meta-Framework Analysis"
-    DevolaFlow is an orchestration meta-framework, not a simple tool. Analysis focuses on how structural decisions (hierarchy, budgets, gates) affect Agent efficiency. v0.6.0 adds EvoBench dimension integration.
+    DevolaFlow is an orchestration meta-framework, not a simple tool. Analysis focuses on how structural decisions (hierarchy, budgets, gates) affect Agent efficiency. NineS {{ nines_version }} provides 19-dimension self-evaluation (D01–D19), fully integrated EvoBench (32 dimensions), multi-runtime skill installation, and self-upgrade capability.
 
 ---
 
@@ -361,7 +361,7 @@ Stagnation detection (KP-06) prevents the most expensive failure mode: infinite 
 
 ## 9. EvoBench Integration Insights
 
-NineS v0.6.0 introduces EvoBench, a 32-dimension evaluation framework (T1–T8: Tool, M1–M8: Model, W1–W8: Workflow, TT1–TT8: Task). DevolaFlow's analysis reveals key alignments:
+NineS {{ nines_version }} integrates EvoBench, a 32-dimension evaluation framework (T1–T8: Tool, M1–M8: Model, W1–W8: Workflow, TT1–TT8: Task), as a core component of its evaluation pipeline. DevolaFlow's analysis reveals key alignments:
 
 | EvoBench Dimension | DevolaFlow Mapping | Insight |
 |--------------------|-------------------|---------|
@@ -379,19 +379,25 @@ NineS v0.6.0 introduces EvoBench, a 32-dimension evaluation framework (T1–T8: 
 
 ## 10. NineS Capabilities Assessment
 
-### Current Capabilities (v0.5.0)
+### Current Capabilities (v{{ nines_version }})
 
-Uses same component set as Caveman analysis: `AgentImpactAnalyzer`, `KeyPointExtractor`, `BenchmarkGenerator`, `MultiRoundRunner`, `MappingTableGenerator`, and `SelfEvalRunner`.
+NineS {{ nines_version }} provides a comprehensive evaluation toolkit:
 
-### Capability Gaps & Proposed v0.6.0 Improvements
+- **19-dimension self-evaluation** (D01–D19) covering V1 Evaluation, V2 Collection, V3 Analysis, and System dimensions
+- **EvoBench integration** — 32 dimensions (T1–T8, M1–M8, W1–W8, TT1–TT8) fully integrated into the evaluation pipeline, with context density scoring via `eval_scripts`
+- **Multi-runtime skill installation** — `nines install --target` supports Cursor, Claude Code, Codex, and Copilot
+- **Self-upgrade** — `nines update` keeps the evaluation toolkit current
+- **MAPIM loop** — Measure-Analyze-Plan-Improve-Measure self-iteration with convergence detection
+- **Sandbox-isolated evaluation** — all benchmarks run in isolated environments
+- **Core components**: `AgentImpactAnalyzer`, `KeyPointExtractor`, `BenchmarkGenerator`, `MultiRoundRunner`, `MappingTableGenerator`, and `SelfEvalRunner`
 
-| Gap | Impact | v0.6.0 Improvement |
-|-----|--------|---------------------|
-| No live LLM execution | Cannot validate dispatch patterns | Trajectory-based evaluation with step recording |
-| No trajectory tracking | Multi-layer interactions (L0↔L1↔L2↔L3) unrecorded | Agent step sequence recording and analysis |
-| No cross-IDE testing | KP-11 unvalidatable | Cross-IDE behavioral consistency testing |
-| No context density scoring | Compression quality beyond token counting | EvoBench `eval_scripts` density metrics |
-| No gate-aware scoring | Gates evaluated around, not through | Gate definitions integrated into scoring pipeline |
+### Remaining Capability Gaps & Roadmap
+
+| Gap | Impact | Status |
+|-----|--------|--------|
+| No live LLM execution | Cannot validate dispatch patterns in real-time | Open — requires trajectory-based evaluation with step recording |
+| No trajectory tracking | Multi-layer interactions (L0↔L1↔L2↔L3) unrecorded | Open — Agent step sequence recording and analysis planned |
+| Limited cross-IDE testing | KP-11 partially unvalidatable | Partially addressed — multi-runtime install enables per-IDE testing, but automated cross-IDE behavioral comparison not yet available |
 
 ---
 
@@ -426,6 +432,12 @@ DevolaFlow's hierarchy (KP-02) and context isolation (KP-07) provide a validated
 
 !!! abstract "Run It Yourself"
     ```bash
+    # Ensure NineS is up to date
+    nines update
+
+    # Verify NineS capabilities
+    nines self-eval
+
     # Clone DevolaFlow
     git clone https://github.com/YoRHa-Agents/DevolaFlow.git /tmp/devolaflow
 
@@ -436,7 +448,7 @@ DevolaFlow's hierarchy (KP-02) and context isolation (KP-07) provide a validated
     nines analyze --target-path /tmp/devolaflow --agent-impact --keypoints
     nines analyze --target-path /tmp/devolaflow --agent-impact --keypoints -f json > analysis.json
 
-    # With EvoBench dimensions (v0.6.0):
+    # With EvoBench dimensions:
     nines benchmark --target-path /tmp/devolaflow --evobench --dimensions W2,M3,W5,TT3
     ```
 
