@@ -4,6 +4,38 @@ NineS 的所有重要变更均记录于此。本项目遵循[语义化版本](ht
 
 ---
 
+## v0.5.0 — 2026-04-12
+
+**主题：** 可执行评测框架与自驱提升能力。
+
+### 新增
+- 关键点提取模块（`KeyPointExtractor`）——将 Agent 影响报告分解为分类、排序的关键点清单，含验证方法
+- 基准测试生成模块（`BenchmarkGenerator`）——从关键点生成 `TaskDefinition` 基准测试套件，含按类别的任务模板
+- 多轮评测运行器（`MultiRoundRunner`）——沙箱化多轮评测，支持收敛检测和可靠性指标（pass@k、一致性）
+- 关键点 → 结论映射模块（`MappingTableGenerator`）——将关键点映射到有效性结论，含置信度和建议
+- 五个实时自评估器：`LiveCodeCoverageEvaluator`、`LiveTestCountEvaluator`、`LiveModuleCountEvaluator`、`DocstringCoverageEvaluator`、`LintCleanlinessEvaluator`
+- 新 CLI 命令 `nines benchmark`——完整的分析→基准测试→评测→映射工作流
+- `nines analyze` 新增 `--agent-impact` 和 `--keypoints` 选项
+- `nines self-eval` 新增 `--project-root`、`--src-dir`、`--test-dir` 选项
+- 18 个新集成测试，覆盖基准测试工作流和增强型分析流水线
+- `BenchmarkSuite` 支持 TOML 目录导出（`to_toml_dir()`）
+- `MappingTable` 支持 Markdown 和 JSON 导出
+- `MultiRoundReport` 支持逐任务汇总统计
+
+### 变更
+- Caveman 示例展示完全重写，演示 v0.5.0 可执行评测方法论——关键点、基准测试、多轮结果、映射表、经验教训
+- `AnalysisPipeline.run()` 现接受 `agent_impact` 和 `keypoints` 关键字参数
+- 自评估 CLI 使用实时评估器替代占位零值
+- 编排器 `Pipeline` 方法现接入真实组件调用（评估、分析、基准测试）
+- `nines analyze` CLI 新增 `--depth` 选项
+
+### 改进
+- 自评估基于项目内省产生真实测量值（覆盖率、测试计数、文档字符串、代码规范检查）
+- 分析流水线将 `AgentImpactAnalyzer` 和 `KeyPointExtractor` 集成到主流程
+- 914+ 测试，全面覆盖所有新模块
+
+---
+
 ## v0.4.0 — 2026-04-12
 
 **主题：** 面向 Agent 的分析与 AI 仓库评估。

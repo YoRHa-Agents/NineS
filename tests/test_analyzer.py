@@ -73,32 +73,38 @@ def sample_project(tmp_path: Path) -> Path:
     core = pkg / "core"
     core.mkdir()
     (core / "__init__.py").write_text('"""Core domain."""\n')
-    (core / "models.py").write_text(textwrap.dedent("""\
+    (core / "models.py").write_text(
+        textwrap.dedent("""\
         class User:
             def __init__(self, name):
                 self.name = name
-    """))
+    """)
+    )
 
     services = pkg / "services"
     services.mkdir()
     (services / "__init__.py").write_text('"""Application services."""\n')
-    (services / "auth.py").write_text(textwrap.dedent("""\
+    (services / "auth.py").write_text(
+        textwrap.dedent("""\
         from myproject.core.models import User
 
         def authenticate(name):
             return User(name)
-    """))
+    """)
+    )
 
     tests_dir = pkg / "tests"
     tests_dir.mkdir()
     (tests_dir / "__init__.py").write_text("")
-    (tests_dir / "test_auth.py").write_text(textwrap.dedent("""\
+    (tests_dir / "test_auth.py").write_text(
+        textwrap.dedent("""\
         from myproject.services.auth import authenticate
 
         def test_authenticate():
             user = authenticate("alice")
             assert user.name == "alice"
-    """))
+    """)
+    )
 
     (tmp_path / "readme.txt").write_text("Hello")
 
@@ -338,3 +344,87 @@ class TestAnalysisPipeline:
         result = pipeline.run(sample_project)
         assert "packages" in result.metrics
         assert "python_modules" in result.metrics
+
+    def test_pipeline_default_flags_no_agent_impact(
+        self,
+        sample_project: Path,
+    ) -> None:
+        """Without flags, metrics must NOT contain agent_impact/key_points."""
+        pipeline = AnalysisPipeline()
+        result = pipeline.run(sample_project)
+        assert "agent_impact" not in result.metrics
+        assert "key_points" not in result.metrics
+
+    def test_pipeline_agent_impact_flag(self, sample_project: Path) -> None:
+        pipeline = AnalysisPipeline()
+        result = pipeline.run(sample_project, agent_impact=True)
+
+        assert "agent_impact" in result.metrics
+        ai_data = result.metrics["agent_impact"]
+        assert "mechanisms" in ai_data
+        assert "economics" in ai_data
+        assert "agent_facing_artifacts" in ai_data
+        assert "key_points" not in result.metrics
+
+    def test_pipeline_keypoints_implies_agent_impact(
+        self,
+        sample_project: Path,
+    ) -> None:
+        pipeline = AnalysisPipeline()
+        result = pipeline.run(sample_project, keypoints=True)
+
+        assert "agent_impact" in result.metrics
+        assert "key_points" in result.metrics
+        kp_data = result.metrics["key_points"]
+        assert "key_points" in kp_data
+        assert "target" in kp_data
+
+    def test_pipeline_agent_impact_findings_merged(
+        self,
+        sample_project: Path,
+    ) -> None:
+        """Agent impact findings should be merged into the main list."""
+        baseline = AnalysisPipeline().run(sample_project)
+        with_impact = AnalysisPipeline().run(
+            sample_project,
+            agent_impact=True,
+        )
+        assert len(with_impact.findings) >= len(baseline.findings)
+
+    def test_pipeline_accepts_injected_analyzers(
+        self,
+        sample_project: Path,
+    ) -> None:
+        from nines.analyzer.agent_impact import AgentImpactAnalyzer
+        from nines.analyzer.keypoint import KeyPointExtractor
+
+        ai_analyzer = AgentImpactAnalyzer()
+        kp_extractor = KeyPointExtractor()
+        pipeline = AnalysisPipeline(
+            agent_impact_analyzer=ai_analyzer,
+            keypoint_extractor=kp_extractor,
+        )
+        result = pipeline.run(
+            sample_project,
+            agent_impact=True,
+            keypoints=True,
+        )
+        assert "agent_impact" in result.metrics
+        assert "key_points" in result.metrics
+
+    def test_pipeline_agent_impact_on_single_file(
+        self,
+        sample_py_file: Path,
+    ) -> None:
+        pipeline = AnalysisPipeline()
+        result = pipeline.run(sample_py_file, agent_impact=True)
+        assert "agent_impact" in result.metrics
+
+    def test_pipeline_keypoints_on_single_file(
+        self,
+        sample_py_file: Path,
+    ) -> None:
+        pipeline = AnalysisPipeline()
+        result = pipeline.run(sample_py_file, keypoints=True)
+        assert "agent_impact" in result.metrics
+        assert "key_points" in result.metrics

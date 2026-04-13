@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import sys
 from pathlib import Path
 
 import click
@@ -36,22 +35,48 @@ _VALID_STRATEGIES = ("functional", "concern", "layer")
     default=None,
     help="Directory to write analysis results to.",
 )
+@click.option(
+    "--agent-impact",
+    is_flag=True,
+    default=False,
+    help="Run Agent impact analysis.",
+)
+@click.option(
+    "--keypoints",
+    is_flag=True,
+    default=False,
+    help="Extract key points (implies --agent-impact).",
+)
+@click.option(
+    "--depth",
+    type=click.Choice(["shallow", "deep"], case_sensitive=False),
+    default="shallow",
+    show_default=True,
+    help="Analysis depth.",
+)
 @click.pass_context
 def analyze_cmd(
     ctx: click.Context,
     target_path: str,
     strategy: str,
     output_dir: str | None,
+    agent_impact: bool,
+    keypoints: bool,
+    depth: str,
 ) -> None:
     """Analyze and decompose collected knowledge into structured units."""
     verbose = ctx.obj.get("verbose", False)
     output_format = ctx.obj.get("format", "text")
 
     if verbose:
-        click.echo(f"Analyzing {target_path} with strategy={strategy}")
+        click.echo(f"Analyzing {target_path} with strategy={strategy} depth={depth}")
 
     pipeline = AnalysisPipeline()
-    result = pipeline.run(target_path)
+    result = pipeline.run(
+        target_path,
+        agent_impact=agent_impact or keypoints,
+        keypoints=keypoints,
+    )
 
     metrics = result.metrics
     findings_count = len(result.findings)
@@ -70,6 +95,19 @@ def analyze_cmd(
             f"  Findings: {findings_count}",
             f"  Duration: {metrics.get('duration_ms', 0.0):.1f} ms",
         ]
+
+        if "agent_impact" in metrics:
+            ai_data = metrics["agent_impact"]
+            lines.append(f"  Agent mechanisms: {len(ai_data.get('mechanisms', []))}")
+            lines.append(f"  Agent artifacts: {len(ai_data.get('agent_facing_artifacts', []))}")
+
+        if "key_points" in metrics:
+            kp_data = metrics["key_points"]
+            kp_list = kp_data.get("key_points", [])
+            lines.append(f"  Key points: {len(kp_list)}")
+            for kp in kp_list[:5]:
+                lines.append(f"    [{kp.get('priority', '?')}] {kp.get('title', 'untitled')}")
+
         report = "\n".join(lines)
 
     if output_dir:

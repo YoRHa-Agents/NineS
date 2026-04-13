@@ -7,6 +7,7 @@ Re-exports the public API for the eval framework::
 
 from nines.eval.metrics import MetricCollector, ReliabilityCalculator, TaskMetrics
 from nines.eval.models import EvalResult, ScoringCriterion, TaskDefinition
+from nines.eval.multi_round import MultiRoundReport, MultiRoundRunner, RoundResult
 from nines.eval.runner import EvalRunner
 from nines.eval.scorers import (
     CompositeScorer,
@@ -25,6 +26,10 @@ __all__ = [
     "TaskDefinition",
     # Runner
     "EvalRunner",
+    # Multi-round
+    "MultiRoundReport",
+    "MultiRoundRunner",
+    "RoundResult",
     # Scorers
     "CompositeScorer",
     "ExactScorer",

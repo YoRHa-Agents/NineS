@@ -3,7 +3,10 @@
 Chains ingest → analyze → decompose into an end-to-end flow that
 produces an :class:`~nines.core.models.AnalysisResult`.
 
-Covers: FR-310, FR-311.
+Optionally integrates :class:`AgentImpactAnalyzer` and
+:class:`KeyPointExtractor` when the corresponding flags are enabled.
+
+Covers: FR-310, FR-311, FR-313, FR-314.
 """
 
 from __future__ import annotations
@@ -13,20 +16,32 @@ import time
 from pathlib import Path
 from typing import Any
 
+from nines.analyzer.agent_impact import AgentImpactAnalyzer
+from nines.analyzer.decomposer import Decomposer
+from nines.analyzer.keypoint import KeyPointExtractor
+from nines.analyzer.reviewer import CodeReviewer, FileReview
+from nines.analyzer.structure import StructureAnalyzer, StructureReport
 from nines.core.errors import AnalyzerError
 from nines.core.models import AnalysisResult, Finding, KnowledgeUnit
 
-from nines.analyzer.decomposer import Decomposer
-from nines.analyzer.reviewer import CodeReviewer, FileReview
-from nines.analyzer.structure import StructureAnalyzer, StructureReport
-
 logger = logging.getLogger(__name__)
 
-_SKIP_DIRS = frozenset({
-    "__pycache__", ".git", ".hg", ".svn", "node_modules",
-    ".tox", ".mypy_cache", ".pytest_cache", ".ruff_cache",
-    ".venv", "venv", ".eggs",
-})
+_SKIP_DIRS = frozenset(
+    {
+        "__pycache__",
+        ".git",
+        ".hg",
+        ".svn",
+        "node_modules",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".venv",
+        "venv",
+        ".eggs",
+    }
+)
 
 
 class AnalysisPipeline:
@@ -40,6 +55,10 @@ class AnalysisPipeline:
         Structure analyzer instance (defaults to a new :class:`StructureAnalyzer`).
     decomposer:
         Decomposer instance (defaults to a new :class:`Decomposer`).
+    agent_impact_analyzer:
+        Optional :class:`AgentImpactAnalyzer` for AI-agent impact analysis.
+    keypoint_extractor:
+        Optional :class:`KeyPointExtractor` for key-point extraction.
     """
 
     def __init__(
@@ -47,18 +66,44 @@ class AnalysisPipeline:
         reviewer: CodeReviewer | None = None,
         structure_analyzer: StructureAnalyzer | None = None,
         decomposer: Decomposer | None = None,
+        agent_impact_analyzer: AgentImpactAnalyzer | None = None,
+        keypoint_extractor: KeyPointExtractor | None = None,
     ) -> None:
         self._reviewer = reviewer or CodeReviewer()
         self._structure = structure_analyzer or StructureAnalyzer()
         self._decomposer = decomposer or Decomposer()
+        self._agent_impact = agent_impact_analyzer
+        self._keypoint = keypoint_extractor
 
-    def run(self, path: str | Path) -> AnalysisResult:
+    def run(
+        self,
+        path: str | Path,
+        *,
+        agent_impact: bool = False,
+        keypoints: bool = False,
+    ) -> AnalysisResult:
         """Execute the full pipeline on *path*.
 
         If *path* is a file, only that file is reviewed and decomposed.
         If *path* is a directory, all Python files are ingested and both
         structure analysis and decomposition are performed.
+
+        Parameters
+        ----------
+        path:
+            Target file or directory.
+        agent_impact:
+            When ``True``, run :class:`AgentImpactAnalyzer` and merge
+            results into :attr:`AnalysisResult.metrics` under the
+            ``"agent_impact"`` key.
+        keypoints:
+            When ``True`` (implies *agent_impact*), additionally run
+            :class:`KeyPointExtractor` and store results under the
+            ``"key_points"`` metrics key.
         """
+        if keypoints:
+            agent_impact = True
+
         start = time.monotonic()
         target = Path(path)
 
@@ -69,7 +114,11 @@ class AnalysisPipeline:
             try:
                 structure = self._structure.analyze_directory(target)
             except AnalyzerError:
-                logger.warning("Structure analysis failed for %s", target, exc_info=True)
+                logger.warning(
+                    "Structure analysis failed for %s",
+                    target,
+                    exc_info=True,
+                )
 
         units = self.decompose(reviews, structure)
 
@@ -80,6 +129,22 @@ class AnalysisPipeline:
         elapsed_ms = (time.monotonic() - start) * 1000
 
         metrics = self._build_metrics(reviews, units, structure, elapsed_ms)
+
+        if agent_impact:
+            analyzer = self._agent_impact or AgentImpactAnalyzer()
+            impact_report = analyzer.analyze(target)
+            metrics["agent_impact"] = impact_report.to_dict()
+            all_findings.extend(impact_report.findings)
+
+            if keypoints:
+                result_so_far = AnalysisResult(
+                    target=str(target),
+                    findings=list(all_findings),
+                    metrics=dict(metrics),
+                )
+                extractor = self._keypoint or KeyPointExtractor()
+                kp_report = extractor.extract(impact_report, result_so_far)
+                metrics["key_points"] = kp_report.to_dict()
 
         return AnalysisResult(
             target=str(target),
@@ -146,9 +211,7 @@ class AnalysisPipeline:
         total_classes = sum(r.class_count for r in reviews)
         total_imports = sum(r.import_count for r in reviews)
         complexities = [r.avg_complexity for r in reviews if r.function_count > 0]
-        avg_complexity = (
-            round(sum(complexities) / len(complexities), 2) if complexities else 0.0
-        )
+        avg_complexity = round(sum(complexities) / len(complexities), 2) if complexities else 0.0
 
         metrics: dict[str, Any] = {
             "files_analyzed": len(reviews),
