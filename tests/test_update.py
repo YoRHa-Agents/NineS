@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -9,6 +10,9 @@ from click.testing import CliRunner
 from packaging.version import Version
 
 from nines import __version__
+
+if TYPE_CHECKING:
+    from pathlib import Path
 from nines.cli.commands.update import (
     _current_version,
     _detect_installer,
@@ -144,6 +148,7 @@ class TestUpdateCommandCLI:
         assert "--check" in result.output
         assert "--skip-skills" in result.output
         assert "--target" in result.output
+        assert "--global" in result.output
 
     def test_update_check_up_to_date(self) -> None:
         runner = CliRunner()
@@ -231,3 +236,24 @@ class TestUpdateCommandCLI:
             result = runner.invoke(cli, ["update"])
         assert result.exit_code != 0
         assert "upgrade failed" in result.output
+
+    def test_update_global_refreshes_to_home(self, tmp_path: Path) -> None:
+        runner = CliRunner()
+        with (
+            patch(
+                "nines.cli.commands.update._fetch_latest_version",
+                return_value=Version("99.0.0"),
+            ),
+            patch(
+                "nines.cli.commands.update._run_upgrade",
+                return_value=True,
+            ),
+            patch(
+                "nines.cli.commands.install.Path.home",
+                return_value=tmp_path,
+            ),
+        ):
+            result = runner.invoke(cli, ["update", "--global", "--target", "cursor"])
+        assert result.exit_code == 0
+        assert "global" in result.output
+        assert (tmp_path / ".cursor" / "skills" / "nines" / "SKILL.md").exists()

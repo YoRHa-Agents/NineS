@@ -52,6 +52,32 @@ class TestVersion:
         assert "nines" in result.output
 
 
+class TestInstallCommand:
+    def test_install_help_shows_global_option(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(cli, ["install", "--help"])
+        assert result.exit_code == 0
+        assert "--global" in result.output
+
+    def test_install_global_uses_home_dir(self, tmp_path: Path) -> None:
+        from unittest.mock import patch
+
+        with patch("nines.cli.commands.install.Path.home", return_value=tmp_path):
+            runner = CliRunner()
+            result = runner.invoke(cli, ["install", "--target", "cursor", "--global"])
+        assert result.exit_code == 0
+        assert "global" in result.output
+        assert (tmp_path / ".cursor" / "skills" / "nines" / "SKILL.md").exists()
+
+    def test_install_without_global_uses_cwd(self, tmp_path: Path) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            cli, ["install", "--target", "cursor"], catch_exceptions=False
+        )
+        assert result.exit_code == 0
+        assert "global" not in result.output
+
+
 class TestEvalCommand:
     def test_eval_requires_tasks_path(self) -> None:
         runner = CliRunner()

@@ -12,6 +12,13 @@ from nines.skill.installer import SkillInstaller
 logger = logging.getLogger(__name__)
 
 
+def resolve_install_dir(is_global: bool) -> Path:
+    """Return the root directory for skill installation."""
+    if is_global:
+        return Path.home()
+    return Path.cwd()
+
+
 @click.command("install")
 @click.option(
     "--target",
@@ -20,6 +27,13 @@ logger = logging.getLogger(__name__)
         ["cursor", "claude", "codex", "copilot", "all"], case_sensitive=False
     ),
     help="Runtime target for installation.",
+)
+@click.option(
+    "--global",
+    "is_global",
+    is_flag=True,
+    default=False,
+    help="Install skill files to user home directory (~/) for all projects.",
 )
 @click.option(
     "--force",
@@ -43,6 +57,7 @@ logger = logging.getLogger(__name__)
 def install_cmd(
     ctx: click.Context,
     target: str,
+    is_global: bool,
     force: bool,
     dry_run: bool,
     uninstall: bool,
@@ -51,12 +66,16 @@ def install_cmd(
     verbose = ctx.obj.get("verbose", False)
 
     installer = SkillInstaller()
-    project_dir = Path.cwd()
+    project_dir = resolve_install_dir(is_global)
     all_targets = ["cursor", "claude", "codex", "copilot"]
+
+    scope = "global (~)" if is_global else "project"
+    if verbose:
+        click.echo(f"Scope: {scope} ({project_dir})")
 
     if dry_run:
         action = "uninstall" if uninstall else "install"
-        click.echo(f"Dry run: would {action} NineS skill for target={target}")
+        click.echo(f"Dry run: would {action} NineS skill for target={target} ({scope})")
         targets = [target] if target != "all" else all_targets
         for t in targets:
             adapter = installer.ADAPTERS[t]
@@ -71,7 +90,7 @@ def install_cmd(
 
     if uninstall:
         if verbose:
-            click.echo(f"Uninstalling NineS skill for target={target}")
+            click.echo(f"Uninstalling NineS skill for target={target} ({scope})")
         removed = installer.uninstall(target, project_dir=project_dir)
         click.echo(f"Removed {len(removed)} directory(ies) for target={target}:")
         for path in removed:
@@ -79,9 +98,9 @@ def install_cmd(
         return
 
     if verbose:
-        click.echo(f"Installing NineS skill for target={target}")
+        click.echo(f"Installing NineS skill for target={target} ({scope})")
 
     created = installer.install(target, project_dir=project_dir)
-    click.echo(f"Installed {len(created)} file(s) for target={target}:")
+    click.echo(f"Installed {len(created)} file(s) for target={target} ({scope}):")
     for path in created:
         click.echo(f"  {path}")
