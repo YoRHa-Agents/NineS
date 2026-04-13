@@ -14,6 +14,8 @@ Traditional code analysis would report Caveman's 20 Python files, 2,439 lines of
 
 NineS {{ nines_version }} introduces an **executable evaluation methodology** that goes beyond narrative analysis. Instead of subjective assessment, we decompose the repository into quantifiable key points, generate benchmark tasks for each, run multi-round sandboxed evaluations, and map every key point to a validated conclusion. This document presents those results.
 
+NineS {{ nines_version }} also brings **multi-runtime skill support** (with `nines install --target` for Cursor, Claude Code, Codex, and Copilot) and **self-upgrade capability** — notably, Caveman's cross-IDE approach to rule synchronization can now be compared against NineS's own cross-IDE installation mechanism.
+
 ```mermaid
 graph LR
     A["1. Clone &<br/>Reproduce"] --> B["2. Agent Impact<br/>Analysis"]
@@ -40,8 +42,8 @@ NineS {{ nines_version }} introduces a seven-stage analysis pipeline that transf
 | Mapping & Conclusions | Key points + results | Effectiveness mapping table | `MappingTableGenerator` |
 | Lessons & Recommendations | Mapping table | Actionable insights | Human synthesis |
 
-!!! abstract "Key Difference from v0.4.0"
-    v0.4.0 produced narrative analysis only. v0.5.0 produces **executable benchmarks** with **quantified conclusions** — every claim about Caveman's effectiveness is backed by evaluation data.
+!!! abstract "Evolution to {{ nines_version }}"
+    NineS {{ nines_version }} builds on the executable evaluation methodology with a **19-dimension self-evaluation system** (D01–D19), **EvoBench integration** across 32 dimensions, **multi-runtime skill installation** (Cursor, Claude Code, Codex, Copilot via `nines install --target`), and **self-upgrade** via `nines update`. Every claim about Caveman's effectiveness is backed by evaluation data — and NineS now applies the same rigor to measuring itself through the full MAPIM self-iteration loop.
 
 ---
 
@@ -372,6 +374,9 @@ Based on KP-06's partial effectiveness:
 
 !!! abstract "Run It Yourself"
     ```bash
+    # Ensure NineS is up to date
+    nines update
+
     # Clone Caveman
     git clone https://github.com/JuliusBrussee/caveman.git /tmp/caveman
 
@@ -381,9 +386,12 @@ Based on KP-06's partial effectiveness:
     # Or step by step:
     nines analyze --target-path /tmp/caveman --agent-impact --keypoints
     nines analyze --target-path /tmp/caveman --agent-impact --keypoints -f json > analysis.json
+
+    # Verify NineS's own capability dimensions after analysis
+    nines self-eval
     ```
 
-    Run NineS's agent-oriented analysis to reproduce the mechanism decomposition, key point extraction, benchmark evaluation, and mapping table — not just file counts and complexity scores.
+    Run NineS's agent-oriented analysis to reproduce the mechanism decomposition, key point extraction, benchmark evaluation, and mapping table — not just file counts and complexity scores. Use `nines self-eval` afterwards to inspect NineS's own 19-dimension evaluation and confirm its analysis capabilities are calibrated.
 
 ---
 
@@ -404,7 +412,7 @@ Based on KP-06's partial effectiveness:
 - **Convergence**: Sliding window (3 rounds) standard deviation < 0.02
 - **Reliability**: pass@k computed across rounds per `ReliabilityCalculator`
 
-### NineS v0.5.0 Components Used
+### NineS {{ nines_version }} Components Used
 
 | Component | Module | Purpose |
 |-----------|--------|---------|

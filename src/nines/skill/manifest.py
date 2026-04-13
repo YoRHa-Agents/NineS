@@ -68,6 +68,12 @@ def _default_commands() -> list[CommandDef]:
             argument_hint="--target <cursor|claude|all> [--uninstall] [--global]",
             capability="install",
         ),
+        CommandDef(
+            name="nines-update",
+            description="Check for and install NineS updates, refresh skill files.",
+            argument_hint="[--check] [--skip-skills] [--target <cursor|claude|all>]",
+            capability="update",
+        ),
     ]
 
 
@@ -97,6 +103,7 @@ class SkillManifest:
             "self-eval",
             "iterate",
             "install",
+            "update",
         ]
     )
     commands: list[CommandDef] = field(default_factory=_default_commands)

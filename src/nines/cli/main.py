@@ -11,6 +11,7 @@ from nines.cli.commands import (
     install_cmd,
     iterate_cmd,
     self_eval_cmd,
+    update_cmd,
 )
 
 
@@ -68,3 +69,4 @@ cli.add_command(benchmark_cmd, "benchmark")
 cli.add_command(self_eval_cmd, "self-eval")
 cli.add_command(iterate_cmd, "iterate")
 cli.add_command(install_cmd, "install")
+cli.add_command(update_cmd, "update")

@@ -31,7 +31,7 @@ class TestManifestGeneration:
         toml_str = manifest.generate()
         parsed = tomllib.loads(toml_str)
 
-        expected = {"eval", "collect", "analyze", "self-eval", "iterate", "install"}
+        expected = {"eval", "collect", "analyze", "self-eval", "iterate", "install", "update"}
         assert set(parsed["capabilities"]) == expected
 
     def test_manifest_contains_commands(self) -> None:
@@ -85,7 +85,7 @@ class TestCursorAdapterGeneratesSkillMd:
         files = adapter.emit(manifest)
 
         command_files = [f for f in files if f.relative_path.startswith("commands/")]
-        assert len(command_files) == 6
+        assert len(command_files) == 7
 
         cmd_names = {f.relative_path for f in command_files}
         assert "commands/eval.md" in cmd_names
@@ -106,7 +106,7 @@ class TestClaudeAdapterGeneratesCommands:
         files = adapter.emit(manifest)
 
         real_files = [f for f in files if f.relative_path != "__CLAUDE_MD_SECTION__"]
-        assert len(real_files) == 6
+        assert len(real_files) == 7
 
         eval_file = next(f for f in real_files if f.relative_path == "eval.md")
         assert "nines:eval" in eval_file.content

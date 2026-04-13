@@ -619,11 +619,12 @@ wheels = [
 
 [[package]]
 name = "nines"
-version = "1.0.0rc0"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "httpx" },
+    { name = "packaging" },
     { name = "pydantic" },
     { name = "structlog" },
     { name = "tomli-w" },
@@ -645,6 +646,7 @@ dev = [
 requires-dist = [
     { name = "click", specifier = ">=8.1" },
     { name = "httpx", specifier = ">=0.27" },
+    { name = "packaging", specifier = ">=23.0" },
     { name = "pydantic", specifier = ">=2.6" },
     { name = "structlog", specifier = ">=24.1" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0" },
