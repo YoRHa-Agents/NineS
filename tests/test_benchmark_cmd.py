@@ -490,6 +490,155 @@ class TestBenchmarkEdgeCases:
         assert result.exit_code == 2
 
 
+class TestBenchmarkTasksPath:
+    def test_tasks_path_help(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(cli, ["benchmark", "--help"])
+        assert result.exit_code == 0
+        assert "--tasks-path" in result.output
+
+    def test_tasks_path_loads_custom_tasks(self, tmp_path: Path) -> None:
+        project = _make_sample_project(tmp_path)
+        tasks_dir = tmp_path / "custom_tasks"
+        tasks_dir.mkdir()
+        (tasks_dir / "task1.toml").write_text(
+            textwrap.dedent("""\
+                [task]
+                id = "custom-001"
+                name = "Custom test"
+                description = "Tests specific functionality"
+                dimension = "engineering"
+
+                [task.expected]
+                passes_threshold = true
+
+                [task.metadata]
+                category = "engineering"
+                priority = 1
+            """),
+        )
+        (tasks_dir / "task2.toml").write_text(
+            textwrap.dedent("""\
+                [task]
+                id = "custom-002"
+                name = "Another test"
+                description = "Tests another feature"
+                dimension = "compression"
+
+                [task.expected]
+                passes_threshold = true
+
+                [task.metadata]
+                category = "compression"
+                priority = 2
+            """),
+        )
+
+        key_points = _make_key_points()
+        suite = _make_suite(key_points)
+        report = _make_report(suite)
+        mapping = _make_mapping(key_points, suite)
+
+        with patch(
+            "nines.cli.commands.benchmark.MultiRoundRunner",
+        ) as mock_runner, patch(
+            "nines.cli.commands.benchmark.MappingTableGenerator",
+        ) as mock_mapping:
+            mock_runner.return_value.run.return_value = report
+            mock_mapping.return_value.generate.return_value = mapping
+
+            runner = CliRunner()
+            result = runner.invoke(
+                cli,
+                [
+                    "benchmark",
+                    "--target-path", str(project),
+                    "--tasks-path", str(tasks_dir),
+                ],
+                obj={"verbose": False, "format": "text"},
+            )
+            assert result.exit_code == 0, result.output
+            assert "Benchmark Report for" in result.output
+            mock_runner.return_value.run.assert_called_once()
+            call_args = mock_runner.return_value.run.call_args
+            tasks_arg = call_args[0][0]
+            assert len(tasks_arg) == 2
+            assert tasks_arg[0].id == "custom-001"
+            assert tasks_arg[1].id == "custom-002"
+
+    def test_tasks_path_skips_analysis(self, tmp_path: Path) -> None:
+        project = _make_sample_project(tmp_path)
+        tasks_dir = tmp_path / "custom_tasks"
+        tasks_dir.mkdir()
+        (tasks_dir / "task1.toml").write_text(
+            textwrap.dedent("""\
+                [task]
+                id = "custom-001"
+                name = "Custom test"
+                description = "Tests specific functionality"
+                dimension = "engineering"
+
+                [task.expected]
+                passes_threshold = true
+
+                [task.metadata]
+                category = "engineering"
+                priority = 1
+            """),
+        )
+
+        key_points = _make_key_points()
+        suite = _make_suite(key_points)
+        report = _make_report(suite)
+        mapping = _make_mapping(key_points, suite)
+
+        with patch(
+            "nines.cli.commands.benchmark.AnalysisPipeline",
+        ) as mock_pipeline, patch(
+            "nines.cli.commands.benchmark.AgentImpactAnalyzer",
+        ) as mock_impact, patch(
+            "nines.cli.commands.benchmark.KeyPointExtractor",
+        ) as mock_extractor, patch(
+            "nines.cli.commands.benchmark.BenchmarkGenerator",
+        ) as mock_gen, patch(
+            "nines.cli.commands.benchmark.MultiRoundRunner",
+        ) as mock_runner, patch(
+            "nines.cli.commands.benchmark.MappingTableGenerator",
+        ) as mock_mapping:
+            mock_runner.return_value.run.return_value = report
+            mock_mapping.return_value.generate.return_value = mapping
+
+            runner = CliRunner()
+            result = runner.invoke(
+                cli,
+                [
+                    "benchmark",
+                    "--target-path", str(project),
+                    "--tasks-path", str(tasks_dir),
+                ],
+                obj={"verbose": False, "format": "text"},
+            )
+            assert result.exit_code == 0, result.output
+            mock_pipeline.assert_not_called()
+            mock_pipeline.return_value.run.assert_not_called()
+            mock_impact.assert_not_called()
+            mock_extractor.assert_not_called()
+            mock_gen.assert_not_called()
+
+    def test_tasks_path_invalid_dir(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "benchmark",
+                "--target-path", ".",
+                "--tasks-path", "/nonexistent/custom_tasks",
+            ],
+            obj={"verbose": False, "format": "text"},
+        )
+        assert result.exit_code == 2
+
+
 class TestBenchmarkDefaultExecutor:
     def test_default_executor_returns_expected(self) -> None:
         from nines.cli.commands.benchmark import _default_executor

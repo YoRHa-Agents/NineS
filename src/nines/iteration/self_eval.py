@@ -12,8 +12,10 @@ from __future__ import annotations
 import ast
 import json
 import logging
+import re
 import subprocess
 import time
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import UTC
 from pathlib import Path
@@ -271,36 +273,96 @@ class ModuleCountEvaluator:
 
 
 class LiveCodeCoverageEvaluator:
-    """Evaluator that runs pytest --cov and parses real coverage."""
+    """Evaluator that runs pytest --cov and parses real coverage.
 
-    def __init__(self, project_root: str | Path = ".") -> None:
-        """Initialize live code coverage evaluator."""
+    Supports three coverage sources (checked in order):
+    1. Pre-existing coverage file (coverage.xml or coverage.json)
+    2. pytest ``--cov`` subprocess execution
+    """
+
+    def __init__(
+        self,
+        project_root: str | Path = ".",
+        cov_package: str = "nines",
+        coverage_file: str | Path | None = None,
+    ) -> None:
+        """Initialize live code coverage evaluator.
+
+        Parameters
+        ----------
+        project_root:
+            Working directory for running pytest.
+        cov_package:
+            Package name passed to ``--cov=<package>``.
+        coverage_file:
+            Optional path to a pre-existing coverage.xml (Cobertura) or
+            coverage.json file.  When provided and the file exists, the
+            evaluator parses coverage from it instead of running pytest.
+        """
         self._project_root = Path(project_root)
+        self._cov_package = cov_package
+        self._coverage_file = Path(coverage_file) if coverage_file is not None else None
 
     def evaluate(self) -> DimensionScore:
         """Evaluate and return live code coverage."""
-        try:
-            result = subprocess.run(
-                ["python", "-m", "pytest", "--cov=nines", "--cov-report=term-missing", "-q"],
-                capture_output=True,
-                text=True,
-                timeout=300,
-                cwd=str(self._project_root),
-            )
-            coverage_pct = self._parse_coverage(result.stdout)
-        except subprocess.TimeoutExpired:
-            logger.error("pytest --cov timed out after 300s")
-            coverage_pct = 0.0
-        except Exception as exc:
-            logger.error("Failed to run pytest --cov: %s", exc)
-            coverage_pct = 0.0
+        coverage_pct = self._try_coverage_file()
+        source = "file"
+
+        if coverage_pct is None:
+            source = "pytest"
+            coverage_pct = self._run_pytest_cov()
 
         return DimensionScore(
             name="code_coverage",
             value=coverage_pct,
             max_value=100.0,
-            metadata={"unit": "percent"},
+            metadata={"unit": "percent", "source": source},
         )
+
+    # -- private helpers -----------------------------------------------------
+
+    def _try_coverage_file(self) -> float | None:
+        """Attempt to read coverage from a pre-existing file."""
+        if self._coverage_file is None or not self._coverage_file.exists():
+            return None
+
+        suffix = self._coverage_file.suffix.lower()
+        try:
+            if suffix == ".xml":
+                return self._parse_coverage_xml(self._coverage_file)
+            if suffix == ".json":
+                return self._parse_coverage_json(self._coverage_file)
+            logger.warning(
+                "Unsupported coverage file format '%s'; falling back to pytest",
+                suffix,
+            )
+        except Exception as exc:
+            logger.error(
+                "Failed to parse coverage file %s: %s", self._coverage_file, exc,
+            )
+        return None
+
+    def _run_pytest_cov(self) -> float:
+        """Run pytest --cov and return the coverage percentage."""
+        try:
+            result = subprocess.run(
+                [
+                    "python", "-m", "pytest",
+                    f"--cov={self._cov_package}",
+                    "--cov-report=term-missing", "-q",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=300,
+                cwd=str(self._project_root),
+            )
+            return self._parse_coverage(result.stdout)
+        except subprocess.TimeoutExpired:
+            logger.error("pytest --cov timed out after 300s")
+            return 0.0
+        except Exception as exc:
+            logger.error("Failed to run pytest --cov: %s", exc)
+            return 0.0
 
     @staticmethod
     def _parse_coverage(stdout: str) -> float:
@@ -318,16 +380,107 @@ class LiveCodeCoverageEvaluator:
         logger.warning("Could not parse coverage from pytest output")
         return 0.0
 
+    @staticmethod
+    def _parse_coverage_xml(path: Path) -> float:
+        """Parse Cobertura coverage.xml and return coverage percentage."""
+        tree = ET.parse(path)  # noqa: S314
+        root = tree.getroot()
+        line_rate = root.get("line-rate")
+        if line_rate is None:
+            msg = "coverage.xml missing 'line-rate' attribute on root element"
+            raise ValueError(msg)
+        return float(line_rate) * 100.0
+
+    @staticmethod
+    def _parse_coverage_json(path: Path) -> float:
+        """Parse coverage.json and return coverage percentage."""
+        data = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            return float(data["totals"]["percent_covered"])
+        except (KeyError, TypeError) as exc:
+            msg = "coverage.json missing 'totals.percent_covered'"
+            raise ValueError(msg) from exc
+
 
 class LiveTestCountEvaluator:
-    """Evaluator that counts test functions from test files."""
+    """Evaluator that counts test functions.
 
-    def __init__(self, test_dir: str | Path = "tests") -> None:
-        """Initialize live test count evaluator."""
+    Prefers ``pytest --collect-only -q`` for an accurate count (handles
+    parameterized tests, fixture-generated tests, class-based methods,
+    etc.).  Falls back to an AST walk when pytest collection is
+    unavailable or fails.
+    """
+
+    def __init__(
+        self,
+        test_dir: str | Path = "tests",
+        project_root: str | Path = ".",
+    ) -> None:
+        """Initialize live test count evaluator.
+
+        Parameters
+        ----------
+        test_dir:
+            Directory to scan when using the AST-walk fallback.
+        project_root:
+            Working directory for running ``pytest --collect-only``.
+        """
         self._test_dir = Path(test_dir)
+        self._project_root = Path(project_root)
 
     def evaluate(self) -> DimensionScore:
         """Evaluate and return live test count."""
+        count, method = self._try_pytest_collect()
+
+        if count is None:
+            count, method = self._ast_walk(), "ast-walk"
+
+        return DimensionScore(
+            name="test_count",
+            value=float(count),
+            max_value=float(max(count, 1)),
+            metadata={"unit": "tests", "method": method},
+        )
+
+    # -- private helpers -----------------------------------------------------
+
+    def _try_pytest_collect(self) -> tuple[int | None, str]:
+        """Run ``pytest --collect-only -q`` and count collected items."""
+        try:
+            result = subprocess.run(
+                [
+                    "python", "-m", "pytest", "--collect-only", "-q",
+                    str(self._test_dir),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=str(self._project_root),
+            )
+            count = self._parse_collect_output(result.stdout)
+            if count is not None:
+                return count, "pytest-collect"
+            logger.warning(
+                "pytest --collect-only did not produce a parseable summary; "
+                "falling back to AST walk"
+            )
+        except subprocess.TimeoutExpired:
+            logger.error("pytest --collect-only timed out after 120s")
+        except Exception as exc:
+            logger.error("pytest --collect-only failed: %s", exc)
+        return None, ""
+
+    @staticmethod
+    def _parse_collect_output(stdout: str) -> int | None:
+        """Parse the ``N tests collected`` summary line from pytest -q."""
+        for line in reversed(stdout.splitlines()):
+            match = re.search(r"(\d+)\s+tests?\s+collected", line)
+            if match:
+                return int(match.group(1))
+        return None
+
+    def _ast_walk(self) -> int:
+        """Count test functions via AST analysis (fallback)."""
         count = 0
         files_scanned = 0
         try:
@@ -347,13 +500,8 @@ class LiveTestCountEvaluator:
                         count += 1
         except Exception as exc:
             logger.error("Failed to scan test directory %s: %s", self._test_dir, exc)
-
-        return DimensionScore(
-            name="test_count",
-            value=float(count),
-            max_value=float(max(count, 1)),
-            metadata={"unit": "tests", "files_scanned": files_scanned},
-        )
+        logger.debug("AST walk: scanned %d files, found %d tests", files_scanned, count)
+        return count
 
 
 class LiveModuleCountEvaluator:

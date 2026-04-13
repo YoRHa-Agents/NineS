@@ -10,6 +10,7 @@ Covers:
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -18,12 +19,16 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from unittest.mock import patch
+
 from nines.iteration.baseline import BaselineManager, ComparisonResult
 from nines.iteration.history import ScoreHistory
 from nines.iteration.self_eval import (
     CodeCoverageEvaluator,
     DimensionEvaluator,
     DimensionScore,
+    LiveCodeCoverageEvaluator,
+    LiveTestCountEvaluator,
     ModuleCountEvaluator,
     SelfEvalReport,
     SelfEvalRunner,
@@ -320,3 +325,126 @@ def test_history_overall_trend() -> None:
 
     trend = history.get_overall_trend(window=2)
     assert trend == [0.5, 0.7]
+
+
+# ---------------------------------------------------------------------------
+# LiveCodeCoverageEvaluator
+# ---------------------------------------------------------------------------
+
+
+def test_live_coverage_evaluator_custom_package() -> None:
+    """cov_package is used in the subprocess command instead of hardcoded 'nines'."""
+    fake_stdout = (
+        "Name    Stmts   Miss  Cover\n"
+        "TOTAL     200     40    80%\n"
+    )
+    fake_result = subprocess.CompletedProcess(
+        args=[], returncode=0, stdout=fake_stdout, stderr="",
+    )
+    with patch("nines.iteration.self_eval.subprocess.run", return_value=fake_result) as mock_run:
+        evaluator = LiveCodeCoverageEvaluator(cov_package="devolaflow")
+        score = evaluator.evaluate()
+
+    call_args = mock_run.call_args
+    cmd = call_args[0][0]
+    assert "--cov=devolaflow" in cmd
+    assert "--cov=nines" not in cmd
+    assert score.value == 80.0
+    assert score.metadata["source"] == "pytest"
+
+
+def test_live_coverage_evaluator_coverage_xml(tmp_path: Path) -> None:
+    """coverage.xml (Cobertura format) is parsed correctly."""
+    xml_content = (
+        '<?xml version="1.0" ?>\n'
+        '<coverage version="7.0" timestamp="1234" lines-valid="1000"'
+        ' lines-covered="850" line-rate="0.85" branches-covered="0"'
+        ' branches-valid="0" branch-rate="0" complexity="0">\n'
+        "  <packages/>\n"
+        "</coverage>\n"
+    )
+    cov_file = tmp_path / "coverage.xml"
+    cov_file.write_text(xml_content)
+
+    evaluator = LiveCodeCoverageEvaluator(coverage_file=cov_file)
+    score = evaluator.evaluate()
+
+    assert score.value == pytest.approx(85.0)
+    assert score.metadata["source"] == "file"
+
+
+def test_live_coverage_evaluator_coverage_json(tmp_path: Path) -> None:
+    """coverage.json is parsed correctly."""
+    import json
+
+    cov_data = {"totals": {"percent_covered": 72.5, "covered_lines": 725, "num_statements": 1000}}
+    cov_file = tmp_path / "coverage.json"
+    cov_file.write_text(json.dumps(cov_data))
+
+    evaluator = LiveCodeCoverageEvaluator(coverage_file=cov_file)
+    score = evaluator.evaluate()
+
+    assert score.value == pytest.approx(72.5)
+    assert score.metadata["source"] == "file"
+
+
+def test_live_coverage_evaluator_fallback(tmp_path: Path) -> None:
+    """Falls back to pytest when coverage_file doesn't exist."""
+    nonexistent = tmp_path / "does_not_exist.xml"
+    fake_stdout = "TOTAL     100     20    80%\n"
+    fake_result = subprocess.CompletedProcess(
+        args=[], returncode=0, stdout=fake_stdout, stderr="",
+    )
+    with patch("nines.iteration.self_eval.subprocess.run", return_value=fake_result):
+        evaluator = LiveCodeCoverageEvaluator(coverage_file=nonexistent)
+        score = evaluator.evaluate()
+
+    assert score.value == 80.0
+    assert score.metadata["source"] == "pytest"
+
+
+# ---------------------------------------------------------------------------
+# LiveTestCountEvaluator
+# ---------------------------------------------------------------------------
+
+
+def test_live_test_count_pytest_collect() -> None:
+    """pytest --collect-only output is parsed to count tests."""
+    collect_stdout = (
+        "tests/test_a.py::test_one\n"
+        "tests/test_a.py::test_two\n"
+        "tests/test_b.py::TestClass::test_method\n"
+        "tests/test_b.py::test_param[1]\n"
+        "tests/test_b.py::test_param[2]\n"
+        "\n"
+        "5 tests collected\n"
+    )
+    fake_result = subprocess.CompletedProcess(
+        args=[], returncode=0, stdout=collect_stdout, stderr="",
+    )
+    with patch("nines.iteration.self_eval.subprocess.run", return_value=fake_result):
+        evaluator = LiveTestCountEvaluator(project_root="/some/project")
+        score = evaluator.evaluate()
+
+    assert score.value == 5.0
+    assert score.metadata["method"] == "pytest-collect"
+
+
+def test_live_test_count_ast_fallback(tmp_path: Path) -> None:
+    """Falls back to AST walk when pytest --collect-only fails."""
+    test_dir = tmp_path / "tests"
+    test_dir.mkdir()
+    (test_dir / "test_example.py").write_text(
+        "def test_alpha():\n    pass\n\n"
+        "def test_beta():\n    pass\n"
+    )
+
+    with patch(
+        "nines.iteration.self_eval.subprocess.run",
+        side_effect=OSError("pytest not available"),
+    ):
+        evaluator = LiveTestCountEvaluator(test_dir=test_dir, project_root=str(tmp_path))
+        score = evaluator.evaluate()
+
+    assert score.value == 2.0
+    assert score.metadata["method"] == "ast-walk"
