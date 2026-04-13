@@ -35,10 +35,20 @@ def _create_agent_project(base: Path) -> None:
 class TestEnhancedAnalysisPipeline:
     """Integration tests for AnalysisPipeline with agent_impact and keypoints flags."""
 
-    def test_default_no_agent_impact(self, tmp_path: Path) -> None:
+    def test_default_includes_agent_impact(self, tmp_path: Path) -> None:
         _create_python_project(tmp_path)
         pipeline = AnalysisPipeline()
         result = pipeline.run(tmp_path)
+
+        assert "agent_impact" in result.metrics
+        assert "key_points" in result.metrics
+        assert result.metrics["files_analyzed"] >= 2
+        assert "total_files_scanned" in result.metrics
+
+    def test_opt_out_no_agent_impact(self, tmp_path: Path) -> None:
+        _create_python_project(tmp_path)
+        pipeline = AnalysisPipeline()
+        result = pipeline.run(tmp_path, agent_impact=False)
 
         assert "agent_impact" not in result.metrics
         assert "key_points" not in result.metrics
@@ -110,6 +120,15 @@ class TestEnhancedAnalysisPipeline:
         py_file.write_text('"""Script."""\n\nx = 1\n')
         pipeline = AnalysisPipeline()
         result = pipeline.run(py_file)
+
+        assert result.metrics["files_analyzed"] == 1
+        assert "agent_impact" in result.metrics
+
+    def test_single_python_file_opt_out(self, tmp_path: Path) -> None:
+        py_file = tmp_path / "script.py"
+        py_file.write_text('"""Script."""\n\nx = 1\n')
+        pipeline = AnalysisPipeline()
+        result = pipeline.run(py_file, agent_impact=False)
 
         assert result.metrics["files_analyzed"] == 1
         assert "agent_impact" not in result.metrics

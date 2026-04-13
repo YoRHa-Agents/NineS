@@ -8,7 +8,25 @@ from pathlib import Path
 
 import click
 
+from nines.iteration.capability_evaluators import (
+    AbstractionQualityEvaluator,
+    CodeReviewAccuracyEvaluator,
+    DecompositionCoverageEvaluator,
+    IndexRecallEvaluator,
+    StructureRecognitionEvaluator,
+)
+from nines.iteration.collection_evaluators import (
+    CollectionThroughputEvaluator,
+    DataCompletenessEvaluator,
+    SourceCoverageEvaluator,
+)
 from nines.iteration.convergence import ConvergenceChecker
+from nines.iteration.eval_evaluators import (
+    EvalCoverageEvaluator,
+    PipelineLatencyEvaluator,
+    ReportQualityEvaluator,
+    SandboxIsolationEvaluator,
+)
 from nines.iteration.gap_detector import GapDetector
 from nines.iteration.planner import ImprovementPlanner
 from nines.iteration.self_eval import (
@@ -21,6 +39,15 @@ from nines.iteration.self_eval import (
     ModuleCountEvaluator,
     SelfEvalRunner,
     TestCountEvaluator,
+)
+from nines.iteration.system_evaluators import (
+    ConvergenceRateEvaluator,
+    CrossVertexSynergyEvaluator,
+)
+from nines.iteration.v1_evaluators import (
+    ReliabilityEvaluator,
+    ScorerAgreementEvaluator,
+    ScoringAccuracyEvaluator,
 )
 
 logger = logging.getLogger(__name__)
@@ -44,10 +71,38 @@ def _detect_test_dir(project_root: Path) -> str:
     return "tests"
 
 
+def _register_capability_dims(
+    runner: SelfEvalRunner,
+    src_dir: str,
+    samples_dir: str,
+    golden_dir: str,
+) -> None:
+    """Register all D01-D19 capability dimensions."""
+    runner.register_dimension("scoring_accuracy", ScoringAccuracyEvaluator(golden_dir))
+    runner.register_dimension("eval_coverage", EvalCoverageEvaluator(samples_dir))
+    runner.register_dimension("scoring_reliability", ReliabilityEvaluator(golden_dir))
+    runner.register_dimension("report_quality", ReportQualityEvaluator())
+    runner.register_dimension("scorer_agreement", ScorerAgreementEvaluator(golden_dir))
+    runner.register_dimension("source_coverage", SourceCoverageEvaluator())
+    runner.register_dimension("data_completeness", DataCompletenessEvaluator())
+    runner.register_dimension("collection_throughput", CollectionThroughputEvaluator())
+    runner.register_dimension("decomposition_coverage", DecompositionCoverageEvaluator(src_dir))
+    runner.register_dimension("abstraction_quality", AbstractionQualityEvaluator(src_dir))
+    runner.register_dimension("code_review_accuracy", CodeReviewAccuracyEvaluator(src_dir))
+    runner.register_dimension("index_recall", IndexRecallEvaluator(src_dir))
+    runner.register_dimension("structure_recognition", StructureRecognitionEvaluator(src_dir))
+    runner.register_dimension("pipeline_latency", PipelineLatencyEvaluator())
+    runner.register_dimension("sandbox_isolation", SandboxIsolationEvaluator())
+    runner.register_dimension("convergence_rate", ConvergenceRateEvaluator(src_dir))
+    runner.register_dimension("cross_vertex_synergy", CrossVertexSynergyEvaluator())
+
+
 def _build_live_evaluators(
     project_root: Path,
     src_dir: str | None,
     test_dir: str | None,
+    samples_dir: str = "samples/eval",
+    golden_dir: str = "data/golden_test_set",
 ) -> SelfEvalRunner:
     """Build a SelfEvalRunner with live evaluators for the given project."""
     resolved_src = src_dir if src_dir else _detect_src_dir(project_root)
@@ -74,6 +129,9 @@ def _build_live_evaluators(
         "lint_cleanliness",
         LintCleanlinessEvaluator(src_dir=resolved_src),
     )
+
+    _register_capability_dims(runner, resolved_src, samples_dir, golden_dir)
+
     return runner
 
 
@@ -119,6 +177,18 @@ def _build_stub_evaluators() -> SelfEvalRunner:
     default=None,
     help="Test directory. Auto-detected if not set.",
 )
+@click.option(
+    "--samples-dir",
+    type=click.Path(),
+    default="samples/eval",
+    help="Sample eval directory for EvalCoverageEvaluator.",
+)
+@click.option(
+    "--golden-dir",
+    type=click.Path(),
+    default="data/golden_test_set",
+    help="Golden test set directory for V1 scoring evaluators.",
+)
 @click.pass_context
 def iterate_cmd(
     ctx: click.Context,
@@ -127,6 +197,8 @@ def iterate_cmd(
     project_root: str | None,
     src_dir: str | None,
     test_dir: str | None,
+    samples_dir: str,
+    golden_dir: str,
 ) -> None:
     """Execute a self-improvement iteration cycle."""
     verbose = ctx.obj.get("verbose", False)
@@ -134,7 +206,7 @@ def iterate_cmd(
 
     if project_root is not None:
         root = Path(project_root).resolve()
-        runner = _build_live_evaluators(root, src_dir, test_dir)
+        runner = _build_live_evaluators(root, src_dir, test_dir, samples_dir, golden_dir)
         if verbose:
             click.echo(f"Using live evaluators for project: {root}")
     else:

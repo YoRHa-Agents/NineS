@@ -60,6 +60,8 @@ _CAPABILITY_GROUPS: dict[str, list[str]] = {
     ],
     "V2 Collection": [
         "source_coverage",
+        "source_freshness",
+        "change_detection",
         "data_completeness",
         "collection_throughput",
     ],
@@ -80,6 +82,8 @@ _DIMENSION_LABELS: dict[str, str] = {
     "report_quality": "report_quality (D04)",
     "scorer_agreement": "scorer_agreement (D05)",
     "source_coverage": "source_coverage (D06)",
+    "source_freshness": "source_freshness (D07)",
+    "change_detection": "change_detection (D08)",
     "data_completeness": "data_completeness (D09)",
     "collection_throughput": "collection_throughput (D10)",
     "decomposition_coverage": "decomposition_coverage (D11)",
