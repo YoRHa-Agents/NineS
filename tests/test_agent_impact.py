@@ -434,6 +434,8 @@ class TestAnalyzeEndToEnd:
         assert len(report.mechanisms) > 0
         assert report.economics.agent_facing_files > 0
         assert report.economics.total_agent_context_tokens > 0
+        assert report.economics.mechanism_count == len(report.mechanisms)
+        assert report.economics.overhead_tokens > 0
         assert len(report.findings) > 0
         assert len(report.knowledge_units) > 0
 
@@ -459,6 +461,46 @@ class TestAnalyzeEndToEnd:
         f.write_text("# Instructions\nAlways follow safety rules.\n")
         report = analyzer.analyze(f)
         assert len(report.agent_facing_artifacts) == 1
+
+    def test_economics_enriched_with_mechanisms(
+        self, analyzer: AgentImpactAnalyzer, agent_repo: Path,
+    ) -> None:
+        report = analyzer.analyze(agent_repo)
+        assert report.economics.mechanism_count > 0
+        assert report.economics.mechanism_count == len(report.mechanisms)
+        total_mech_tokens = sum(
+            abs(m.estimated_token_impact) for m in report.mechanisms
+        )
+        assert report.economics.total_agent_context_tokens >= total_mech_tokens
+
+    def test_economics_minimum_estimate_fallback(
+        self, analyzer: AgentImpactAnalyzer, tmp_path: Path,
+    ) -> None:
+        """Empty agent files still get a minimum token estimate."""
+        f = tmp_path / "AGENTS.md"
+        f.write_text("")
+        report = analyzer.analyze(tmp_path)
+        assert len(report.agent_facing_artifacts) >= 1
+        assert report.economics.overhead_tokens > 0
+        assert report.economics.total_agent_context_tokens > 0
+
+    def test_economics_to_dict_always_populated(
+        self, analyzer: AgentImpactAnalyzer, agent_repo: Path,
+    ) -> None:
+        report = analyzer.analyze(agent_repo)
+        d = report.economics.to_dict()
+        assert isinstance(d, dict)
+        assert len(d) > 0
+        assert "overhead_tokens" in d
+        assert "mechanism_count" in d
+        assert d["mechanism_count"] > 0
+
+    def test_pyproject_toml_detected(
+        self, analyzer: AgentImpactAnalyzer, tmp_path: Path,
+    ) -> None:
+        (tmp_path / "pyproject.toml").write_text("[tool.nines]\nrules = true\n")
+        artifacts = analyzer._discover_agent_artifacts(tmp_path)
+        assert any("pyproject.toml" in a for a in artifacts)
 
     def test_analyze_nonexistent_path(self, analyzer: AgentImpactAnalyzer, tmp_path: Path) -> None:
         report = analyzer.analyze(tmp_path / "nonexistent")

@@ -1,10 +1,11 @@
-"""Live evaluators for NineS V2 Collection dimensions (D06, D09, D10).
+"""Live evaluators for NineS V2 Collection dimensions (D06–D10).
 
 These evaluators measure the collection subsystem's capabilities:
-source coverage (importability of collectors), data model completeness,
-and storage throughput via the SQLite-backed ``DataStore``.
+source coverage (importability of collectors), source freshness,
+change detection, data model completeness, and storage throughput
+via the SQLite-backed ``DataStore``.
 
-Covers: D06, D09, D10.
+Covers: D06, D07, D08, D09, D10.
 """
 
 from __future__ import annotations
@@ -94,6 +95,177 @@ class SourceCoverageEvaluator:
                 "details": details,
             },
         )
+
+
+# ---------------------------------------------------------------------------
+# D07: Source Freshness
+# ---------------------------------------------------------------------------
+
+
+class SourceFreshnessEvaluator:
+    """D07: Measures whether collection sources provide fresh data.
+
+    Creates an in-memory DataStore, saves a synthetic repo with a
+    recent timestamp, then checks that the stored timestamp is within
+    the configured staleness window (default 30 days).
+
+    Score = fresh_sources / total_sources.
+    """
+
+    _STALENESS_DAYS = 30
+
+    def evaluate(self) -> DimensionScore:
+        try:
+            from datetime import datetime, timedelta, timezone
+
+            from nines.collector.models import Repository
+            from nines.collector.store import DataStore
+        except Exception as exc:
+            logger.error("Cannot import collection components: %s", exc)
+            return DimensionScore(
+                name="source_freshness", value=0.0, max_value=1.0,
+                metadata={"error": str(exc)},
+            )
+
+        store = None
+        try:
+            store = DataStore(db_path=":memory:")
+            now = datetime.now(timezone.utc)
+            fresh_ts = (now - timedelta(days=1)).isoformat()
+            stale_ts = (now - timedelta(days=60)).isoformat()
+
+            repos = [
+                Repository(
+                    name="fresh-repo", owner="test",
+                    url="https://github.com/test/fresh",
+                    stars=10, forks=1, description="Fresh", language="Python",
+                    topics=["test"], last_updated=fresh_ts,
+                ),
+                Repository(
+                    name="stale-repo", owner="test",
+                    url="https://github.com/test/stale",
+                    stars=5, forks=0, description="Stale", language="Python",
+                    topics=["test"], last_updated=stale_ts,
+                ),
+            ]
+            store.save_repos(repos)
+            retrieved = store.get_repos()
+
+            cutoff = now - timedelta(days=self._STALENESS_DAYS)
+            fresh_count = 0
+            for repo in retrieved:
+                try:
+                    ts_str = (
+                        repo.last_updated.replace("Z", "+00:00")
+                        if repo.last_updated
+                        else ""
+                    )
+                    if ts_str:
+                        ts = datetime.fromisoformat(ts_str)
+                        if ts >= cutoff:
+                            fresh_count += 1
+                except (ValueError, AttributeError):
+                    pass
+
+            total = len(retrieved)
+            score = fresh_count / total if total > 0 else 0.0
+
+            return DimensionScore(
+                name="source_freshness",
+                value=round(score, 4),
+                max_value=1.0,
+                metadata={
+                    "fresh_count": fresh_count,
+                    "total": total,
+                    "staleness_days": self._STALENESS_DAYS,
+                },
+            )
+        except Exception as exc:
+            logger.error(
+                "SourceFreshnessEvaluator failed: %s", exc, exc_info=True,
+            )
+            return DimensionScore(
+                name="source_freshness", value=0.0, max_value=1.0,
+                metadata={"error": str(exc)},
+            )
+        finally:
+            if store is not None:
+                store.close()
+
+
+# ---------------------------------------------------------------------------
+# D08: Change Detection
+# ---------------------------------------------------------------------------
+
+
+class ChangeDetectionEvaluator:
+    """D08: Measures whether the collection system can detect data changes.
+
+    Creates an in-memory DataStore, saves repos, updates one, re-saves,
+    and verifies the update is reflected on retrieval.
+
+    Score = 1.0 if change detected, 0.0 otherwise.
+    """
+
+    def evaluate(self) -> DimensionScore:
+        try:
+            from nines.collector.models import Repository
+            from nines.collector.store import DataStore
+        except Exception as exc:
+            logger.error("Cannot import collection components: %s", exc)
+            return DimensionScore(
+                name="change_detection", value=0.0, max_value=1.0,
+                metadata={"error": str(exc)},
+            )
+
+        store = None
+        try:
+            store = DataStore(db_path=":memory:")
+            original = Repository(
+                name="change-test", owner="test",
+                url="https://github.com/test/change",
+                stars=10, forks=1, description="Original", language="Python",
+                topics=["test"], last_updated="2025-01-01T00:00:00Z",
+            )
+            store.save_repos([original])
+
+            updated = Repository(
+                name="change-test", owner="test",
+                url="https://github.com/test/change",
+                stars=20, forks=5, description="Updated description",
+                language="Python", topics=["test", "updated"],
+                last_updated="2025-06-01T00:00:00Z",
+            )
+            store.save_repos([updated])
+
+            retrieved = store.get_repos()
+            change_detected = False
+            for repo in retrieved:
+                if repo.name == "change-test":
+                    change_detected = (
+                        repo.stars == 20
+                        and repo.description == "Updated description"
+                    )
+                    break
+
+            score = 1.0 if change_detected else 0.0
+            return DimensionScore(
+                name="change_detection",
+                value=score,
+                max_value=1.0,
+                metadata={"change_detected": change_detected},
+            )
+        except Exception as exc:
+            logger.error(
+                "ChangeDetectionEvaluator failed: %s", exc, exc_info=True,
+            )
+            return DimensionScore(
+                name="change_detection", value=0.0, max_value=1.0,
+                metadata={"error": str(exc)},
+            )
+        finally:
+            if store is not None:
+                store.close()
 
 
 # ---------------------------------------------------------------------------

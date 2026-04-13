@@ -10,15 +10,18 @@ import click
 
 from nines.iteration.capability_evaluators import (
     AbstractionQualityEvaluator,
+    AgentAnalysisQualityEvaluator,
     CodeReviewAccuracyEvaluator,
     DecompositionCoverageEvaluator,
     IndexRecallEvaluator,
     StructureRecognitionEvaluator,
 )
 from nines.iteration.collection_evaluators import (
+    ChangeDetectionEvaluator,
     CollectionThroughputEvaluator,
     DataCompletenessEvaluator,
     SourceCoverageEvaluator,
+    SourceFreshnessEvaluator,
 )
 from nines.iteration.eval_evaluators import (
     EvalCoverageEvaluator,
@@ -72,7 +75,13 @@ _CAPABILITY_GROUPS: dict[str, list[str]] = {
         "index_recall",
         "structure_recognition",
     ],
-    "System": ["pipeline_latency", "sandbox_isolation", "convergence_rate", "cross_vertex_synergy"],
+    "System": [
+        "pipeline_latency",
+        "sandbox_isolation",
+        "convergence_rate",
+        "cross_vertex_synergy",
+        "agent_analysis_quality",
+    ],
 }
 
 _DIMENSION_LABELS: dict[str, str] = {
@@ -95,6 +104,7 @@ _DIMENSION_LABELS: dict[str, str] = {
     "sandbox_isolation": "sandbox_isolation (D17)",
     "convergence_rate": "convergence_rate (D18)",
     "cross_vertex_synergy": "cross_vertex_synergy (D19)",
+    "agent_analysis_quality": "agent_analysis_quality (D20)",
 }
 
 _ALL_CAPABILITY_DIMS = {
@@ -287,6 +297,8 @@ def self_eval_cmd(
     )
 
     runner.register_dimension("source_coverage", SourceCoverageEvaluator())
+    runner.register_dimension("source_freshness", SourceFreshnessEvaluator())
+    runner.register_dimension("change_detection", ChangeDetectionEvaluator())
     runner.register_dimension("data_completeness", DataCompletenessEvaluator())
     runner.register_dimension(
         "collection_throughput", CollectionThroughputEvaluator(),
@@ -309,6 +321,7 @@ def self_eval_cmd(
     runner.register_dimension("sandbox_isolation", SandboxIsolationEvaluator())
     runner.register_dimension("convergence_rate", ConvergenceRateEvaluator(src_dir))
     runner.register_dimension("cross_vertex_synergy", CrossVertexSynergyEvaluator())
+    runner.register_dimension("agent_analysis_quality", AgentAnalysisQualityEvaluator(src_dir))
 
     if not capability_only:
         runner.register_dimension(

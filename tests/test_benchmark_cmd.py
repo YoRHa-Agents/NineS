@@ -640,17 +640,101 @@ class TestBenchmarkTasksPath:
 
 
 class TestBenchmarkDefaultExecutor:
-    def test_default_executor_returns_expected(self) -> None:
-        from nines.cli.commands.benchmark import _default_executor
+    def test_passthrough_executor_returns_expected(self) -> None:
+        from nines.cli.commands.benchmark import _passthrough_executor
 
         task = TaskDefinition(
             id="test-01",
             name="Test",
             expected={"key": "value"},
         )
-        result = _default_executor(task)
+        result = _passthrough_executor(task)
         assert result.task_id == "test-01"
         assert result.output == {"key": "value"}
+        assert result.success is True
+
+
+class TestAnalysisExecutor:
+    def test_analysis_executor_compression(self) -> None:
+        from nines.cli.commands.benchmark import _analysis_executor
+
+        task = TaskDefinition(
+            id="test-01",
+            name="Test",
+            dimension="compression",
+            input_config={"target_reduction": 0.3},
+            expected={"max_ratio": 0.7, "min_reduction_pct": 30},
+        )
+        result = _analysis_executor(task)
+        assert result.task_id == "test-01"
+        assert result.success is True
+        assert "max_ratio" in result.output
+
+    def test_analysis_executor_engineering(self) -> None:
+        from nines.cli.commands.benchmark import _analysis_executor
+
+        task = TaskDefinition(
+            id="test-02",
+            name="Test",
+            dimension="engineering",
+            expected={"passes_threshold": True},
+        )
+        result = _analysis_executor(task)
+        assert result.output == {"passes_threshold": True}
+
+    def test_analysis_executor_context_management(self) -> None:
+        from nines.cli.commands.benchmark import _analysis_executor
+
+        task = TaskDefinition(
+            id="test-03",
+            name="Test",
+            dimension="context_management",
+            input_config={"interaction_count": 5},
+            expected={"max_overhead_tokens": 500, "max_overhead_pct": 50},
+        )
+        result = _analysis_executor(task)
+        assert result.task_id == "test-03"
+        assert result.success is True
+        assert "max_overhead_tokens" in result.output
+        assert "max_overhead_pct" in result.output
+
+    def test_analysis_executor_behavioral_shaping(self) -> None:
+        from nines.cli.commands.benchmark import _analysis_executor
+
+        task = TaskDefinition(
+            id="test-04",
+            name="Test",
+            dimension="behavioral_shaping",
+            expected={},
+        )
+        result = _analysis_executor(task)
+        assert result.output == {"compliance": True}
+        assert result.success is True
+
+    def test_analysis_executor_semantic_preservation(self) -> None:
+        from nines.cli.commands.benchmark import _analysis_executor
+
+        task = TaskDefinition(
+            id="test-05",
+            name="Test",
+            dimension="semantic_preservation",
+            expected={"min_similarity": 0.85},
+        )
+        result = _analysis_executor(task)
+        assert result.output == {"min_similarity": 0.75}
+        assert result.success is False
+
+    def test_analysis_executor_cross_platform(self) -> None:
+        from nines.cli.commands.benchmark import _analysis_executor
+
+        task = TaskDefinition(
+            id="test-06",
+            name="Test",
+            dimension="cross_platform",
+            expected={},
+        )
+        result = _analysis_executor(task)
+        assert result.output == {"match": True}
         assert result.success is True
 
 

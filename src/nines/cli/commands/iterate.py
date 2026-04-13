@@ -10,15 +10,18 @@ import click
 
 from nines.iteration.capability_evaluators import (
     AbstractionQualityEvaluator,
+    AgentAnalysisQualityEvaluator,
     CodeReviewAccuracyEvaluator,
     DecompositionCoverageEvaluator,
     IndexRecallEvaluator,
     StructureRecognitionEvaluator,
 )
 from nines.iteration.collection_evaluators import (
+    ChangeDetectionEvaluator,
     CollectionThroughputEvaluator,
     DataCompletenessEvaluator,
     SourceCoverageEvaluator,
+    SourceFreshnessEvaluator,
 )
 from nines.iteration.convergence import ConvergenceChecker
 from nines.iteration.eval_evaluators import (
@@ -77,13 +80,15 @@ def _register_capability_dims(
     samples_dir: str,
     golden_dir: str,
 ) -> None:
-    """Register all D01-D19 capability dimensions."""
+    """Register all D01-D20 capability dimensions."""
     runner.register_dimension("scoring_accuracy", ScoringAccuracyEvaluator(golden_dir))
     runner.register_dimension("eval_coverage", EvalCoverageEvaluator(samples_dir))
     runner.register_dimension("scoring_reliability", ReliabilityEvaluator(golden_dir))
     runner.register_dimension("report_quality", ReportQualityEvaluator())
     runner.register_dimension("scorer_agreement", ScorerAgreementEvaluator(golden_dir))
     runner.register_dimension("source_coverage", SourceCoverageEvaluator())
+    runner.register_dimension("source_freshness", SourceFreshnessEvaluator())
+    runner.register_dimension("change_detection", ChangeDetectionEvaluator())
     runner.register_dimension("data_completeness", DataCompletenessEvaluator())
     runner.register_dimension("collection_throughput", CollectionThroughputEvaluator())
     runner.register_dimension("decomposition_coverage", DecompositionCoverageEvaluator(src_dir))
@@ -95,6 +100,7 @@ def _register_capability_dims(
     runner.register_dimension("sandbox_isolation", SandboxIsolationEvaluator())
     runner.register_dimension("convergence_rate", ConvergenceRateEvaluator(src_dir))
     runner.register_dimension("cross_vertex_synergy", CrossVertexSynergyEvaluator())
+    runner.register_dimension("agent_analysis_quality", AgentAnalysisQualityEvaluator(src_dir))
 
 
 def _build_live_evaluators(

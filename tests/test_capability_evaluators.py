@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from nines.iteration.capability_evaluators import (
     AbstractionQualityEvaluator,
+    AgentAnalysisQualityEvaluator,
     CodeReviewAccuracyEvaluator,
     DecompositionCoverageEvaluator,
     IndexRecallEvaluator,
@@ -43,6 +44,7 @@ NINES_SRC = Path(__file__).resolve().parent.parent / "src" / "nines"
         CodeReviewAccuracyEvaluator,
         IndexRecallEvaluator,
         StructureRecognitionEvaluator,
+        AgentAnalysisQualityEvaluator,
     ],
 )
 def test_evaluator_satisfies_protocol(cls: type) -> None:
@@ -207,12 +209,38 @@ def test_structure_recognition_bad_path() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Integration: register all five with SelfEvalRunner
+# D16: AgentAnalysisQualityEvaluator
+# ---------------------------------------------------------------------------
+
+
+def test_agent_analysis_quality_real_source() -> None:
+    """D16 evaluator produces a score in (0, 1] against real NineS source."""
+    ev = AgentAnalysisQualityEvaluator(NINES_SRC)
+    score = ev.evaluate()
+
+    assert isinstance(score, DimensionScore)
+    assert score.name == "agent_analysis_quality"
+    assert score.max_value == 1.0
+    assert 0.0 < score.value <= 1.0
+    assert score.metadata["checks_passed"] > 0
+    assert score.metadata["total_checks"] == 5
+    assert isinstance(score.metadata["details"], dict)
+
+
+def test_agent_analysis_quality_bad_path() -> None:
+    """D16 evaluator returns 0.0 for a non-existent path."""
+    ev = AgentAnalysisQualityEvaluator("/tmp/nonexistent_nines_dir")
+    score = ev.evaluate()
+    assert score.value == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Integration: register all six with SelfEvalRunner
 # ---------------------------------------------------------------------------
 
 
 def test_all_evaluators_with_runner() -> None:
-    """All five evaluators run through SelfEvalRunner without crashing."""
+    """All six evaluators run through SelfEvalRunner without crashing."""
     from nines.iteration.self_eval import SelfEvalRunner
 
     runner = SelfEvalRunner()
@@ -221,10 +249,11 @@ def test_all_evaluators_with_runner() -> None:
     runner.register_dimension("d13", CodeReviewAccuracyEvaluator(NINES_SRC))
     runner.register_dimension("d14", IndexRecallEvaluator(NINES_SRC))
     runner.register_dimension("d15", StructureRecognitionEvaluator(NINES_SRC))
+    runner.register_dimension("d16", AgentAnalysisQualityEvaluator(NINES_SRC))
 
     report = runner.run_all(version="test-cap-v3")
 
-    assert len(report.scores) == 5
+    assert len(report.scores) == 6
     assert report.overall > 0.0
     for score in report.scores:
         assert 0.0 <= score.value <= score.max_value
