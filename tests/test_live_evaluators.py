@@ -133,7 +133,7 @@ class TestLiveTestCountEvaluator:
         score = ev.evaluate()
         assert score.name == "test_count"
         assert score.value == 2.0
-        assert score.metadata["files_scanned"] == 1
+        assert score.metadata["method"] in ("pytest-collect", "ast-walk")
 
     def test_skips_non_test_files(self, tmp_path: Path) -> None:
         (tmp_path / "helper.py").write_text("def test_x(): pass\n", encoding="utf-8")

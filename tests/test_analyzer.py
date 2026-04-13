@@ -345,19 +345,30 @@ class TestAnalysisPipeline:
         assert "packages" in result.metrics
         assert "python_modules" in result.metrics
 
-    def test_pipeline_default_flags_no_agent_impact(
+    def test_pipeline_default_flags_include_agent_impact(
         self,
         sample_project: Path,
     ) -> None:
-        """Without flags, metrics must NOT contain agent_impact/key_points."""
+        """Default flags now enable agent_impact and key_points."""
         pipeline = AnalysisPipeline()
         result = pipeline.run(sample_project)
+        assert "agent_impact" in result.metrics
+        assert "key_points" in result.metrics
+        assert "total_files_scanned" in result.metrics
+
+    def test_pipeline_opt_out_no_agent_impact(
+        self,
+        sample_project: Path,
+    ) -> None:
+        """Explicit opt-out disables agent_impact/key_points."""
+        pipeline = AnalysisPipeline()
+        result = pipeline.run(sample_project, agent_impact=False)
         assert "agent_impact" not in result.metrics
         assert "key_points" not in result.metrics
 
     def test_pipeline_agent_impact_flag(self, sample_project: Path) -> None:
         pipeline = AnalysisPipeline()
-        result = pipeline.run(sample_project, agent_impact=True)
+        result = pipeline.run(sample_project, agent_impact=True, keypoints=False)
 
         assert "agent_impact" in result.metrics
         ai_data = result.metrics["agent_impact"]

@@ -143,6 +143,18 @@ class TestAnalyzeCommand:
             ["analyze", "--target-path", str(project)],
         )
         assert result.exit_code == 0
+        assert "Agent Impact Analysis of" in result.output
+        assert "Agent mechanisms:" in result.output
+        assert "Key points:" in result.output
+
+    def test_analyze_opt_out_text(self, tmp_path: Path) -> None:
+        project = _make_sample_project(tmp_path)
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            ["analyze", "--target-path", str(project), "--no-agent-impact"],
+        )
+        assert result.exit_code == 0
         assert "Analysis of" in result.output
         assert "Agent mechanisms" not in result.output
         assert "Key points" not in result.output

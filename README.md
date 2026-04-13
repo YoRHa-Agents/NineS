@@ -2,23 +2,23 @@
 
 > 🌐 [中文文档](https://yorha-agents.github.io/NineS/zh/) | [English Documentation](https://yorha-agents.github.io/NineS/en/)
 
-A multi-vertex evaluation, collection, analysis, and self-iteration system for AI agents.
+An Agent-facing repository analysis tool — decompose, benchmark, and validate how repos improve AI Agent effectiveness.
 
 📖 **Full documentation available at [https://yorha-agents.github.io/NineS/](https://yorha-agents.github.io/NineS/)**
 
 ## Design Philosophy
 
-NineS is built on the YoRHa-Agents vision of self-improving AI agent infrastructure — systems that evaluate themselves, learn from their environment, and iteratively improve through the MAPIM (Measure-Analyze-Plan-Improve-Measure) cycle. The three-vertex architecture (Evaluation, Collection, Analysis) forms a self-reinforcing loop where each vertex feeds data to the others, creating emergent intelligence. Inspired by the recursive self-awareness themes of NieR: Automata, NineS embodies the spirit of 9S — the analytical YoRHa unit driven to understand the systems around it.
+NineS analyzes target repositories to understand HOW they make AI Agents work better. Given any repo that claims to improve agent effectiveness — through compression, context management, behavioral shaping, tool design, or other mechanisms — NineS decomposes it into agent-impact key points, benchmarks each independently in sandboxed multi-round trials, and produces validated effectiveness conclusions. The three-vertex architecture (Evaluation, Collection, Analysis) forms a self-reinforcing loop where each vertex feeds data to the others, enabling NineS to continuously sharpen its own analytical capabilities via the MAPIM (Measure-Analyze-Plan-Improve-Measure) cycle. Inspired by the recursive self-awareness themes of NieR: Automata, NineS embodies the spirit of 9S — the analytical YoRHa unit driven to understand the systems around it.
 
 → [Full Design Philosophy](https://yorha-agents.github.io/NineS/en/design-philosophy/)
 
 ## Evaluation Criteria
 
-NineS tracks 19 self-evaluation dimensions across four categories (V1 Evaluation, V2 Search, V3 Analysis, System-wide) to assess and improve AI agent capabilities. Each dimension has a concrete measurement method, scoring formula, and improvement direction. The system uses composite scoring with configurable weights, statistical reliability via pass@k and Pass³ metrics, and a 4-method convergence detector to ensure the MAPIM self-improvement loop terminates at genuine stability.
+NineS tracks 19 self-evaluation dimensions across four categories (V1 Evaluation, V2 Collection, V3 Analysis, System-wide) to assess and improve its analytical capabilities. Each dimension has a concrete measurement method, scoring formula, and improvement direction. The system uses composite scoring with configurable weights, statistical reliability via pass@k and Pass³ metrics, and a 4-method convergence detector to ensure the MAPIM self-improvement loop terminates at genuine stability.
 
 → [Full Evaluation Criteria](https://yorha-agents.github.io/NineS/en/evaluation-criteria/)
 
-NineS provides a unified CLI and library for benchmarking AI agent capabilities (V1), discovering and tracking external information sources (V2), analyzing codebases into structured knowledge (V3), and running self-improvement loops via the MAPIM (Measure-Analyze-Plan-Improve-Measure) cycle.
+NineS provides a unified CLI and library for analyzing how target repositories improve AI Agent effectiveness (V3), benchmarking agent capabilities (V1), discovering and tracking external information sources (V2), and running self-improvement loops via the MAPIM cycle.
 
 ## Quick Start
 
@@ -82,14 +82,11 @@ nines install --target all --uninstall
 #### Evaluate agent capabilities
 
 ```bash
-# Run a single evaluation task file
-nines eval tasks/coding.toml
+# Run evaluation on TOML task files
+nines eval --tasks-path samples/eval/ --scorers exact
 
-# Run with a specific scorer and sandboxed execution
-nines eval tasks/coding.toml --scorer composite --sandbox --seed 42
-
-# Output results as JSON
-nines eval tasks/coding.toml --format json -o results.json
+# Output as JSON
+nines -f json eval --tasks-path samples/eval/ --output-dir results/
 ```
 
 #### Collect external information
@@ -105,40 +102,40 @@ nines collect arxiv "LLM self-improvement" --limit 10
 nines collect github "AI agent evaluation" --incremental --store ./data/collections
 ```
 
-#### Analyze a codebase
+#### Analyze a target repository for Agent impact
 
 ```bash
-# Run deep analysis on a target repository
-nines analyze ./target-repo --depth deep
+# Analyze a target repository for Agent impact (default behavior)
+nines analyze --target-path ./target-repo --depth deep
 
-# Decompose into knowledge units and build search index
-nines analyze ./target-repo --decompose --index
+# Output agent-impact analysis as JSON
+nines -f json analyze --target-path ./target-repo -o analysis/
 
-# Output structured Markdown report
-nines analyze ./target-repo --output markdown -o analysis_report.md
+# Skip agent-impact for fast structural analysis only
+nines analyze --target-path ./target-repo --no-agent-impact
 ```
 
 #### Self-evaluation
 
 ```bash
 # Run full self-evaluation across all 19 dimensions
-nines self-eval
+nines self-eval --project-root . --src-dir src/nines --test-dir tests
 
-# Evaluate specific dimensions and compare against a baseline
-nines self-eval --dimensions D01,D02,D03 --baseline v1 --compare
+# Capability dimensions only (faster)
+nines self-eval --capability-only
 
-# Generate a self-eval report
-nines self-eval --report -o self_eval_report.md
+# Output as JSON
+nines -f json self-eval --output-dir reports/
 ```
 
 #### Self-improvement iteration
 
 ```bash
-# Run iterative self-improvement (MAPIM cycle)
-nines iterate --max-rounds 5
+# Run MAPIM self-improvement iteration
+nines iterate --project-root . --max-rounds 5
 
-# Set convergence threshold and dry-run mode
-nines iterate --max-rounds 10 --convergence-threshold 0.001 --dry-run
+# JSON output
+nines -f json iterate --project-root .
 ```
 
 ## Module Architecture
@@ -178,7 +175,7 @@ NineS is organized around three capability vertices and supporting infrastructur
 | `core/` | Foundation layer: protocols, models, errors, events, configuration |
 | `eval/` | V1 — Task evaluation, scoring, reliability metrics, reporting |
 | `collector/` | V2 — External data discovery, collection, tracking, change detection |
-| `analyzer/` | V3 — Code analysis, structural decomposition, knowledge indexing |
+| `analyzer/` | V3 — Agent-impact analysis, key-point decomposition, mechanism detection, knowledge indexing |
 | `iteration/` | Self-evaluation, gap detection, improvement planning, convergence |
 | `orchestrator/` | Workflow execution, cross-vertex data flow, artifact passing |
 | `sandbox/` | Process/venv/filesystem isolation for evaluation execution |
@@ -201,7 +198,7 @@ NineS tracks 19 self-evaluation dimensions across four categories:
 | Category | Dimensions | Description |
 |----------|------------|-------------|
 | V1 Evaluation (D01–D05) | Scoring Accuracy, Coverage, Reliability, Report Quality, Scorer Agreement | Evaluation pipeline health |
-| V2 Search (D06–D10) | Source Coverage, Freshness, Change Detection, Completeness, Throughput | Information collection quality |
+| V2 Collection (D06, D09–D10) | Source Coverage, Data Completeness, Throughput | Information collection quality |
 | V3 Analysis (D11–D15) | Decomposition, Abstraction, Code Review, Index Recall, Structure Recognition | Knowledge analysis accuracy |
 | System-wide (D16–D19) | Pipeline Latency, Sandbox Isolation, Convergence Rate, Cross-Vertex Synergy | Overall system health |
 

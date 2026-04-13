@@ -544,7 +544,13 @@ class KeyPointExtractor:
         """
         points: list[KeyPoint] = []
 
+        max_eng_findings = 5
+        actionable_severities = {"critical", "error"}
+        eng_count = 0
+
         for finding in result.findings:
+            if eng_count >= max_eng_findings:
+                break
             if hasattr(finding, "to_dict"):
                 f_dict = finding.to_dict()
                 msg = f_dict.get("message", str(finding))
@@ -555,11 +561,12 @@ class KeyPointExtractor:
                 loc = ""
                 sev = "info"
 
+            if sev not in actionable_severities:
+                continue
+
             magnitude_map: dict[str, float] = {
                 "critical": 0.7,
                 "error": 0.5,
-                "warning": 0.3,
-                "info": 0.1,
             }
 
             points.append(
@@ -569,7 +576,7 @@ class KeyPointExtractor:
                     title="Engineering observation",
                     description=msg,
                     expected_impact="neutral",
-                    impact_magnitude=magnitude_map.get(sev, 0.1),
+                    impact_magnitude=magnitude_map.get(sev, 0.5),
                     validation_approach=(
                         "Review code quality metrics and verify adherence to "
                         "engineering best practices"
@@ -582,23 +589,32 @@ class KeyPointExtractor:
                     },
                 )
             )
+            eng_count += 1
 
-        for metric_name, metric_value in result.metrics.items():
+        agent_relevant = {
+            k: v for k, v in result.metrics.items()
+            if k in ("agent_impact", "key_points", "total_files_scanned")
+        }
+        if agent_relevant:
             points.append(
                 KeyPoint(
-                    id=f"kp-metric-{uuid.uuid4().hex[:8]}",
+                    id=f"kp-summary-{uuid.uuid4().hex[:8]}",
                     category="engineering",
-                    title=f"Metric: {metric_name}",
-                    description=f"Code metric '{metric_name}' = {metric_value}",
+                    title="Analysis coverage summary",
+                    description=(
+                        f"Analysis covered {result.metrics.get('files_analyzed', 0)} Python files "
+                        f"and {result.metrics.get('total_files_scanned', 0)} total files. "
+                        f"{result.metrics.get('knowledge_units', 0)} knowledge units extracted."
+                    ),
                     expected_impact="neutral",
                     impact_magnitude=0.1,
-                    validation_approach=("Track metric trends over time to detect regressions"),
+                    validation_approach="Verify analysis coverage is comprehensive",
                     evidence=[],
                     priority=5,
                     metadata={
-                        "source": "analysis_metric",
-                        "metric_name": metric_name,
-                        "metric_value": metric_value,
+                        "source": "analysis_summary",
+                        "files_analyzed": result.metrics.get("files_analyzed", 0),
+                        "knowledge_units": result.metrics.get("knowledge_units", 0),
                     },
                 )
             )

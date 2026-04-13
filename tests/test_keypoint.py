@@ -545,7 +545,7 @@ class TestExtractFromAnalysis:
             target="/repo",
             findings=[
                 Finding(
-                    id="af1", severity="warning", message="complex function", location="main.py"
+                    id="af1", severity="error", message="critical function", location="main.py"
                 ),
             ],
         )
@@ -554,19 +554,23 @@ class TestExtractFromAnalysis:
         assert points[0].category == "engineering"
         assert points[0].priority == 5
 
-    def test_metrics_become_key_points(
+    def test_metrics_produce_summary_only(
         self,
         extractor: KeyPointExtractor,
     ) -> None:
         result = AnalysisResult(
             target="/repo",
-            metrics={"complexity": 15, "coupling": 3},
+            metrics={
+                "files_analyzed": 10,
+                "total_lines": 500,
+                "agent_impact": {"mechanisms": []},
+                "total_files_scanned": 15,
+            },
         )
         points = extractor._extract_from_analysis(result)
-        assert len(points) == 2
-        titles = {p.title for p in points}
-        assert "Metric: complexity" in titles
-        assert "Metric: coupling" in titles
+        assert len(points) == 1
+        assert points[0].title == "Analysis coverage summary"
+        assert points[0].metadata.get("source") == "analysis_summary"
 
     def test_empty_analysis(self, extractor: KeyPointExtractor) -> None:
         result = AnalysisResult(target="/repo")
@@ -580,10 +584,11 @@ class TestExtractFromAnalysis:
         result = AnalysisResult(
             target="/repo",
             findings=[
-                Finding(id="af1", severity="info", message="ok", location="src/foo.py"),
+                Finding(id="af1", severity="critical", message="security issue", location="src/foo.py"),
             ],
         )
         points = extractor._extract_from_analysis(result)
+        assert len(points) >= 1
         assert "src/foo.py" in points[0].evidence
 
 
@@ -874,12 +879,12 @@ class TestExtractEndToEnd:
     ) -> None:
         analysis = AnalysisResult(
             target="/repo",
-            findings=[Finding(id="af1", severity="warning", message="complex", location="main.py")],
-            metrics={"complexity": 10},
+            findings=[Finding(id="af1", severity="error", message="critical issue", location="main.py")],
+            metrics={"files_analyzed": 10, "agent_impact": {"mechanisms": []}},
         )
         report = extractor.extract(sample_report, analysis_result=analysis)
         eng = report.get_by_category("engineering")
-        assert len(eng) >= 2
+        assert len(eng) >= 1
 
     def test_without_analysis_result(
         self,

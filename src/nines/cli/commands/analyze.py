@@ -20,7 +20,7 @@ _VALID_STRATEGIES = ("functional", "concern", "layer")
     "--target-path",
     required=True,
     type=click.Path(exists=True),
-    help="Path to a Python file or directory to analyze.",
+    help="Path to a repository or directory to analyze for Agent impact.",
 )
 @click.option(
     "--strategy",
@@ -36,16 +36,16 @@ _VALID_STRATEGIES = ("functional", "concern", "layer")
     help="Directory to write analysis results to.",
 )
 @click.option(
-    "--agent-impact",
-    is_flag=True,
-    default=False,
-    help="Run Agent impact analysis.",
+    "--agent-impact/--no-agent-impact",
+    default=True,
+    show_default=True,
+    help="Run Agent impact analysis (default: enabled).",
 )
 @click.option(
-    "--keypoints",
-    is_flag=True,
-    default=False,
-    help="Extract key points (implies --agent-impact).",
+    "--keypoints/--no-keypoints",
+    default=True,
+    show_default=True,
+    help="Extract key points (default: enabled, implies --agent-impact).",
 )
 @click.option(
     "--depth",
@@ -74,7 +74,7 @@ def analyze_cmd(
     pipeline = AnalysisPipeline()
     result = pipeline.run(
         target_path,
-        agent_impact=agent_impact or keypoints,
+        agent_impact=agent_impact,
         keypoints=keypoints,
     )
 
@@ -84,29 +84,45 @@ def analyze_cmd(
     if output_format == "json":
         report = json.dumps(result.to_dict(), indent=2, default=str)
     else:
-        lines = [
-            f"Analysis of {result.target}",
-            f"  Files analyzed: {metrics.get('files_analyzed', 0)}",
-            f"  Total lines: {metrics.get('total_lines', 0)}",
-            f"  Functions: {metrics.get('total_functions', 0)}",
-            f"  Classes: {metrics.get('total_classes', 0)}",
-            f"  Avg complexity: {metrics.get('avg_complexity', 0.0)}",
-            f"  Knowledge units: {metrics.get('knowledge_units', 0)}",
-            f"  Findings: {findings_count}",
-            f"  Duration: {metrics.get('duration_ms', 0.0):.1f} ms",
-        ]
+        has_impact = "agent_impact" in metrics
+        if has_impact:
+            lines = [f"Agent Impact Analysis of {result.target}"]
+        else:
+            lines = [f"Analysis of {result.target}"]
 
-        if "agent_impact" in metrics:
+        if has_impact:
             ai_data = metrics["agent_impact"]
-            lines.append(f"  Agent mechanisms: {len(ai_data.get('mechanisms', []))}")
-            lines.append(f"  Agent artifacts: {len(ai_data.get('agent_facing_artifacts', []))}")
+            lines.append(
+                f"  Total files scanned: {metrics.get('total_files_scanned', 0)}"
+            )
+            lines.append(
+                f"  Agent mechanisms: {len(ai_data.get('mechanisms', []))}"
+            )
+            lines.append(
+                f"  Agent artifacts: {len(ai_data.get('agent_facing_artifacts', []))}"
+            )
 
-        if "key_points" in metrics:
-            kp_data = metrics["key_points"]
-            kp_list = kp_data.get("key_points", [])
-            lines.append(f"  Key points: {len(kp_list)}")
-            for kp in kp_list[:5]:
-                lines.append(f"    [{kp.get('priority', '?')}] {kp.get('title', 'untitled')}")
+            if "key_points" in metrics:
+                kp_data = metrics["key_points"]
+                kp_list = kp_data.get("key_points", [])
+                lines.append(f"  Key points: {len(kp_list)}")
+                for kp in kp_list[:5]:
+                    lines.append(
+                        f"    [{kp.get('priority', '?')}] "
+                        f"{kp.get('title', 'untitled')}"
+                    )
+
+            lines.append("")
+            lines.append("  Code structure:")
+
+        lines.append(f"  Files analyzed: {metrics.get('files_analyzed', 0)}")
+        lines.append(f"  Total lines: {metrics.get('total_lines', 0)}")
+        lines.append(f"  Functions: {metrics.get('total_functions', 0)}")
+        lines.append(f"  Classes: {metrics.get('total_classes', 0)}")
+        lines.append(f"  Avg complexity: {metrics.get('avg_complexity', 0.0)}")
+        lines.append(f"  Knowledge units: {metrics.get('knowledge_units', 0)}")
+        lines.append(f"  Findings: {findings_count}")
+        lines.append(f"  Duration: {metrics.get('duration_ms', 0.0):.1f} ms")
 
         report = "\n".join(lines)
 

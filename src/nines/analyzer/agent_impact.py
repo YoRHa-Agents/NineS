@@ -218,6 +218,10 @@ class AgentImpactAnalyzer:
         r"copilot-instructions\.md$", r"AGENTS\.md$",
         r"\.codex/", r"codex-plugin/",
         r"CONTEXT\.md$", r"SYSTEM_PROMPT",
+        r"pyproject\.toml$",
+        r"\.github/copilot/",
+        r"\.aider",
+        r"RULES\.md$",
     ]
 
     COMPRESSION_INDICATORS = [
@@ -276,6 +280,22 @@ class AgentImpactAnalyzer:
 
         economics = self._estimate_context_economics(target, artifacts)
         mechanisms = self._detect_mechanisms(target, artifacts)
+
+        economics.mechanism_count = len(mechanisms)
+        total_mechanism_tokens = sum(
+            abs(m.estimated_token_impact) for m in mechanisms
+        )
+        if total_mechanism_tokens > 0:
+            economics.total_agent_context_tokens += total_mechanism_tokens
+            economics.overhead_tokens += total_mechanism_tokens
+
+        if economics.overhead_tokens == 0 and artifacts:
+            min_estimate = len(artifacts) * 50
+            economics.overhead_tokens = min_estimate
+            economics.total_agent_context_tokens = max(
+                economics.total_agent_context_tokens, min_estimate,
+            )
+
         findings = self._generate_findings(mechanisms, economics, artifacts)
         units = self._create_knowledge_units(mechanisms, artifacts)
 

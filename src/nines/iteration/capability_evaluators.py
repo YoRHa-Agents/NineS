@@ -500,3 +500,96 @@ class StructureRecognitionEvaluator:
         if (self._src_dir / "__init__.py").is_file():
             packages.insert(0, self._src_dir)
         return packages
+
+
+# ---------------------------------------------------------------------------
+# D16: Agent Analysis Quality
+# ---------------------------------------------------------------------------
+
+
+class AgentAnalysisQualityEvaluator:
+    """D16: Measures NineS's ability to correctly analyze agent-impact on a known repo.
+
+    Runs AgentImpactAnalyzer on the NineS src directory itself and checks:
+    1. Agent-facing artifacts are detected (SKILL.md templates exist)
+    2. At least 1 mechanism is identified
+    3. Context economics produces non-empty results
+    4. Findings are produced
+    5. Pipeline with agent_impact + keypoints runs without error
+
+    Score = checks_passed / total_checks.
+    """
+
+    def __init__(self, src_dir: str | Path = "src/nines") -> None:
+        """Initialize agent analysis quality evaluator."""
+        self._src_dir = Path(src_dir)
+
+    def evaluate(self) -> DimensionScore:
+        """Run agent-impact analysis on the golden test repo and score quality."""
+        from nines.analyzer.agent_impact import AgentImpactAnalyzer
+
+        checks_passed = 0
+        total_checks = 5
+        details: dict[str, Any] = {}
+
+        try:
+            if not self._src_dir.is_dir():
+                raise FileNotFoundError(f"Source directory does not exist: {self._src_dir}")
+
+            analyzer = AgentImpactAnalyzer()
+            project_root = self._resolve_project_root()
+
+            report = analyzer.analyze(project_root)
+
+            has_artifacts = len(report.agent_facing_artifacts) > 0
+            details["artifacts_detected"] = has_artifacts
+            if has_artifacts:
+                checks_passed += 1
+
+            has_mechanisms = len(report.mechanisms) > 0
+            details["mechanisms_identified"] = has_mechanisms
+            if has_mechanisms:
+                checks_passed += 1
+
+            has_economics = report.economics.overhead_tokens > 0
+            details["economics_calculated"] = has_economics
+            if has_economics:
+                checks_passed += 1
+
+            has_findings = len(report.findings) > 0
+            details["findings_produced"] = has_findings
+            if has_findings:
+                checks_passed += 1
+
+            pipeline = AnalysisPipeline()
+            result = pipeline.run(project_root, agent_impact=True, keypoints=True)
+            has_keypoints = "key_points" in result.metrics
+            details["keypoints_extracted"] = has_keypoints
+            if has_keypoints:
+                checks_passed += 1
+
+        except Exception as exc:
+            logger.error("AgentAnalysisQualityEvaluator failed: %s", exc)
+            details["error"] = str(exc)
+
+        score = checks_passed / total_checks if total_checks > 0 else 0.0
+
+        return DimensionScore(
+            name="agent_analysis_quality",
+            value=round(score, 4),
+            max_value=1.0,
+            metadata={
+                "checks_passed": checks_passed,
+                "total_checks": total_checks,
+                "details": details,
+            },
+        )
+
+    def _resolve_project_root(self) -> Path:
+        """Walk up from src_dir to find the project root (parent of 'src')."""
+        project_root = self._src_dir
+        while project_root.name != "src" and project_root != project_root.parent:
+            project_root = project_root.parent
+        if project_root.name == "src":
+            project_root = project_root.parent
+        return project_root

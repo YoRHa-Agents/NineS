@@ -26,6 +26,21 @@ from nines.core.models import AnalysisResult, Finding, KnowledgeUnit
 
 logger = logging.getLogger(__name__)
 
+_AGENT_EXTENSIONS = frozenset(
+    {
+        ".py",
+        ".yaml",
+        ".yml",
+        ".json",
+        ".toml",
+        ".md",
+        ".txt",
+        ".cfg",
+        ".ini",
+        ".rules",
+    }
+)
+
 _SKIP_DIRS = frozenset(
     {
         "__pycache__",
@@ -80,28 +95,36 @@ class AnalysisPipeline:
         self,
         path: str | Path,
         *,
-        agent_impact: bool = False,
-        keypoints: bool = False,
+        agent_impact: bool = True,
+        keypoints: bool = True,
     ) -> AnalysisResult:
         """Execute the full pipeline on *path*.
 
         If *path* is a file, only that file is reviewed and decomposed.
-        If *path* is a directory, all Python files are ingested and both
-        structure analysis and decomposition are performed.
+        If *path* is a directory, all relevant files are ingested for
+        agent-impact analysis and Python files are used for code review
+        and decomposition.
+
+        Agent-impact analysis is enabled by default since it is the core
+        mission of NineS.  Pass ``agent_impact=False`` for a legacy
+        code-structure-only run.
 
         Parameters
         ----------
         path:
             Target file or directory.
         agent_impact:
-            When ``True``, run :class:`AgentImpactAnalyzer` and merge
-            results into :attr:`AnalysisResult.metrics` under the
-            ``"agent_impact"`` key.
+            When ``True`` (the default), run :class:`AgentImpactAnalyzer`
+            and merge results into :attr:`AnalysisResult.metrics` under
+            the ``"agent_impact"`` key.  Set to ``False`` for a fast,
+            code-structure-only analysis.
         keypoints:
-            When ``True`` (implies *agent_impact*), additionally run
-            :class:`KeyPointExtractor` and store results under the
-            ``"key_points"`` metrics key.
+            When ``True`` (the default; implies *agent_impact*),
+            additionally run :class:`KeyPointExtractor` and store results
+            under the ``"key_points"`` metrics key.
         """
+        if not agent_impact:
+            keypoints = False
         if keypoints:
             agent_impact = True
 
@@ -132,6 +155,9 @@ class AnalysisPipeline:
         metrics = self._build_metrics(reviews, units, structure, elapsed_ms)
 
         if agent_impact:
+            all_files = self.ingest_all(target)
+            metrics["total_files_scanned"] = len(all_files)
+
             analyzer = self._agent_impact or AgentImpactAnalyzer()
             impact_report = analyzer.analyze(target)
             metrics["agent_impact"] = impact_report.to_dict()
@@ -179,6 +205,36 @@ class AnalysisPipeline:
             files.append(fpath)
 
         logger.info("Ingested %d Python files from %s", len(files), target)
+        return files
+
+    def ingest_all(self, target: Path) -> list[Path]:
+        """Discover all agent-relevant files at *target* for impact analysis.
+
+        Scans for files matching :data:`_AGENT_EXTENSIONS` while skipping
+        the same directories as :meth:`ingest`.
+        """
+        if target.is_file():
+            if target.suffix in _AGENT_EXTENSIONS:
+                return [target]
+            return []
+
+        if not target.is_dir():
+            return []
+
+        files: list[Path] = []
+        for fpath in sorted(target.rglob("*")):
+            if not fpath.is_file():
+                continue
+            if fpath.suffix not in _AGENT_EXTENSIONS:
+                continue
+            if any(
+                p in _SKIP_DIRS or p.startswith(".")
+                for p in fpath.relative_to(target).parts
+            ):
+                continue
+            files.append(fpath)
+
+        logger.info("Ingested %d agent-relevant files from %s", len(files), target)
         return files
 
     def analyze(self, py_files: list[Path]) -> list[FileReview]:
