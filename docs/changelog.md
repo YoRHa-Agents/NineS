@@ -4,6 +4,44 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v2.0.0 — 2026-04-13
+
+**Theme:** Agent-facing repository analysis realignment — NineS is now a purpose-built tool for analyzing how repositories improve AI Agent effectiveness.
+
+> Breaking: analysis pipeline defaults changed, self-eval expanded to 20 dimensions, benchmark executor replaced.
+
+### Added
+- **AgentAnalysisQualityEvaluator (D20)** — measures NineS's ability to detect artifacts, mechanisms, economics, findings, and key points on real repos
+- **SourceFreshnessEvaluator (D07)** — measures data staleness within configurable window (default 30 days)
+- **ChangeDetectionEvaluator (D08)** — verifies DataStore update detection capability
+- **Real benchmark executor** — dimension-aware comparison scoring replaces passthrough executor (compression, context, behavioral, semantic, cross-platform, engineering)
+- **`ingest_all()` method** in AnalysisPipeline — discovers non-Python agent artifacts (.yaml, .md, .json, .toml, .cfg, .ini, .rules)
+- **`--tasks-path` option** for `nines benchmark` — load custom TOML task definitions
+- **`--project-root`/`--src-dir`/`--test-dir`** options for `nines iterate` with live evaluators
+- **Configurable `cov_package`** and **coverage file parsing** (coverage.xml/json) in LiveCodeCoverageEvaluator
+- **pytest --collect-only** for accurate test counting with AST-walk fallback
+- 13 new tests (1069 total)
+
+### Changed
+- **[BREAKING] `nines analyze` defaults to agent-impact analysis** — `--agent-impact/--no-agent-impact` flag pair, default enabled. Use `--no-agent-impact` to disable.
+- **[BREAKING] `nines analyze` defaults to key-point extraction** — `--keypoints/--no-keypoints` flag pair, default enabled
+- **[BREAKING] Benchmark executor** produces differentiated scores (mean 0.4) instead of passthrough 1.0
+- **Self-eval expanded from 17 to 20 dimensions** (D07, D08, D20)
+- **Context Economics enriched** with mechanism-derived tokens, expanded artifact patterns (pyproject.toml, copilot, aider), minimum fallback estimate
+- **KeyPointExtractor** filters generic metric noise — 23→10 key points, engineering observations capped at 5 (critical/error only)
+- **`nines iterate`** registers all 20 capability dimensions (was 0) plus 5 hygiene dimensions
+- **README** rewritten: Agent-facing repo analysis mission, all CLI examples fixed
+- **SKILL.md** rewritten: core workflow description (analyze→benchmark→self-eval→iterate)
+- D07/D08 numbering gap filled in dimension labels
+
+### Improved
+- **Self-eval overall: 0.9727** — 20 dimensions, D07=50% (real freshness signal), D20=100%
+- **Benchmark mean: 0.4** — real differentiation across compression/context/behavioral dimensions
+- **Context Economics**: overhead=3575 tokens, savings=15%, breakeven=7 interactions (was empty `{}`)
+- **Agent-impact key points**: 9/10 are agent-relevant (was 9/23)
+
+---
+
 ## v1.1.0 — 2026-04-13
 
 **Theme:** External project support and DevolaFlow integration feedback fixes.

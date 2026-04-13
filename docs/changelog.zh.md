@@ -4,6 +4,43 @@ NineS 的所有重要变更均记录于此。本项目遵循[语义化版本](ht
 
 ---
 
+## v2.0.0 — 2026-04-13
+
+**主题：** 面向 Agent 的仓库分析重新对齐 — NineS 现在是专门分析仓库如何提升 AI Agent 效能的工具。
+
+> 破坏性变更：分析管道默认值变更，自评扩展至 20 维度，基准执行器替换。
+
+### 新增
+- **AgentAnalysisQualityEvaluator (D20)** — 衡量 NineS 检测制品、机制、经济学、发现和关键点的能力
+- **SourceFreshnessEvaluator (D07)** — 在可配置窗口内检测数据新鲜度（默认 30 天）
+- **ChangeDetectionEvaluator (D08)** — 验证 DataStore 更新检测能力
+- **真实基准执行器** — 按维度比较评分替代直通执行器（压缩、上下文、行为、语义、跨平台、工程）
+- **`ingest_all()` 方法** — 发现非 Python Agent 制品（.yaml, .md, .json, .toml 等）
+- **`nines benchmark --tasks-path`** — 加载自定义 TOML 任务定义
+- **`nines iterate --project-root/--src-dir/--test-dir`** — 实时评估器支持
+- **可配置 `cov_package`** 和 **覆盖率文件解析**（coverage.xml/json）
+- **pytest --collect-only** 精确计数测试，AST 遍历降级
+- 新增 13 个测试（总计 1069）
+
+### 变更
+- **[破坏性] `nines analyze` 默认启用 Agent 影响分析** — `--agent-impact/--no-agent-impact` 标志对
+- **[破坏性] `nines analyze` 默认启用关键点提取** — `--keypoints/--no-keypoints` 标志对
+- **[破坏性] 基准执行器** 产出差异化评分（均值 0.4）替代直通 1.0
+- **自评从 17 维扩展至 20 维**（D07、D08、D20）
+- **Context Economics 增强** — 含机制 token 开销、扩展制品模式、最低估算回退
+- **KeyPointExtractor** 过滤通用指标噪声 — 23→10 关键点，工程观察限 5 个
+- **`nines iterate`** 注册全部 20 个能力维度 + 5 个卫生维度
+- **README** 重写：Agent 仓库分析使命，修复所有 CLI 示例
+- **SKILL.md** 重写：核心工作流描述
+
+### 改进
+- **自评总分：0.9727** — 20 维度，D07=50%（真实新鲜度信号），D20=100%
+- **基准均分：0.4** — 跨维度真实分化
+- **Context Economics**：overhead=3575 tokens, savings=15%, breakeven=7 次交互
+- **Agent 影响关键点**：9/10 面向 Agent（原 9/23）
+
+---
+
 ## v1.1.0 — 2026-04-13
 
 **主题：** 外部项目支持与 DevolaFlow 集成反馈修复。
