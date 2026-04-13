@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from nines.core.errors import CollectorError
 
@@ -31,17 +32,20 @@ class ScheduledJob:
 
     @property
     def next_run(self) -> float:
+        """Return the next run."""
         if self.last_run == 0.0:
             return 0.0
         return self.last_run + self.interval_seconds
 
     @property
     def is_due(self) -> bool:
+        """Return the is due."""
         if self.last_run == 0.0:
             return True
         return time.monotonic() >= self.next_run
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "source": self.source,
             "interval_seconds": self.interval_seconds,
@@ -59,6 +63,7 @@ class CollectionScheduler:
     """In-memory scheduler for periodic collection jobs."""
 
     def __init__(self) -> None:
+        """Initialize collection scheduler."""
         self._jobs: dict[str, ScheduledJob] = {}
         self._collectors: dict[str, CollectorFn] = {}
 
@@ -81,6 +86,7 @@ class CollectionScheduler:
         return job
 
     def unschedule(self, source: str) -> bool:
+        """Remove a scheduled job by name."""
         if source in self._jobs:
             del self._jobs[source]
             self._collectors.pop(source, None)
@@ -88,9 +94,11 @@ class CollectionScheduler:
         return False
 
     def get_job(self, source: str) -> ScheduledJob | None:
+        """Return job."""
         return self._jobs.get(source)
 
     def list_jobs(self) -> list[ScheduledJob]:
+        """List jobs."""
         return list(self._jobs.values())
 
     def get_pending(self) -> list[ScheduledJob]:

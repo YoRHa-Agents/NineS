@@ -2,23 +2,26 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 
 from nines.core.models import ExecutionResult
-from nines.eval.models import TaskDefinition
 from nines.eval.reporters import JSONReporter, MarkdownReporter
 from nines.eval.runner import EvalRunner
 from nines.eval.scorers import ScorerRegistry
+
+if TYPE_CHECKING:
+    from nines.eval.models import TaskDefinition
 
 logger = logging.getLogger(__name__)
 
 
 def _default_executor(task: TaskDefinition) -> ExecutionResult:
+    """Default executor."""
     return ExecutionResult(
         task_id=task.id,
         output=task.expected,

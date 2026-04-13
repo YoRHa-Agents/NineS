@@ -69,6 +69,7 @@ class AnalysisPipeline:
         agent_impact_analyzer: AgentImpactAnalyzer | None = None,
         keypoint_extractor: KeyPointExtractor | None = None,
     ) -> None:
+        """Initialize analysis pipeline."""
         self._reviewer = reviewer or CodeReviewer()
         self._structure = structure_analyzer or StructureAnalyzer()
         self._decomposer = decomposer or Decomposer()
@@ -206,6 +207,7 @@ class AnalysisPipeline:
         structure: StructureReport | None,
         elapsed_ms: float,
     ) -> dict[str, Any]:
+        """Build metrics."""
         total_lines = sum(r.total_lines for r in reviews)
         total_funcs = sum(r.function_count for r in reviews)
         total_classes = sum(r.class_count for r in reviews)

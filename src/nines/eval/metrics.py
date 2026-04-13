@@ -14,9 +14,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from math import comb, nan
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from nines.core.models import Score
+if TYPE_CHECKING:
+    from nines.core.models import Score
 
 
 @dataclass
@@ -30,6 +31,7 @@ class TaskMetrics:
     scorer_names: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "task_id": self.task_id,
             "duration_ms": self.duration_ms,
@@ -43,6 +45,7 @@ class MetricCollector:
     """Collects per-task metrics during evaluation pipeline execution."""
 
     def __init__(self) -> None:
+        """Initialize metric collector."""
         self._metrics: dict[str, TaskMetrics] = {}
 
     def collect(
@@ -67,9 +70,11 @@ class MetricCollector:
         return metrics
 
     def get(self, task_id: str) -> TaskMetrics | None:
+        """Return a metric value by name."""
         return self._metrics.get(task_id)
 
     def all_metrics(self) -> list[TaskMetrics]:
+        """All metrics."""
         return list(self._metrics.values())
 
     def summary(self) -> dict[str, Any]:

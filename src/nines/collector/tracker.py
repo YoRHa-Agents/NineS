@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from nines.collector.models import ChangeEvent, CollectionSnapshot
@@ -25,7 +25,7 @@ class Bookmark:
     source: str
     entity_id: str
     tracked_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
     last_seen: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -35,14 +35,20 @@ class ChangeTracker:
     """Tracks entities across sources and detects changes between snapshots."""
 
     def __init__(self) -> None:
+        """Initialize change tracker."""
         self._bookmarks: dict[str, dict[str, Bookmark]] = {}
 
-    def track(self, source: str, entity_id: str, metadata: dict[str, Any] | None = None) -> Bookmark:
+    def track(
+        self,
+        source: str,
+        entity_id: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> Bookmark:
         """Record a tracking bookmark for a source entity."""
         if source not in self._bookmarks:
             self._bookmarks[source] = {}
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         bookmark = Bookmark(
             source=source,
             entity_id=entity_id,
@@ -54,12 +60,15 @@ class ChangeTracker:
         return bookmark
 
     def get_bookmark(self, source: str, entity_id: str) -> Bookmark | None:
+        """Return bookmark."""
         return self._bookmarks.get(source, {}).get(entity_id)
 
     def list_tracked(self, source: str) -> list[Bookmark]:
+        """List tracked."""
         return list(self._bookmarks.get(source, {}).values())
 
     def untrack(self, source: str, entity_id: str) -> bool:
+        """Stop tracking a repository by URL."""
         source_bookmarks = self._bookmarks.get(source, {})
         if entity_id in source_bookmarks:
             del source_bookmarks[entity_id]

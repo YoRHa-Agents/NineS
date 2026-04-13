@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from nines.collector.models import Paper, Repository
+if TYPE_CHECKING:
+    from nines.collector.models import Paper, Repository
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +46,11 @@ class RepoChanges:
 
     @property
     def total_changes(self) -> int:
+        """Return the total changes."""
         return len(self.added) + len(self.removed) + len(self.modified)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "added": [r.to_dict() for r in self.added],
             "removed": [r.to_dict() for r in self.removed],
@@ -56,7 +59,11 @@ class RepoChanges:
                     "entity_id": m.entity_id,
                     "change_type": m.change_type,
                     "field_diffs": [
-                        {"field_name": f.field_name, "old_value": f.old_value, "new_value": f.new_value}
+                        {
+                            "field_name": f.field_name,
+                            "old_value": f.old_value,
+                            "new_value": f.new_value,
+                        }
                         for f in m.field_diffs
                     ],
                 }
@@ -76,9 +83,11 @@ class PaperChanges:
 
     @property
     def total_changes(self) -> int:
+        """Return the total changes."""
         return len(self.added) + len(self.removed) + len(self.modified)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "added": [p.to_dict() for p in self.added],
             "removed": [p.to_dict() for p in self.removed],
@@ -87,7 +96,11 @@ class PaperChanges:
                     "entity_id": m.entity_id,
                     "change_type": m.change_type,
                     "field_diffs": [
-                        {"field_name": f.field_name, "old_value": f.old_value, "new_value": f.new_value}
+                        {
+                            "field_name": f.field_name,
+                            "old_value": f.old_value,
+                            "new_value": f.new_value,
+                        }
                         for f in m.field_diffs
                     ],
                 }
@@ -104,6 +117,7 @@ class DiffAnalyzer:
     PAPER_COMPARE_FIELDS = ("title", "authors", "abstract", "categories", "updated")
 
     def diff_repos(self, old: list[Repository], new: list[Repository]) -> RepoChanges:
+        """Diff repos."""
         old_by_key = {self._repo_key(r): r for r in old}
         new_by_key = {self._repo_key(r): r for r in new}
 
@@ -128,6 +142,7 @@ class DiffAnalyzer:
         return RepoChanges(added=added, removed=removed, modified=modified)
 
     def diff_papers(self, old: list[Paper], new: list[Paper]) -> PaperChanges:
+        """Diff papers."""
         old_by_id = {p.id: p for p in old}
         new_by_id = {p.id: p for p in new}
 
@@ -153,6 +168,7 @@ class DiffAnalyzer:
 
     @staticmethod
     def _repo_key(repo: Repository) -> str:
+        """Repo key."""
         return f"{repo.owner}/{repo.name}" if repo.owner else repo.name
 
     @staticmethod
@@ -161,6 +177,7 @@ class DiffAnalyzer:
         new_dict: dict[str, Any],
         fields: tuple[str, ...],
     ) -> list[FieldDiff]:
+        """Compare fields."""
         diffs: list[FieldDiff] = []
         for f in fields:
             old_val = old_dict.get(f)

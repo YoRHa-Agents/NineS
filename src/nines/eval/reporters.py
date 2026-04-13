@@ -12,11 +12,12 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
-from typing import Any
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
-from nines.eval.models import EvalResult
+if TYPE_CHECKING:
+    from nines.eval.models import EvalResult
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,7 @@ REPORT_JSON_SCHEMA = {
 
 @dataclass
 class ReportSummary:
+    """Report summary."""
     total: int = 0
     passed: int = 0
     failed: int = 0
@@ -60,6 +62,7 @@ class ReportSummary:
 
 
 def _compute_summary(results: list[EvalResult]) -> ReportSummary:
+    """Compute summary."""
     total = len(results)
     if total == 0:
         return ReportSummary()
@@ -83,23 +86,25 @@ class MarkdownReporter:
     """Generates a Markdown benchmark report from evaluation results."""
 
     def __init__(self, title: str = "Benchmark Report") -> None:
+        """Initialize markdown reporter."""
         self._title = title
 
     def generate(self, results: list[EvalResult]) -> str:
+        """Generate a formatted evaluation report."""
         summary = _compute_summary(results)
         lines: list[str] = []
 
         lines.append(f"# {self._title}")
         lines.append("")
         lines.append(
-            f"*Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}*"
+            f"*Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}*"
         )
         lines.append("")
 
         lines.append("## Summary")
         lines.append("")
-        lines.append(f"| Metric | Value |")
-        lines.append(f"|--------|-------|")
+        lines.append("| Metric | Value |")
+        lines.append("|--------|-------|")
         lines.append(f"| Total tasks | {summary.total} |")
         lines.append(f"| Passed | {summary.passed} |")
         lines.append(f"| Failed | {summary.failed} |")
@@ -145,14 +150,16 @@ class JSONReporter:
     VERSION = "1.0"
 
     def generate(self, results: list[EvalResult]) -> str:
+        """Generate the report as structured data."""
         data = self.generate_dict(results)
         return json.dumps(data, indent=2, default=str)
 
     def generate_dict(self, results: list[EvalResult]) -> dict[str, Any]:
+        """Generate dict."""
         summary = _compute_summary(results)
         return {
             "version": self.VERSION,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "summary": asdict(summary),
             "results": [r.to_dict() for r in results],
         }

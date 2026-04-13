@@ -76,7 +76,11 @@ def iterate_cmd(
 
         conv_result = convergence.check(history, threshold=threshold)
         if conv_result.converged:
-            click.echo(f"Converged after {round_num} round(s) (variance={conv_result.variance:.6f})")
+            msg = (
+                f"Converged after {round_num} round(s) "
+                f"(variance={conv_result.variance:.6f})"
+            )
+            click.echo(msg)
             break
 
         baseline_report = current_report

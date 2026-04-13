@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -56,11 +56,13 @@ class GitHubCollector:
         config: GitHubConfig | None = None,
         client: httpx.Client | None = None,
     ) -> None:
+        """Initialize git hub collector."""
         self._config = config or GitHubConfig()
         self._client = client or self._build_client()
         self._last_request_time: float = 0.0
 
     def _build_client(self) -> httpx.Client:
+        """Build client."""
         headers: dict[str, str] = {
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
@@ -74,12 +76,14 @@ class GitHubCollector:
         )
 
     def _rate_limit_wait(self) -> None:
+        """Rate limit wait."""
         elapsed = time.monotonic() - self._last_request_time
         if elapsed < _RATE_LIMIT_SLEEP:
             time.sleep(_RATE_LIMIT_SLEEP - elapsed)
         self._last_request_time = time.monotonic()
 
     def _request(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
+        """Request."""
         self._rate_limit_wait()
         last_exc: Exception | None = None
         for attempt in range(1, self._config.max_retries + 1):
@@ -202,6 +206,7 @@ class GitHubCollector:
 
     @staticmethod
     def _parse_repo(data: dict[str, Any]) -> Repository:
+        """Parse repo."""
         return Repository(
             id=data.get("id"),
             name=data.get("name", ""),

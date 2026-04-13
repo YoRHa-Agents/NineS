@@ -14,8 +14,11 @@ import shutil
 import subprocess
 import sys
 import venv
-from dataclasses import dataclass, field
-from pathlib import Path
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger("nines.sandbox.isolation")
 
@@ -33,6 +36,7 @@ class VenvFactory:
     """
 
     def __init__(self, base_dir: Path) -> None:
+        """Initialize venv factory."""
         self._base_dir = base_dir
         self._base_dir.mkdir(parents=True, exist_ok=True)
         self._use_uv = shutil.which("uv") is not None
@@ -85,6 +89,7 @@ class VenvFactory:
     # -- private helpers ----------------------------------------------------
 
     def _create_with_uv(self, venv_path: Path) -> None:
+        """Create with uv."""
         subprocess.run(
             ["uv", "venv", str(venv_path), "--seed"],
             check=True,
@@ -93,6 +98,7 @@ class VenvFactory:
         )
 
     def _create_with_stdlib(self, venv_path: Path) -> None:
+        """Create with stdlib."""
         builder = venv.EnvBuilder(
             system_site_packages=False,
             clear=True,
@@ -101,6 +107,7 @@ class VenvFactory:
         builder.create(str(venv_path))
 
     def _pip_path(self, venv_path: Path) -> Path:
+        """Pip path."""
         if sys.platform == "win32":
             return venv_path / "Scripts" / "pip.exe"
         return venv_path / "bin" / "pip"
@@ -131,6 +138,7 @@ class PollutionReport:
 
     @property
     def total_changes(self) -> int:
+        """Return the total changes."""
         return sum(len(v) for v in self.changes.values())
 
 
@@ -151,6 +159,7 @@ class PollutionDetector:
         watched_dirs: list[Path] | None = None,
         watched_files: list[Path] | None = None,
     ) -> None:
+        """Initialize pollution detector."""
         self._watched_dirs = watched_dirs or []
         self._watched_files = watched_files or []
         self._before: EnvironmentSnapshot | None = None
@@ -226,6 +235,7 @@ class PollutionDetector:
     def _diff_dicts(
         before: dict[str, str], after: dict[str, str], label: str,
     ) -> list[str]:
+        """Diff dicts."""
         changes: list[str] = []
         for key in set(before) | set(after):
             old, new = before.get(key), after.get(key)
@@ -243,6 +253,7 @@ class PollutionDetector:
         before: dict[str, tuple[str, ...]],
         after: dict[str, tuple[str, ...]],
     ) -> list[str]:
+        """Diff dir listings."""
         changes: list[str] = []
         for d in set(before) | set(after):
             old_set = set(before.get(d, ()))
@@ -259,6 +270,7 @@ class PollutionDetector:
     def _diff_sequences(
         before: tuple[str, ...], after: tuple[str, ...], label: str,
     ) -> list[str]:
+        """Diff sequences."""
         changes: list[str] = []
         added = set(after) - set(before)
         removed = set(before) - set(after)

@@ -45,6 +45,7 @@ class ComparisonResult:
     details: dict[str, dict[str, float]] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "improved": list(self.improved),
             "regressed": list(self.regressed),
@@ -67,6 +68,7 @@ class BaselineManager:
     """
 
     def __init__(self, baselines_dir: str | Path = "data/baselines") -> None:
+        """Initialize baseline manager."""
         self._dir = Path(baselines_dir)
 
     def save_baseline(self, report: SelfEvalReport, version: str) -> Path:

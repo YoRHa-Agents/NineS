@@ -11,10 +11,11 @@ from __future__ import annotations
 import logging
 import math
 from collections import defaultdict
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
-from nines.eval.models import EvalResult
+if TYPE_CHECKING:
+    from nines.eval.models import EvalResult
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class DimensionStats:
     pass_rate: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "dimension": self.dimension,
             "count": self.count,
@@ -47,6 +49,7 @@ class AxisAnalyzer:
     """Groups evaluation results by dimension and computes per-dimension stats."""
 
     def __init__(self, pass_threshold: float = 0.5) -> None:
+        """Initialize axis analyzer."""
         self._pass_threshold = pass_threshold
 
     def group_by_dimension(

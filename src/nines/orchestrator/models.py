@@ -10,7 +10,10 @@ Covers: FR-501, FR-502.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass
@@ -34,6 +37,7 @@ class WorkflowStep:
     depends_on: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "name": self.name,
             "depends_on": list(self.depends_on),
@@ -63,9 +67,11 @@ class WorkflowResult:
 
     @property
     def success(self) -> bool:
+        """Return True if the workflow completed without errors."""
         return len(self.errors) == 0
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "steps_completed": list(self.steps_completed),
             "results": dict(self.results),

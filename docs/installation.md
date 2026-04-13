@@ -19,6 +19,28 @@ Detailed instructions for installing NineS {{ nines_version }} across different 
 
 ## Install Methods
 
+=== "One-Click Script (Fastest)"
+
+    The `scripts/install.sh` script handles everything — Python verification, package installation, and agent skill setup:
+
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/YoRHa-Agents/NineS/main/scripts/install.sh | bash
+    ```
+
+    Or if you already have the repository cloned:
+
+    ```bash
+    bash scripts/install.sh --target all
+    ```
+
+    Options:
+
+    | Flag | Description |
+    |------|-------------|
+    | `--target <RUNTIME>` | Agent runtime: `cursor`, `claude`, `codex`, `copilot`, `all` (default: `all`) |
+    | `--global` | Install skill files to user-global directory |
+    | `--no-skill` | Only install Python package, skip skill file generation |
+
 === "uv (Recommended)"
 
     [uv](https://docs.astral.sh/uv/) provides the fastest installation experience.

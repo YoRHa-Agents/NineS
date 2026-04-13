@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from nines.analyzer.indexer import KnowledgeIndex
-from nines.core.models import KnowledgeUnit
+
+if TYPE_CHECKING:
+    from nines.core.models import KnowledgeUnit
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,7 @@ class SearchResult:
     snippet: str
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "unit_id": self.unit_id,
             "score": self.score,
@@ -38,16 +41,20 @@ class SearchEngine:
     """High-level search interface over the knowledge index."""
 
     def __init__(self, index: KnowledgeIndex | None = None) -> None:
+        """Initialize search engine."""
         self._index = index or KnowledgeIndex()
 
     @property
     def index(self) -> KnowledgeIndex:
+        """Return the underlying knowledge index."""
         return self._index
 
     def add_unit(self, unit: KnowledgeUnit) -> None:
+        """Add unit."""
         self._index.add_unit(unit)
 
     def build(self) -> None:
+        """Build the search index from current units."""
         self._index.build_index()
 
     def search(self, query: str, top_k: int = 10) -> list[SearchResult]:

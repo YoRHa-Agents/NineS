@@ -13,10 +13,11 @@ import logging
 import math
 import re
 from collections import defaultdict
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from nines.core.models import KnowledgeUnit
+if TYPE_CHECKING:
+    from nines.core.models import KnowledgeUnit
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ class KnowledgeIndex:
     """In-memory inverted index over KnowledgeUnit content with TF-IDF scoring."""
 
     def __init__(self) -> None:
+        """Initialize knowledge index."""
         self._units: dict[str, KnowledgeUnit] = {}
         self._inverted: dict[str, list[_TermEntry]] = defaultdict(list)
         self._doc_count: int = 0
@@ -52,6 +54,7 @@ class KnowledgeIndex:
         self._built = False
 
     def remove_unit(self, unit_id: str) -> bool:
+        """Remove unit."""
         if unit_id in self._units:
             del self._units[unit_id]
             self._built = False
@@ -59,13 +62,16 @@ class KnowledgeIndex:
         return False
 
     def get_unit(self, unit_id: str) -> KnowledgeUnit | None:
+        """Return unit."""
         return self._units.get(unit_id)
 
     def list_units(self) -> list[KnowledgeUnit]:
+        """List units."""
         return list(self._units.values())
 
     @property
     def size(self) -> int:
+        """Return the number of indexed units."""
         return len(self._units)
 
     def build_index(self) -> None:
@@ -79,7 +85,9 @@ class KnowledgeIndex:
             return
 
         for unit in self._units.values():
-            text = f"{unit.content} {unit.unit_type} {unit.source}"
+            meta_tags = unit.metadata.get("tags", "")
+            meta_doc = unit.metadata.get("docstring", "")
+            text = f"{unit.content} {unit.unit_type} {unit.source} {meta_tags} {meta_doc}"
             tokens = _tokenize(text)
             if not tokens:
                 continue

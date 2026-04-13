@@ -205,20 +205,33 @@ nines install [OPTIONS]
 
 | 选项 | 描述 | 默认值 |
 |------|------|--------|
-| `--target TARGET` | 目标运行时：`cursor`、`claude`、`all` | 必填 |
-| `--uninstall` | 从目标移除 NineS 技能 | 关闭 |
+| `--target TARGET` | 目标运行时：`cursor`、`claude`、`codex`、`copilot`、`all` | 必填 |
+| `--uninstall` | 从目标运行时移除 NineS 技能文件 | 关闭 |
 | `--global` | 安装到全局用户目录 | 关闭 |
 | `--project-dir PATH` | 项目根目录 | 当前目录 |
 | `--dry-run` | 显示将执行的操作 | 关闭 |
 | `--force` | 覆盖现有安装 | 关闭 |
+
+### 目标运行时
+
+| 目标 | 描述 | 安装目录 |
+|------|------|---------|
+| `cursor` | Cursor IDE 智能体技能 | `.cursor/skills/nines/` |
+| `claude` | Claude Code 斜杠命令 | `.claude/commands/nines/` |
+| `codex` | Codex 智能体技能 | `.codex/skills/nines/` |
+| `copilot` | GitHub Copilot 指令 | `.github/copilot-instructions.md` |
+| `all` | 所有检测到的运行时 | 以上全部 |
 
 ### 示例
 
 ```bash
 nines install --target cursor
 nines install --target claude --global
+nines install --target codex
+nines install --target copilot
 nines install --target all --dry-run
 nines install --target cursor --uninstall
+nines install --target all --uninstall
 ```
 
 ---

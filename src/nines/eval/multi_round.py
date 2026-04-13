@@ -40,6 +40,7 @@ class RoundResult:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "round_number": self.round_number,
             "results": [r.to_dict() for r in self.results],
@@ -50,6 +51,7 @@ class RoundResult:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> RoundResult:
+        """Deserialize from dictionary."""
         return cls(
             round_number=data["round_number"],
             results=[EvalResult.from_dict(r) for r in data.get("results", [])],
@@ -77,6 +79,7 @@ class MultiRoundReport:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "suite_id": self.suite_id,
             "rounds": [r.to_dict() for r in self.rounds],
@@ -94,6 +97,7 @@ class MultiRoundReport:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> MultiRoundReport:
+        """Deserialize from dictionary."""
         return cls(
             suite_id=data["suite_id"],
             rounds=[RoundResult.from_dict(r) for r in data.get("rounds", [])],
@@ -140,6 +144,7 @@ class MultiRoundRunner:
         min_rounds: int = 3,
         max_rounds: int = 10,
     ) -> None:
+        """Initialize multi round runner."""
         if min_rounds < 1:
             raise ValueError("min_rounds must be >= 1")
         if max_rounds < min_rounds:
@@ -231,6 +236,7 @@ class MultiRoundRunner:
         executor: ExecutorFn,
         scorers: list[ScorerProtocol],
     ) -> RoundResult:
+        """Run round direct."""
         start = time.monotonic()
         results = self._eval_runner.run(tasks, executor, scorers)
         duration_ms = (time.monotonic() - start) * 1000
@@ -250,6 +256,7 @@ class MultiRoundRunner:
         executor: ExecutorFn,
         scorers: list[ScorerProtocol],
     ) -> RoundResult:
+        """Run round sandboxed."""
         assert self._sandbox_manager is not None
         ctx = self._sandbox_manager.create()
         try:
@@ -328,6 +335,7 @@ class MultiRoundRunner:
 
     @staticmethod
     def _aggregate_composite(results: list[EvalResult]) -> float:
+        """Aggregate composite."""
         if not results:
             return 0.0
         return statistics.mean(r.composite_score for r in results)

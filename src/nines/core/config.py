@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Any
 
 from nines.core.errors import (
-    ConfigError,
     ConfigFileNotFoundError,
     ConfigParseError,
     ConfigValidationError,
@@ -146,6 +145,7 @@ class NinesConfig:
     _raw: dict[str, Any] = field(default_factory=dict, repr=False)
 
     def __repr__(self) -> str:
+        """Return string representation."""
         parts = [f"{type(self).__name__}("]
         for f in fields(self):
             if f.name.startswith("_"):
@@ -203,8 +203,9 @@ class NinesConfig:
             )
 
         if not isinstance(self.supported_languages, list):
+            type_name = type(self.supported_languages).__name__
             raise ConfigValidationError(
-                f"supported_languages must be a list, got {type(self.supported_languages).__name__}",
+                f"supported_languages must be a list, got {type_name}",
                 details={"field": "analyze.target_languages"},
             )
 
@@ -243,6 +244,7 @@ class NinesConfig:
 
 
 def _check_positive_int(value: int, field_name: str) -> None:
+    """Check positive int."""
     if not isinstance(value, int) or value <= 0:
         raise ConfigValidationError(
             f"{field_name}={value} must be a positive integer",
@@ -440,19 +442,19 @@ def _try_extract_field(
     """Try multiple key variants to extract a field from section data."""
     # Short TOML keys (e.g. ``timeout``) must win over merged defaults that also
     # carry the canonical key (e.g. ``default_timeout`` from defaults.toml).
-    _PRIORITY_ALIAS: dict[str, str] = {
+    priority_alias: dict[str, str] = {
         "default_timeout": "timeout",
     }
-    priority_alias = _PRIORITY_ALIAS.get(field_name)
-    if priority_alias and priority_alias in section_data:
-        flat[field_name] = section_data[priority_alias]
+    alias_key = priority_alias.get(field_name)
+    if alias_key and alias_key in section_data:
+        flat[field_name] = section_data[alias_key]
         return
 
     if field_name in section_data:
         flat[field_name] = section_data[field_name]
         return
 
-    _ALIASES: dict[str, list[str]] = {
+    aliases: dict[str, list[str]] = {
         "eval_timeout": ["default_timeout"],
         "eval_max_retries": ["max_retries"],
         "eval_parallel": ["parallel_workers"],
@@ -472,7 +474,7 @@ def _try_extract_field(
         "sandbox_use_venv": ["backend"],
     }
 
-    for alias in _ALIASES.get(field_name, []):
+    for alias in aliases.get(field_name, []):
         if alias in section_data:
             val = section_data[alias]
             if field_name == "sandbox_use_venv" and isinstance(val, str):
@@ -560,6 +562,7 @@ def _manual_to_toml(config: NinesConfig) -> str:
     data = _config_to_nested_dict(config)
 
     def _write_section(d: dict[str, Any], prefix: str = "") -> None:
+        """Write section."""
         scalars = {k: v for k, v in d.items() if not isinstance(v, dict)}
         tables = {k: v for k, v in d.items() if isinstance(v, dict)}
 

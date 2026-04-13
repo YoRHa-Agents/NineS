@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from nines.iteration.self_eval import SelfEvalReport
+if TYPE_CHECKING:
+    from nines.iteration.self_eval import SelfEvalReport
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ class Gap:
     severity: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "dimension": self.dimension,
             "current": self.current,
@@ -74,6 +76,7 @@ class GapAnalysis:
     priority_gaps: list[Gap] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "improved": [g.to_dict() for g in self.improved],
             "regressed": [g.to_dict() for g in self.regressed],
@@ -92,6 +95,7 @@ class GapDetector:
     """
 
     def __init__(self, tolerance: float = 0.01) -> None:
+        """Initialize gap detector."""
         self._tolerance = tolerance
 
     def detect(

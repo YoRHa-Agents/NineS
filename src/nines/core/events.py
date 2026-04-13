@@ -12,9 +12,10 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from nines.core.errors import NinesError
 
@@ -61,7 +62,7 @@ class Event:
     type: str
     data: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC)
     )
 
 
@@ -89,6 +90,7 @@ class EventBus:
     _instance: EventBus | None = None
 
     def __init__(self, max_handlers_per_event: int = 50) -> None:
+        """Initialize event bus."""
         self._handlers: dict[str, list[EventHandler]] = defaultdict(list)
         self._max_handlers = max_handlers_per_event
 

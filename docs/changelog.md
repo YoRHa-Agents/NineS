@@ -4,6 +4,43 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v1.0.0 — 2026-04-13
+
+**Theme:** Multi-runtime skill integration, 19-dimension capability evaluation, and production readiness.
+
+### Added
+- **Codex adapter** — install NineS as a Codex skill at `.codex/skills/nines/` with SKILL.md + per-command workflows
+- **GitHub Copilot adapter** — install NineS as Copilot instructions at `.github/copilot-instructions.md`
+- **One-click install script** (`scripts/install.sh`) — `curl | bash` style installer with Python detection, uv/pip fallback, and automatic skill file generation
+- **`--uninstall` CLI flag** for `nines install` — clean removal of skill files from any target runtime
+- **DevolaFlow integration feedback** — proposed NineS as quality gate scorer, research tool, and advisor plugin for DevolaFlow v4.2.0
+- 12 new tests for Codex adapter, Copilot adapter, installer integration, and uninstall flow
+- **19-dimension capability evaluation framework** — all design dimensions (D01–D19) now have live evaluators
+- **V1 Evaluation evaluators** (D01 ScoringAccuracy, D03 Reliability, D05 ScorerAgreement) with 20-task golden test set
+- **V2 Collection evaluators** (D06 SourceCoverage, D09 DataCompleteness, D10 CollectionThroughput)
+- **V3 Analysis evaluators** (D11–D15) measuring decomposition, abstraction, code review, index recall, structure recognition
+- **System evaluators** (D16 PipelineLatency, D17 SandboxIsolation, D18 ConvergenceRate, D19 CrossVertexSynergy)
+- Golden test set at `data/golden_test_set/` with 20 calibrated TOML tasks
+- Self-eval CLI restructured: 70% capability / 30% hygiene weighting, grouped output by V1/V2/V3/System
+- `--capability-only` and `--golden-dir` CLI options for focused evaluation (total: 1005 tests)
+
+### Changed
+- `nines install --target` now accepts 5 targets: `cursor`, `claude`, `codex`, `copilot`, `all`
+- Installer `ADAPTERS` registry expanded from 2 to 4 runtimes
+- Skill `__init__.py` public API includes `CopilotAdapter` alongside existing adapters
+
+### Improved
+- **Self-eval score: 0.9940** — capability dimensions 17/17 at 100%, hygiene 98%
+  - V1 Evaluation: D01–D05 all 100% (scoring accuracy, coverage, reliability, report quality, scorer agreement)
+  - V2 Collection: D06/D09/D10 all 100% (source coverage, data completeness, throughput)
+  - V3 Analysis: D11–D15 all 100% (decomposition, abstraction, code review, index recall, structure recognition)
+  - System: D16–D19 all 100% (pipeline latency, sandbox isolation, convergence, cross-vertex synergy)
+- Documentation updated for all 4 runtime targets (EN + ZH)
+- Agent skill setup guide, quick start, CLI reference, installation guide, and design spec all reflect v1.0.0-pre capabilities
+- README updated with one-click install and 4-runtime support
+
+---
+
 ## v0.6.0 — 2026-04-13
 
 **Theme:** DevolaFlow analysis showcase and EvoBench evaluation integration.

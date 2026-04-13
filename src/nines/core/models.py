@@ -11,7 +11,7 @@ Covers: FR-101, FR-305, FR-510.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -221,7 +221,7 @@ class CollectionResult:
     identifier: str
     data: Any = None
     collected_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -243,7 +243,7 @@ class CollectionResult:
             identifier=data["identifier"],
             data=data.get("data"),
             collected_at=data.get(
-                "collected_at", datetime.now(timezone.utc).isoformat()
+                "collected_at", datetime.now(UTC).isoformat()
             ),
             metadata=data.get("metadata", {}),
         )
@@ -269,7 +269,7 @@ class AnalysisResult:
     findings: list[Any] = field(default_factory=list)
     metrics: dict[str, Any] = field(default_factory=dict)
     timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
 
     def to_dict(self) -> dict[str, Any]:
@@ -297,7 +297,7 @@ class AnalysisResult:
             findings=findings,
             metrics=data.get("metrics", {}),
             timestamp=data.get(
-                "timestamp", datetime.now(timezone.utc).isoformat()
+                "timestamp", datetime.now(UTC).isoformat()
             ),
         )
 

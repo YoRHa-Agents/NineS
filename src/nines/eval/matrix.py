@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import itertools
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
 
 from nines.eval.models import EvalResult
 
@@ -35,6 +35,7 @@ class MatrixCell:
 
     @property
     def key(self) -> str:
+        """Return a unique key for this cell's coordinates."""
         parts = [f"{k}={v}" for k, v in sorted(self.coordinates.items())]
         return "|".join(parts)
 
@@ -57,16 +58,20 @@ class MatrixEvaluator:
     """Defines an evaluation matrix and runs evaluations across all cells."""
 
     def __init__(self) -> None:
+        """Initialize matrix evaluator."""
         self._axes: list[MatrixAxis] = []
         self._exclusion_rules: list[ExclusionRule] = []
 
     def add_axis(self, name: str, values: list[str]) -> None:
+        """Add axis."""
         self._axes.append(MatrixAxis(name=name, values=values))
 
     def add_exclusion_rule(self, rule: ExclusionRule) -> None:
+        """Add exclusion rule."""
         self._exclusion_rules.append(rule)
 
     def generate_cells(self) -> list[MatrixCell]:
+        """Generate cells."""
         if not self._axes:
             return []
 
@@ -75,7 +80,7 @@ class MatrixEvaluator:
 
         cells: list[MatrixCell] = []
         for combo in itertools.product(*axis_values):
-            coords = dict(zip(axis_names, combo))
+            coords = dict(zip(axis_names, combo, strict=True))
             cells.append(MatrixCell(coordinates=coords))
         return cells
 
@@ -121,9 +126,11 @@ class MatrixEvaluator:
 
     @property
     def axes(self) -> list[MatrixAxis]:
+        """Return the list of defined axes."""
         return list(self._axes)
 
     def total_cells(self) -> int:
+        """Total cells."""
         if not self._axes:
             return 0
         count = 1

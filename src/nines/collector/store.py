@@ -12,16 +12,17 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from nines.collector.models import (
-    ChangeEvent,
     CollectionSnapshot,
     Paper,
     Repository,
 )
 from nines.core.errors import CollectorError
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -75,12 +76,14 @@ class DataStore:
     """
 
     def __init__(self, db_path: str | Path = ":memory:") -> None:
+        """Initialize data store."""
         self._db_path = str(db_path)
         self._conn: sqlite3.Connection | None = None
         self.init_db()
 
     @property
     def _connection(self) -> sqlite3.Connection:
+        """Return a database connection, creating one if needed."""
         if self._conn is None:
             raise CollectorError("DataStore is closed")
         return self._conn
@@ -297,6 +300,7 @@ class DataStore:
 
     @staticmethod
     def _row_to_repo(row: sqlite3.Row) -> Repository:
+        """Row to repo."""
         topics_raw = row["topics"]
         try:
             topics = json.loads(topics_raw) if topics_raw else []
@@ -318,7 +322,9 @@ class DataStore:
 
     @staticmethod
     def _row_to_paper(row: sqlite3.Row) -> Paper:
+        """Row to paper."""
         def _json_list(raw: Any, field_name: str = "") -> list[str]:
+            """Json list."""
             if not raw:
                 return []
             try:
@@ -343,6 +349,7 @@ class DataStore:
 
     @staticmethod
     def _row_to_snapshot(row: sqlite3.Row) -> CollectionSnapshot:
+        """Row to snapshot."""
         items_raw = row["items"]
         try:
             items = json.loads(items_raw) if items_raw else []

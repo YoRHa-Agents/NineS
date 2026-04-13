@@ -60,6 +60,7 @@ class KeyPointConclusion:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "keypoint_id": self.keypoint_id,
             "keypoint_title": self.keypoint_title,
@@ -77,6 +78,7 @@ class KeyPointConclusion:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> KeyPointConclusion:
+        """Deserialize from dictionary."""
         return cls(
             keypoint_id=data["keypoint_id"],
             keypoint_title=data["keypoint_title"],
@@ -107,6 +109,7 @@ class MappingTable:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "target": self.target,
             "conclusions": [c.to_dict() for c in self.conclusions],
@@ -120,6 +123,7 @@ class MappingTable:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> MappingTable:
+        """Deserialize from dictionary."""
         return cls(
             target=data["target"],
             conclusions=[KeyPointConclusion.from_dict(c) for c in data.get("conclusions", [])],
@@ -184,6 +188,7 @@ class MappingTableGenerator:
         effectiveness_threshold: float = 0.7,
         confidence_threshold: float = 0.6,
     ) -> None:
+        """Initialize mapping table generator."""
         self._effectiveness_threshold = effectiveness_threshold
         self._confidence_threshold = confidence_threshold
 

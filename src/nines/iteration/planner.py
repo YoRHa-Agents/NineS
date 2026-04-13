@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from nines.iteration.gap_detector import GapAnalysis
+if TYPE_CHECKING:
+    from nines.iteration.gap_detector import GapAnalysis
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ class Suggestion:
     rationale: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "dimension": self.dimension,
             "action": self.action,
@@ -67,6 +69,7 @@ class ImprovementPlan:
     total_gaps: int = 0
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "suggestions": [s.to_dict() for s in self.suggestions],
             "total_gaps": self.total_gaps,
@@ -138,6 +141,7 @@ class ImprovementPlanner:
 
     @staticmethod
     def _estimate_effort(severity: float) -> str:
+        """Estimate effort."""
         for threshold, label in _EFFORT_THRESHOLDS.items():
             if severity >= threshold:
                 return label

@@ -65,6 +65,7 @@ class SandboxManager:
         base_dir: Path | None = None,
         max_concurrent: int = 8,
     ) -> None:
+        """Initialize sandbox manager."""
         self._base_dir = base_dir or Path(tempfile.gettempdir()) / "nines_sandboxes"
         self._base_dir.mkdir(parents=True, exist_ok=True)
         self._venv_factory = VenvFactory(self._base_dir / "venvs")
@@ -130,9 +131,8 @@ class SandboxManager:
         with self._lock:
             self._active.pop(sid, None)
 
-        if not context.config.keep_on_failure:
-            if context.work_dir.exists():
-                shutil.rmtree(context.work_dir, ignore_errors=True)
+        if not context.config.keep_on_failure and context.work_dir.exists():
+            shutil.rmtree(context.work_dir, ignore_errors=True)
 
         if context.venv_path is not None:
             self._venv_factory.destroy_venv(context.venv_path)
@@ -170,19 +170,23 @@ class SandboxManager:
 
     @property
     def active_count(self) -> int:
+        """Return the active count."""
         with self._lock:
             return len(self._active)
 
     @property
     def active_sandboxes(self) -> dict[str, SandboxContext]:
+        """Return the active sandboxes."""
         with self._lock:
             return dict(self._active)
 
     # -- context manager ----------------------------------------------------
 
     def __enter__(self) -> SandboxManager:
+        """Enter the context manager."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:  # type: ignore[no-untyped-def]
+        """Exit the context manager."""
         self.destroy_all()
         return None

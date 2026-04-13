@@ -134,7 +134,7 @@ markdown_extensions:
       permalink: true
 
 extra:
-  nines_version: "0.6.0"
+  nines_version: "1.0.0"
   version:
     provider: mike
   social:

@@ -35,6 +35,7 @@ class ScoringCriterion:
     params: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "name": self.name,
             "weight": self.weight,
@@ -45,6 +46,7 @@ class ScoringCriterion:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ScoringCriterion:
+        """Deserialize from dictionary."""
         return cls(
             name=data["name"],
             weight=data["weight"],
@@ -97,6 +99,7 @@ class TaskDefinition:
         )
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         result: dict[str, Any] = {
             "id": self.id,
             "name": self.name,
@@ -113,6 +116,7 @@ class TaskDefinition:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> TaskDefinition:
+        """Deserialize from dictionary."""
         criteria_raw = data.get("scoring_criteria", [])
         criteria = [ScoringCriterion.from_dict(c) for c in criteria_raw]
         return cls(
@@ -132,6 +136,7 @@ class TaskDefinition:
         return tomli_w.dumps(doc)
 
     def _to_toml_dict(self) -> dict[str, Any]:
+        """To toml dict."""
         data: dict[str, Any] = {
             "id": self.id,
             "name": self.name,
@@ -178,9 +183,7 @@ class TaskDefinition:
         expected_raw = task_data.get("expected")
         if isinstance(expected_raw, dict):
             keys = set(expected_raw.keys())
-            if keys == {"value"}:
-                expected_raw = expected_raw["value"]
-            elif "value" in expected_raw and expected_raw.get("type") in (
+            if keys == {"value"} or "value" in expected_raw and expected_raw.get("type") in (
                 None,
                 "text",
                 "code",
@@ -228,6 +231,7 @@ class EvalResult:
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "task_id": self.task_id,
             "task_name": self.task_name,
@@ -241,10 +245,12 @@ class EvalResult:
         }
 
     def to_json(self) -> str:
+        """Serialize to JSON string."""
         return json.dumps(self.to_dict(), indent=2, default=str)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> EvalResult:
+        """Deserialize from dictionary."""
         return cls(
             task_id=data["task_id"],
             task_name=data.get("task_name", ""),
