@@ -19,6 +19,25 @@
 
 此示例展示了 `nines analyze --agent-impact` 如何评估 AI 化仓库对 Agent 效能的实际影响。
 
+[阅读完整的 Caveman 分析 →](caveman-analysis.md)
+
+---
+
+### DevolaFlow 仓库分析
+
+对 [YoRHa-Agents/DevolaFlow](https://github.com/YoRHa-Agents/DevolaFlow) 的深度分析，展示 NineS 可执行评测方法论在**编排元框架**上的应用 — 超越简单工具分析，评估结构性决策如何影响 Agent 效能：
+
+- **4 层 Agent 层级** — 分解 L0–L3 调度架构及其对 Token 预算的影响
+- **工作流模板分析** — 评估 17 个内置模板的任务自适应路由效率
+- **上下文经济学** — 量化层级特定预算相较于单体方案的 Token 节省
+- **质量门控评估** — 分析收敛检测和多轮可靠性控制
+- **EvoBench 维度映射** — 将 32 个评估维度（T1–T8、M1–M8、W1–W8、TT1–TT8）与面向 Agent 的分析对齐
+- **基准测试执行** — 15 个关键点、30 个生成任务、多轮沙箱化评测与验证结论
+
+此示例展示了 NineS 如何将分析从简单工具（Caveman）扩展到元框架（DevolaFlow），评估编排规则而非仅代码制品。
+
+[阅读完整的 DevolaFlow 分析 →](devolaflow-analysis.md)
+
 ---
 
 ## 示例评估任务

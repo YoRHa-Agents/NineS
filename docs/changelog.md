@@ -4,6 +4,26 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v0.6.0 — 2026-04-13
+
+**Theme:** DevolaFlow analysis showcase and EvoBench evaluation integration.
+
+### Added
+- DevolaFlow repository deep analysis showcase — 15 key points, 30 benchmark tasks, multi-round evaluation with EvoBench dimension mapping
+- EvoBench integration insights section documenting 32 evaluation dimensions (T1–T8, M1–M8, W1–W8, TT1–TT8) alignment with agent-facing analysis
+- NineS capabilities assessment and v0.6.0 improvement roadmap in showcase reports
+- Chinese translation for DevolaFlow analysis showcase
+
+### Changed
+- Showcase index updated to feature DevolaFlow as second case study alongside Caveman
+- Analysis methodology extended to meta-framework evaluation (orchestration rules, not just tools)
+
+### Improved
+- Documentation of NineS evaluation pipeline capabilities and identified gaps
+- Cross-repository analysis patterns established (simple tool → meta-framework)
+
+---
+
 ## v0.5.0 — 2026-04-12
 
 **Theme:** Executable evaluation framework and self-driven improvement.
