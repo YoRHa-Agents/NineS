@@ -12,7 +12,6 @@ import ast
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from nines.core.errors import AnalyzerError
 from nines.core.models import Finding
@@ -89,13 +88,16 @@ class _ComplexityVisitor(ast.NodeVisitor):
     )
 
     def __init__(self) -> None:
+        """Initialize complexity visitor."""
         self.complexity = 1
 
     def _check_boolop(self, node: ast.AST) -> None:
+        """Check boolop."""
         if isinstance(node, ast.BoolOp):
             self.complexity += len(node.values) - 1
 
     def generic_visit(self, node: ast.AST) -> None:
+        """Generic visit."""
         if isinstance(node, self._BRANCH_TYPES):
             self.complexity += 1
         self._check_boolop(node)
@@ -103,6 +105,7 @@ class _ComplexityVisitor(ast.NodeVisitor):
 
 
 def _compute_complexity(node: ast.AST) -> int:
+    """Compute complexity."""
     visitor = _ComplexityVisitor()
     visitor.visit(node)
     return visitor.complexity
@@ -112,6 +115,7 @@ class _FileVisitor(ast.NodeVisitor):
     """Single-pass AST visitor that extracts functions, classes, and imports."""
 
     def __init__(self, source_path: str) -> None:
+        """Initialize file visitor."""
         self._source_path = source_path
         self.functions: list[FunctionInfo] = []
         self.classes: list[ClassInfo] = []
@@ -119,14 +123,17 @@ class _FileVisitor(ast.NodeVisitor):
         self._class_stack: list[str] = []
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        """Visit function def."""
         self._process_function(node, is_async=False)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        """Visit async function def."""
         self._process_function(node, is_async=True)
 
     def _process_function(
         self, node: ast.FunctionDef | ast.AsyncFunctionDef, *, is_async: bool
     ) -> None:
+        """Process function."""
         qualified = ".".join([*self._class_stack, node.name])
         args = [a.arg for a in node.args.args]
         decorators = [_decorator_name(d) for d in node.decorator_list]
@@ -155,6 +162,7 @@ class _FileVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        """Visit class def."""
         bases = [_name_from_node(b) for b in node.bases]
         end_lineno = getattr(node, "end_lineno", node.lineno) or node.lineno
         qualified = ".".join([*self._class_stack, node.name])
@@ -175,6 +183,7 @@ class _FileVisitor(ast.NodeVisitor):
         self._class_stack.pop()
 
     def visit_Import(self, node: ast.Import) -> None:
+        """Visit import."""
         for alias in node.names:
             self.imports.append(
                 ImportInfo(
@@ -186,6 +195,7 @@ class _FileVisitor(ast.NodeVisitor):
             )
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        """Visit import from."""
         module = node.module or ""
         names = [a.name for a in (node.names or [])]
         self.imports.append(
@@ -199,6 +209,7 @@ class _FileVisitor(ast.NodeVisitor):
 
 
 def _decorator_name(node: ast.expr) -> str:
+    """Decorator name."""
     if isinstance(node, ast.Name):
         return node.id
     if isinstance(node, ast.Attribute):
@@ -209,6 +220,7 @@ def _decorator_name(node: ast.expr) -> str:
 
 
 def _name_from_node(node: ast.expr) -> str:
+    """Name from node."""
     if isinstance(node, ast.Name):
         return node.id
     if isinstance(node, ast.Attribute):
@@ -297,6 +309,7 @@ class CodeReviewer:
         avg_complexity: float,
         max_complexity: int,
     ) -> list[Finding]:
+        """Generate findings."""
         findings: list[Finding] = []
         idx = 0
 

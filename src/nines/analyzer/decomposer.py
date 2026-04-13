@@ -8,15 +8,15 @@ Covers: FR-305, FR-306, FR-307.
 
 from __future__ import annotations
 
-import ast
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from nines.core.models import KnowledgeUnit
 
-from nines.analyzer.reviewer import ClassInfo, FileReview, FunctionInfo
-from nines.analyzer.structure import StructureReport
+if TYPE_CHECKING:
+    from nines.analyzer.reviewer import FileReview, FunctionInfo
+    from nines.analyzer.structure import StructureReport
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,18 @@ CONCERN_PATTERNS: dict[str, list[str]] = {
     "configuration": ["config", "settings", "options", "defaults", "Config"],
     "io_operations": ["read", "write", "open", "save", "load", "fetch", "request"],
     "testing": ["test_", "assert", "mock", "fixture", "pytest"],
+    "evaluation": ["eval", "score", "scorer", "benchmark", "metric", "grade", "assess"],
+    "analysis": ["analy", "review", "inspect", "decompos", "finding", "structure"],
+    "collection": ["collect", "gather", "search", "crawl", "arxiv", "github", "source"],
+    "iteration": ["iterate", "converge", "improve", "gap", "plan", "baseline", "mapim"],
+    "indexing": ["index", "query", "search", "retrieve", "rank", "recall"],
+    "execution": ["run", "execute", "invoke", "dispatch", "process", "pipeline"],
+    "initialization": ["init", "setup", "create", "build", "register", "bootstrap"],
+    "parsing": ["parse", "extract", "tokenize", "split", "decode", "transform"],
+    "reporting": ["report", "format", "render", "display", "output", "emit", "generate"],
+    "sandbox": ["sandbox", "isolat", "venv", "pollution", "clean"],
+    "orchestration": ["orchestrat", "pipeline", "workflow", "stage", "wave", "dispatch"],
+    "skill": ["skill", "adapter", "install", "cursor", "claude", "codex", "copilot"],
 }
 
 LAYER_INDICATORS: dict[str, set[str]] = {
@@ -53,17 +65,31 @@ LAYER_INDICATORS: dict[str, set[str]] = {
 
 
 def _func_signature(func: FunctionInfo) -> str:
+    """Func signature."""
     args_str = ", ".join(func.args)
     prefix = "async def" if func.is_async else "def"
     return f"{prefix} {func.name}({args_str})"
 
 
-def _infer_tags(name: str, docstring: str | None) -> list[str]:
+def _infer_tags(name: str, docstring: str | None, source: str = "") -> list[str]:
+    """Infer tags from name, docstring, and source path."""
     tags: list[str] = []
     text = (name + " " + (docstring or "")).lower()
     for concern, keywords in CONCERN_PATTERNS.items():
         if any(kw.lower() in text for kw in keywords):
             tags.append(concern)
+    if source:
+        module_tags: dict[str, str] = {
+            "eval": "evaluation", "analyzer": "analysis", "collector": "collection",
+            "iteration": "iteration", "sandbox": "sandbox", "skill": "skill",
+            "orchestrator": "orchestration", "cli": "cli", "core": "core",
+        }
+        source_lower = source.lower()
+        for module_part, tag in module_tags.items():
+            if module_part in source_lower and tag not in tags:
+                tags.append(tag)
+    if not tags:
+        tags.append("general")
     return tags
 
 
@@ -114,7 +140,7 @@ class Decomposer:
                         "end_lineno": str(cls.end_lineno),
                         "method_count": str(len(cls.methods)),
                         "docstring": cls.docstring or "",
-                        "tags": ",".join(_infer_tags(cls.name, cls.docstring)),
+                        "tags": ",".join(_infer_tags(cls.name, cls.docstring, filepath)),
                     },
                 ))
                 for method in cls.methods:
@@ -206,6 +232,7 @@ class Decomposer:
         return result
 
     def _classify_layer(self, source_path: str) -> str:
+        """Classify layer."""
         parts = Path(source_path).parts
         lower_parts = {p.lower() for p in parts}
         for layer, indicators in LAYER_INDICATORS.items():
@@ -219,6 +246,7 @@ class Decomposer:
         func: FunctionInfo,
         parent_id: str | None = None,
     ) -> KnowledgeUnit:
+        """Func unit."""
         unit_id = f"{filepath}::{func.qualified_name}"
         sig = _func_signature(func)
         rels: dict[str, Any] = {}
@@ -237,6 +265,6 @@ class Decomposer:
                 "complexity": str(func.complexity),
                 "is_async": str(func.is_async),
                 "docstring": func.docstring or "",
-                "tags": ",".join(_infer_tags(func.name, func.docstring)),
+                "tags": ",".join(_infer_tags(func.name, func.docstring, filepath)),
             },
         )

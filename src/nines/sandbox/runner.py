@@ -14,7 +14,7 @@ import os
 import subprocess
 import time
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 logger = logging.getLogger("nines.sandbox.runner")
 
@@ -45,7 +45,7 @@ class IsolatedRunner:
     def run(
         self,
         command: list[str],
-        sandbox_context: "SandboxContext",
+        sandbox_context: SandboxContext,
         timeout: int = 30,
         seed: int | None = None,
     ) -> RunResult:
@@ -88,8 +88,14 @@ class IsolatedRunner:
         except subprocess.TimeoutExpired as exc:
             timed_out = True
             exit_code = -1
-            stdout = (exc.stdout or b"").decode("utf-8", errors="replace") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
-            stderr = (exc.stderr or b"").decode("utf-8", errors="replace") if isinstance(exc.stderr, bytes) else (exc.stderr or "")
+            if isinstance(exc.stdout, bytes):
+                stdout = (exc.stdout or b"").decode("utf-8", errors="replace")
+            else:
+                stdout = exc.stdout or ""
+            if isinstance(exc.stderr, bytes):
+                stderr = (exc.stderr or b"").decode("utf-8", errors="replace")
+            else:
+                stderr = exc.stderr or ""
             logger.warning(
                 "Command timed out after %ds in sandbox %s",
                 timeout,
@@ -110,7 +116,7 @@ class IsolatedRunner:
 
     @staticmethod
     def _build_env(
-        ctx: "SandboxContext", seed: int | None,
+        ctx: SandboxContext, seed: int | None,
     ) -> dict[str, str]:
         """Build an isolated environment dict for the subprocess."""
         env = os.environ.copy()
@@ -142,7 +148,5 @@ def _compute_fingerprint(exit_code: int, stdout: str, stderr: str) -> str:
 
 # Avoid circular import at module level — SandboxContext is used only for
 # type annotations and is resolved at runtime by the caller.
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from nines.sandbox.manager import SandboxContext

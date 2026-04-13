@@ -14,14 +14,17 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from nines.core.errors import EvalError
 from nines.core.models import ExecutionResult, Score
 from nines.eval.metrics import MetricCollector
 from nines.eval.models import EvalResult, TaskDefinition
-from nines.eval.scorers import ScorerProtocol
+
+if TYPE_CHECKING:
+    from nines.eval.scorers import ScorerProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,7 @@ class EvalRunner:
     """
 
     def __init__(self, metric_collector: MetricCollector | None = None) -> None:
+        """Initialize eval runner."""
         self._metric_collector = metric_collector or MetricCollector()
 
     def load_tasks(self, path: str | Path) -> list[TaskDefinition]:
@@ -143,6 +147,7 @@ class EvalRunner:
 
     @staticmethod
     def _execute(task: TaskDefinition, executor: ExecutorFn) -> ExecutionResult:
+        """Execute a single evaluation task."""
         return executor(task)
 
     @staticmethod
@@ -151,6 +156,7 @@ class EvalRunner:
         expected: Any,
         scorers: list[ScorerProtocol],
     ) -> list[Score]:
+        """Score task output against expected results."""
         scores: list[Score] = []
         for scorer in scorers:
             try:
@@ -167,6 +173,7 @@ class EvalRunner:
 
     @staticmethod
     def _compute_composite(scores: list[Score]) -> float:
+        """Compute composite."""
         if not scores:
             return 0.0
         return sum(s.value for s in scores) / len(scores)

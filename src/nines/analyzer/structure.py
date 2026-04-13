@@ -53,6 +53,7 @@ class DependencyMap:
 
     @property
     def modules(self) -> set[str]:
+        """Return all known module names."""
         result: set[str] = set(self.edges.keys())
         for targets in self.edges.values():
             result |= targets
@@ -79,6 +80,7 @@ class StructureReport:
     coupling_metrics: dict[str, dict[str, Any]]
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "root": self.root,
             "packages": [
@@ -132,11 +134,13 @@ class StructureAnalyzer:
         )
 
     def _should_skip(self, name: str) -> bool:
+        """Should skip."""
         if name.startswith("."):
             return True
         return name in _SKIP_DIRS
 
     def _discover_packages(self, root: Path) -> list[PackageInfo]:
+        """Discover packages."""
         packages: list[PackageInfo] = []
         for dirpath in sorted(root.rglob("*")):
             if not dirpath.is_dir():
@@ -177,6 +181,7 @@ class StructureAnalyzer:
         return packages
 
     def _count_file_types(self, root: Path) -> FileTypeCounts:
+        """Count file types."""
         counts: dict[str, int] = defaultdict(int)
         total = 0
         for fpath in root.rglob("*"):
@@ -190,6 +195,7 @@ class StructureAnalyzer:
         return FileTypeCounts(counts=dict(counts), total=total)
 
     def _collect_python_files(self, root: Path) -> list[Path]:
+        """Collect python files."""
         result: list[Path] = []
         for fpath in sorted(root.rglob("*.py")):
             if any(self._should_skip(p) for p in fpath.relative_to(root).parts):
@@ -217,6 +223,7 @@ class StructureAnalyzer:
         py_files: list[Path],
         module_map: dict[str, Path],
     ) -> DependencyMap:
+        """Resolve dependencies."""
         dep_map = DependencyMap()
         known_modules = set(module_map.keys())
 
@@ -248,6 +255,7 @@ class StructureAnalyzer:
     def _resolve_import_node(
         self, node: ast.AST, known_modules: set[str]
     ) -> str | None:
+        """Resolve import node."""
         if isinstance(node, ast.Import):
             for alias in node.names:
                 if alias.name in known_modules:
@@ -266,11 +274,17 @@ class StructureAnalyzer:
 
     @staticmethod
     def _find_prefix(name: str, known: set[str]) -> str | None:
+        """Find prefix."""
         parts = name.split(".")
         for i in range(len(parts), 0, -1):
             candidate = ".".join(parts[:i])
             if candidate in known:
                 return candidate
+        if len(parts) > 1:
+            for i in range(len(parts), 1, -1):
+                candidate = ".".join(parts[1:i])
+                if candidate in known:
+                    return candidate
         return None
 
     def _compute_coupling(
@@ -278,6 +292,7 @@ class StructureAnalyzer:
         dep_map: DependencyMap,
         module_map: dict[str, Path],
     ) -> dict[str, dict[str, Any]]:
+        """Compute coupling."""
         metrics: dict[str, dict[str, Any]] = {}
         for mod in module_map:
             info = dep_map.coupling_for(mod)

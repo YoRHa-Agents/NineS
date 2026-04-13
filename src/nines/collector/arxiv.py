@@ -57,17 +57,20 @@ class ArxivCollector:
         config: ArxivConfig | None = None,
         client: httpx.Client | None = None,
     ) -> None:
+        """Initialize arxiv collector."""
         self._config = config or ArxivConfig()
         self._client = client or httpx.Client(timeout=self._config.timeout_seconds)
         self._last_request_time: float = 0.0
 
     def _rate_limit_wait(self) -> None:
+        """Rate limit wait."""
         elapsed = time.monotonic() - self._last_request_time
         if elapsed < self._config.delay_seconds:
             time.sleep(self._config.delay_seconds - elapsed)
         self._last_request_time = time.monotonic()
 
     def _get(self, params: dict[str, Any]) -> httpx.Response:
+        """Send a GET request with rate limiting."""
         self._rate_limit_wait()
         last_exc: Exception | None = None
         for attempt in range(1, self._config.max_retries + 1):
@@ -147,9 +150,11 @@ class ArxivCollector:
     # ------------------------------------------------------------------
 
     async def search(self, query: str, **kwargs: Any) -> list[Any]:
+        """Search for papers matching a query."""
         return self.search_papers(query, **kwargs)
 
     async def fetch(self, identifier: str) -> Any:
+        """Fetch metadata for a single paper."""
         return self.fetch_paper(identifier)
 
     # ------------------------------------------------------------------
@@ -157,6 +162,7 @@ class ArxivCollector:
     # ------------------------------------------------------------------
 
     def _parse_feed(self, xml_text: str) -> list[Paper]:
+        """Parse feed."""
         try:
             root = ET.fromstring(xml_text)
         except ET.ParseError as exc:
@@ -174,11 +180,13 @@ class ArxivCollector:
 
     @staticmethod
     def _text(element: ET.Element | None) -> str:
+        """Text."""
         if element is None:
             return ""
         return (element.text or "").strip()
 
     def _parse_entry(self, entry: ET.Element) -> Paper | None:
+        """Parse entry."""
         raw_id = self._text(entry.find(f"{{{_ATOM_NS}}}id"))
         if not raw_id:
             return None

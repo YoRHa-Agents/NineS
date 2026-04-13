@@ -19,6 +19,28 @@ NineS {{ nines_version }} 在不同安装方式和环境下的详细安装说明
 
 ## 安装方式
 
+=== "一键脚本（最快）"
+
+    `scripts/install.sh` 脚本一站式处理 Python 版本验证、包安装和智能体技能配置：
+
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/YoRHa-Agents/NineS/main/scripts/install.sh | bash
+    ```
+
+    如果你已经克隆了仓库：
+
+    ```bash
+    bash scripts/install.sh --target all
+    ```
+
+    选项:
+
+    | 参数 | 描述 |
+    |------|------|
+    | `--target <RUNTIME>` | 智能体运行时：`cursor`、`claude`、`codex`、`copilot`、`all`（默认：`all`） |
+    | `--global` | 将技能文件安装到用户全局目录 |
+    | `--no-skill` | 仅安装 Python 包，跳过技能文件生成 |
+
 === "uv（推荐）"
 
     [uv](https://docs.astral.sh/uv/) 提供最快的安装体验。

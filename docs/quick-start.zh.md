@@ -18,6 +18,14 @@
 
 ## 安装
 
+最快的入门方式是使用一键安装脚本：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/YoRHa-Agents/NineS/main/scripts/install.sh | bash
+```
+
+或手动安装：
+
 ```bash
 git clone https://github.com/YoRHa-Agents/NineS.git && cd NineS
 uv sync
@@ -114,6 +122,28 @@ nines analyze ./src/nines --depth deep --decompose --index
 ```bash
 nines analyze ./src/nines --output markdown -o analysis_report.md
 ```
+
+---
+
+## 配置智能体技能
+
+将 NineS 安装为智能体技能，使 AI 助手能够直接在 IDE 中使用 NineS。NineS 支持 4 种运行时：Cursor、Claude Code、Codex 和 GitHub Copilot。
+
+```bash
+# 一次性为所有支持的运行时安装
+nines install --target all
+
+# 或为特定运行时安装
+nines install --target cursor
+nines install --target claude
+nines install --target codex
+nines install --target copilot
+```
+
+!!! tip "一键安装"
+    `scripts/install.sh` 脚本可一步完成包安装和技能配置。使用 `--target <runtime>` 为特定运行时安装。
+
+有关智能体技能配置和验证的完整详情，请参阅[智能体技能安装](agent-skill-setup.md)指南。
 
 ---
 

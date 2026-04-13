@@ -38,6 +38,7 @@ class ConvergenceResult:
     mean: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "converged": self.converged,
             "variance": self.variance,
@@ -62,6 +63,7 @@ class ConvergenceChecker:
     """
 
     def __init__(self, window_size: int = 5, min_rounds: int = 3) -> None:
+        """Initialize convergence checker."""
         self._window_size = window_size
         self._min_rounds = min_rounds
 

@@ -10,9 +10,10 @@ Covers: FR-605.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING
 
-from nines.iteration.self_eval import SelfEvalReport
+if TYPE_CHECKING:
+    from nines.iteration.self_eval import SelfEvalReport
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class ScoreHistory:
     """
 
     def __init__(self) -> None:
+        """Initialize score history."""
         self._reports: list[SelfEvalReport] = []
 
     def record(self, report: SelfEvalReport) -> None:
@@ -89,4 +91,5 @@ class ScoreHistory:
         return [r.overall for r in recent]
 
     def __len__(self) -> int:
+        """Return the number of items."""
         return len(self._reports)

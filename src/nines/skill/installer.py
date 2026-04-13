@@ -9,13 +9,19 @@ Covers: FR-506 (install CLI), FR-516 (version management).
 from __future__ import annotations
 
 import shutil
-import structlog
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from nines.skill.adapters import EmittedFile, SkillAdapter
+import structlog
+
 from nines.skill.claude_adapter import ClaudeAdapter
+from nines.skill.codex_adapter import CodexAdapter
+from nines.skill.copilot_adapter import CopilotAdapter
 from nines.skill.cursor_adapter import CursorAdapter
 from nines.skill.manifest import SkillManifest
+
+if TYPE_CHECKING:
+    from nines.skill.adapters import SkillAdapter
 
 log = structlog.get_logger(module="nines.skill.installer")
 
@@ -26,9 +32,12 @@ class SkillInstaller:
     ADAPTERS: dict[str, SkillAdapter] = {
         "cursor": CursorAdapter(),
         "claude": ClaudeAdapter(),
+        "codex": CodexAdapter(),
+        "copilot": CopilotAdapter(),
     }
 
     def __init__(self, manifest: SkillManifest | None = None) -> None:
+        """Initialize skill installer."""
         self._manifest = manifest or SkillManifest()
 
     def install(self, target: str, project_dir: Path | None = None) -> list[str]:
@@ -37,7 +46,7 @@ class SkillInstaller:
         Parameters
         ----------
         target:
-            ``"cursor"``, ``"claude"``, or ``"all"``.
+            ``"cursor"``, ``"claude"``, ``"codex"``, ``"copilot"``, or ``"all"``.
         project_dir:
             Root directory for the installation.  Defaults to cwd.
 
@@ -95,18 +104,25 @@ class SkillInstaller:
     # ------------------------------------------------------------------
 
     def _resolve_targets(self, target: str) -> list[str]:
+        """Resolve targets."""
         if target == "all":
             return list(self.ADAPTERS)
         if target not in self.ADAPTERS:
             raise ValueError(
-                f"Unknown target '{target}'. Expected one of: cursor, claude, all."
+                f"Unknown target '{target}'. "
+                f"Expected one of: {', '.join(self.ADAPTERS)}, all."
             )
         return [target]
 
     @staticmethod
     def _install_dir(adapter: SkillAdapter, project_dir: Path) -> Path:
+        """Install dir."""
         if isinstance(adapter, CursorAdapter):
             return project_dir / CursorAdapter.INSTALL_DIR
         if isinstance(adapter, ClaudeAdapter):
             return project_dir / ClaudeAdapter.INSTALL_DIR
+        if isinstance(adapter, CodexAdapter):
+            return project_dir / CodexAdapter.INSTALL_DIR
+        if isinstance(adapter, CopilotAdapter):
+            return project_dir / CopilotAdapter.INSTALL_DIR
         raise ValueError(f"Unsupported adapter: {adapter.runtime_name}")

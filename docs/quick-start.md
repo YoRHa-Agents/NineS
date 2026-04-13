@@ -18,6 +18,14 @@ Get NineS up and running in 5 minutes. This guide walks through installation, yo
 
 ## Installation
 
+The fastest way to get started is the one-click install script:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/YoRHa-Agents/NineS/main/scripts/install.sh | bash
+```
+
+Or install manually:
+
 ```bash
 git clone https://github.com/YoRHa-Agents/NineS.git && cd NineS
 uv sync
@@ -114,6 +122,28 @@ Output a structured Markdown report:
 ```bash
 nines analyze ./src/nines --output markdown -o analysis_report.md
 ```
+
+---
+
+## Set Up Agent Skills
+
+Install NineS as an Agent Skill to enable AI assistants to use NineS directly from your IDE. NineS supports 4 runtimes: Cursor, Claude Code, Codex, and GitHub Copilot.
+
+```bash
+# Install for all supported runtimes at once
+nines install --target all
+
+# Or install for a specific runtime
+nines install --target cursor
+nines install --target claude
+nines install --target codex
+nines install --target copilot
+```
+
+!!! tip "One-Click Install"
+    The `scripts/install.sh` script handles both package installation and skill setup in one step. Pass `--target <runtime>` to install for a specific runtime.
+
+For full details on agent skill setup and verification, see the [Agent Skill Setup](agent-skill-setup.md) guide.
 
 ---
 

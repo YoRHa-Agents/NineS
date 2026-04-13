@@ -10,9 +10,8 @@ Covers: FR-201–FR-208.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -35,6 +34,7 @@ class Repository:
     last_updated: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "id": self.id,
             "name": self.name,
@@ -50,6 +50,7 @@ class Repository:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Repository:
+        """Deserialize from dictionary."""
         return cls(
             id=data.get("id"),
             name=data.get("name", ""),
@@ -81,6 +82,7 @@ class Paper:
     pdf_url: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "id": self.id,
             "title": self.title,
@@ -94,6 +96,7 @@ class Paper:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Paper:
+        """Deserialize from dictionary."""
         return cls(
             id=data.get("id", ""),
             title=data.get("title", ""),
@@ -112,12 +115,13 @@ class CollectionSnapshot:
 
     source: str = ""
     timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
     items: list[dict[str, Any]] = field(default_factory=list)
     snapshot_id: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "source": self.source,
             "timestamp": self.timestamp,
@@ -127,6 +131,7 @@ class CollectionSnapshot:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CollectionSnapshot:
+        """Deserialize from dictionary."""
         return cls(
             source=data.get("source", ""),
             timestamp=data.get("timestamp", ""),
@@ -144,10 +149,11 @@ class ChangeEvent:
     old_value: Any = None
     new_value: Any = None
     detected_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "entity_id": self.entity_id,
             "change_type": self.change_type,
@@ -158,6 +164,7 @@ class ChangeEvent:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ChangeEvent:
+        """Deserialize from dictionary."""
         return cls(
             entity_id=data.get("entity_id", ""),
             change_type=data.get("change_type", ""),

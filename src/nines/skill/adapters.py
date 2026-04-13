@@ -1,18 +1,22 @@
 """Skill adapters for emitting runtime-specific files.
 
-Defines the :class:`SkillAdapter` protocol and two concrete implementations:
-:class:`CursorAdapter` (Cursor SKILL.md + command workflows) and
-:class:`ClaudeAdapter` (Claude Code slash commands + CLAUDE.md section).
+Defines the :class:`SkillAdapter` protocol and four concrete implementations:
+:class:`CursorAdapter` (Cursor SKILL.md + command workflows),
+:class:`ClaudeAdapter` (Claude Code slash commands + CLAUDE.md section),
+:class:`CodexAdapter` (Codex SKILL.md + command workflows), and
+:class:`CopilotAdapter` (GitHub Copilot instructions).
 
-Covers: FR-513 (Cursor adapter), FR-514 (Claude adapter), CON-09 (Protocol).
+Covers: FR-513 (Cursor adapter), FR-514 (Claude adapter), FR-517 (Codex adapter),
+FR-518 (Copilot adapter), CON-09 (Protocol).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from nines.skill.manifest import SkillManifest
+if TYPE_CHECKING:
+    from nines.skill.manifest import SkillManifest
 
 
 @dataclass(frozen=True)
@@ -49,6 +53,7 @@ class CursorAdapter:
 
     @property
     def runtime_name(self) -> str:
+        """Return the runtime name."""
         return self.RUNTIME_NAME
 
     def emit(self, manifest: SkillManifest) -> list[EmittedFile]:
@@ -59,6 +64,7 @@ class CursorAdapter:
         return files
 
     def _emit_skill_md(self, manifest: SkillManifest) -> EmittedFile:
+        """Emit skill md."""
         lines = [
             f"# {manifest.name.upper()} — {manifest.description}",
             "",
@@ -83,6 +89,7 @@ class CursorAdapter:
         )
 
     def _emit_command(self, manifest: SkillManifest, command_name: str) -> EmittedFile:
+        """Emit command."""
         short = command_name.removeprefix("nines-")
         content = (
             f"# {command_name}\n\n"
@@ -108,6 +115,7 @@ class ClaudeAdapter:
 
     @property
     def runtime_name(self) -> str:
+        """Return the runtime name."""
         return self.RUNTIME_NAME
 
     def emit(self, manifest: SkillManifest) -> list[EmittedFile]:
@@ -119,6 +127,7 @@ class ClaudeAdapter:
         return files
 
     def _emit_command(self, manifest: SkillManifest, cmd: object) -> EmittedFile:
+        """Emit command."""
         from nines.skill.manifest import CommandDef
 
         assert isinstance(cmd, CommandDef)
@@ -146,6 +155,7 @@ class ClaudeAdapter:
         )
 
     def _emit_claude_md_section(self, manifest: SkillManifest) -> EmittedFile:
+        """Emit claude md section."""
         lines = [
             f"{self.CLAUDE_MD_START}",
             "## NineS Agent Toolflow",
@@ -167,3 +177,142 @@ class ClaudeAdapter:
             content="\n".join(lines) + "\n",
             description="Content to append to CLAUDE.md",
         )
+
+
+class CodexAdapter:
+    """Generates ``.codex/skills/nines/`` files including SKILL.md.
+
+    Codex skills use a markdown-based SKILL.md with optional YAML frontmatter
+    and per-command workflow files under ``commands/``.
+
+    Covers: FR-517.
+    """
+
+    RUNTIME_NAME = "codex"
+    INSTALL_DIR = ".codex/skills/nines"
+
+    @property
+    def runtime_name(self) -> str:
+        """Return the runtime name."""
+        return self.RUNTIME_NAME
+
+    def emit(self, manifest: SkillManifest) -> list[EmittedFile]:
+        """Generate Codex skill files from *manifest*."""
+        files: list[EmittedFile] = [self._emit_skill_md(manifest)]
+        for cmd in manifest.commands:
+            files.append(self._emit_command(manifest, cmd))
+        return files
+
+    def _emit_skill_md(self, manifest: SkillManifest) -> EmittedFile:
+        """Emit skill md."""
+        lines = [
+            "---",
+            f"name: {manifest.name}",
+            f"version: {manifest.version}",
+            f"description: {manifest.description}",
+            f"author: {manifest.author}",
+            f"homepage: {manifest.homepage}",
+            "---",
+            "",
+            f"# {manifest.name.upper()} — {manifest.description}",
+            "",
+            "## Available Commands",
+            "",
+            "| Command | Description | Capability |",
+            "|---------|-------------|------------|",
+        ]
+        for cmd in manifest.commands:
+            short = cmd.name.removeprefix("nines-")
+            lines.append(f"| `{short}` | {cmd.description} | {cmd.capability} |")
+        lines += [
+            "",
+            "## Prerequisites",
+            "",
+            f"- The `{manifest.cli_binary}` CLI binary must be on `$PATH`.",
+            f"- Python {manifest.python_requires} is required.",
+            "",
+            "## Usage",
+            "",
+            f"All commands delegate to `{manifest.cli_binary} <subcommand>` via the Shell tool.",
+            "",
+            "```bash",
+            f"{manifest.cli_binary} <command> [options]",
+            "```",
+        ]
+        return EmittedFile(
+            relative_path="SKILL.md",
+            content="\n".join(lines) + "\n",
+            description="Main skill entry point",
+        )
+
+    def _emit_command(self, manifest: SkillManifest, cmd: object) -> EmittedFile:
+        """Emit command."""
+        from nines.skill.manifest import CommandDef
+
+        assert isinstance(cmd, CommandDef)
+        short = cmd.name.removeprefix("nines-")
+        lines = [
+            f"# {cmd.name}",
+            "",
+            f"> {cmd.description}",
+            "",
+            "## Invocation",
+            "",
+            "```bash",
+            f"{manifest.cli_binary} {short} {cmd.argument_hint}",
+            "```",
+            "",
+            f"Capability: `{cmd.capability}`",
+        ]
+        return EmittedFile(
+            relative_path=f"commands/{short}.md",
+            content="\n".join(lines) + "\n",
+            description=f"{cmd.name} command workflow",
+        )
+
+
+class CopilotAdapter:
+    """Generates ``.github/copilot-instructions.md`` with NineS documentation.
+
+    Covers: FR-518.
+    """
+
+    RUNTIME_NAME = "copilot"
+    INSTALL_DIR = ".github"
+
+    @property
+    def runtime_name(self) -> str:
+        """Return the runtime name."""
+        return self.RUNTIME_NAME
+
+    def emit(self, manifest: SkillManifest) -> list[EmittedFile]:
+        """Generate Copilot instructions file from *manifest*."""
+        lines = [
+            f"# {manifest.name.upper()} — {manifest.description}",
+            "",
+            "## Available Commands",
+            "",
+            "| Command | Description |",
+            "|---------|-------------|",
+        ]
+        for cmd in manifest.commands:
+            short = cmd.name.removeprefix("nines-")
+            lines.append(f"| `{short}` | {cmd.description} |")
+        lines += [
+            "",
+            "## Prerequisites",
+            "",
+            f"- The `{manifest.cli_binary}` CLI binary must be on `$PATH`.",
+            f"- Python {manifest.python_requires} is required.",
+            "",
+            "## Usage",
+            "",
+            f"All commands delegate to `{manifest.cli_binary} <subcommand>` via the Shell tool.",
+        ]
+        return [
+            EmittedFile(
+                relative_path="copilot-instructions.md",
+                content="\n".join(lines) + "\n",
+                description="Copilot instructions file",
+            )
+        ]

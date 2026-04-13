@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import logging
 import re
-from collections import Counter, defaultdict
+from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from nines.core.models import KnowledgeUnit
+if TYPE_CHECKING:
+    from nines.core.models import KnowledgeUnit
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class Pattern:
     confidence: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "name": self.name,
             "description": self.description,
@@ -51,6 +53,7 @@ class AbstractionLayer:
     """Extracts patterns from knowledge units using naming and structural heuristics."""
 
     def __init__(self, min_instances: int = 2, min_confidence: float = 0.3) -> None:
+        """Initialize abstraction layer."""
         self._min_instances = min_instances
         self._min_confidence = min_confidence
 

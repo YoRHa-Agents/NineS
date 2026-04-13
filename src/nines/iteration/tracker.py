@@ -11,11 +11,13 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 from nines.core.errors import OrchestrationError
-from nines.iteration.self_eval import SelfEvalReport
+
+if TYPE_CHECKING:
+    from nines.iteration.self_eval import SelfEvalReport
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +47,7 @@ class IterationRecord:
     duration: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "version": self.version,
             "started_at": self.started_at,
@@ -79,6 +82,7 @@ class ProgressReport:
     best_score: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "total_iterations": self.total_iterations,
             "current_version": self.current_version,
@@ -101,6 +105,7 @@ class IterationTracker:
     """
 
     def __init__(self) -> None:
+        """Initialize iteration tracker."""
         self._iterations: list[IterationRecord] = []
         self._current: IterationRecord | None = None
         self._start_time: float = 0.0
@@ -115,7 +120,7 @@ class IterationTracker:
         """
         self._current = IterationRecord(
             version=version,
-            started_at=datetime.now(timezone.utc).isoformat(),
+            started_at=datetime.now(UTC).isoformat(),
         )
         self._start_time = time.monotonic()
         logger.info("Started iteration '%s'", version)
@@ -139,7 +144,7 @@ class IterationTracker:
                 details={"hint": "Call start_iteration() before complete_iteration()"},
             )
 
-        self._current.completed_at = datetime.now(timezone.utc).isoformat()
+        self._current.completed_at = datetime.now(UTC).isoformat()
         self._current.report = report
         self._current.duration = time.monotonic() - self._start_time
         self._iterations.append(self._current)

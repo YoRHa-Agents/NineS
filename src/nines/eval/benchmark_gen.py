@@ -45,6 +45,7 @@ class BenchmarkSuite:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "id": self.id,
             "name": self.name,
@@ -56,6 +57,7 @@ class BenchmarkSuite:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BenchmarkSuite:
+        """Deserialize from dictionary."""
         return cls(
             id=data["id"],
             name=data.get("name", ""),

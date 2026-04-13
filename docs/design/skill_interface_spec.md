@@ -1,6 +1,6 @@
 # NineS Agent Skill Interface Specification
 
-> Task T09 — Defines the complete interface for NineS as an installable Agent Skill across Cursor, Claude Code, and programmatic consumers.
+> Task T09 — Defines the complete interface for NineS as an installable Agent Skill across Cursor, Claude Code, Codex, GitHub Copilot, and programmatic consumers.
 >
 > **Read-only reference:** `docs/research/gsd_analysis.md`
 > **Last updated:** 2026-04-11
@@ -12,9 +12,11 @@
 1. [Skill Manifest Format](#1-skill-manifest-format)
 2. [Cursor Skill Adapter](#2-cursor-skill-adapter)
 3. [Claude Code Adapter](#3-claude-code-adapter)
-4. [CLI Interface Definition](#4-cli-interface-definition)
-5. [Programmatic API](#5-programmatic-api)
-6. [Install / Uninstall Mechanism](#6-install--uninstall-mechanism)
+4. [Codex Skill Adapter](#4-codex-skill-adapter)
+5. [GitHub Copilot Adapter](#5-github-copilot-adapter)
+6. [CLI Interface Definition](#6-cli-interface-definition)
+7. [Programmatic API](#7-programmatic-api)
+8. [Install / Uninstall Mechanism](#8-install--uninstall-mechanism)
 
 ---
 
@@ -75,7 +77,7 @@ The manifest is the single source of truth describing a NineS installation. It i
     },
     "nines-install": {
       "description": "Install or uninstall NineS as an agent skill.",
-      "argument_hint": "--target <cursor|claude|all> [--uninstall] [--global]",
+      "argument_hint": "--target <cursor|claude|codex|copilot|all> [--uninstall] [--global]",
       "capability": "install"
     }
   },
@@ -99,6 +101,14 @@ The manifest is the single source of truth describing a NineS installation. It i
         "min_version": "1.0.0",
         "skill_format": "commands/*.md",
         "install_dir": ".claude/commands/nines/"
+      },
+      "codex": {
+        "skill_format": "SKILL.md",
+        "install_dir": ".codex/skills/nines/"
+      },
+      "copilot": {
+        "skill_format": "copilot-instructions.md",
+        "install_dir": ".github/"
       }
     },
     "platforms": ["linux", "macos", "windows"],
@@ -400,9 +410,111 @@ NineS configuration: `nines.toml` (project root) or `~/.config/nines/config.toml
 
 ---
 
-## 4. CLI Interface Definition
+## 4. Codex Skill Adapter
 
-### 4.1 Top-Level Structure
+### 4.1 Integration Approach
+
+Codex uses the same SKILL.md-based skill protocol as Cursor. NineS installs a skill directory under `.codex/skills/nines/` containing a `SKILL.md` entry point and per-command workflow files.
+
+### 4.2 Directory Structure
+
+```
+.codex/
+└── skills/
+    └── nines/
+        ├── SKILL.md              # Main skill entry point (Codex reads this)
+        ├── manifest.json         # Version manifest
+        └── commands/
+            ├── eval.md           # nines-eval command workflow
+            ├── collect.md        # nines-collect command workflow
+            ├── analyze.md        # nines-analyze command workflow
+            ├── self-eval.md      # nines-self-eval command workflow
+            ├── iterate.md        # nines-iterate command workflow
+            └── install.md        # nines-install command workflow
+```
+
+### 4.3 SKILL.md Content Format
+
+The `SKILL.md` file follows the same format as the Cursor adapter — a description block, available commands, invocation rules, and usage examples. The content is generated from the same manifest template, ensuring consistency across runtimes.
+
+### 4.4 Capability-to-Command Mapping
+
+| NineS Capability | Codex Command | CLI Delegation | Codex Tools Used |
+|---|---|---|---|
+| Evaluation | `nines-eval` | `nines eval ...` | Shell, Read |
+| Collection | `nines-collect` | `nines collect ...` | Shell, Read, Write |
+| Analysis | `nines-analyze` | `nines analyze ...` | Shell, Read |
+| Self-Evaluation | `nines-self-eval` | `nines self-eval ...` | Shell, Read |
+| Iteration | `nines-iterate` | `nines iterate ...` | Shell, Read, Write |
+| Installation | `nines-install` | `nines install ...` | Shell |
+
+### 4.5 Installation Process
+
+1. Verify `nines` Python package is installed (check `which nines`).
+2. Create directory `.codex/skills/nines/` in the project root.
+3. Write `SKILL.md` from the manifest template (same content as Cursor adapter).
+4. Write each command workflow file to `commands/`.
+5. Write `manifest.json` for version tracking.
+6. Codex auto-discovers skills under `.codex/skills/`.
+
+---
+
+## 5. GitHub Copilot Adapter
+
+### 5.1 Integration Approach
+
+GitHub Copilot uses a single instructions file (`.github/copilot-instructions.md`) for project-level customization. NineS generates this file with comprehensive documentation of all available CLI commands, usage patterns, and capability descriptions.
+
+Unlike the multi-file approaches used by Cursor, Claude Code, and Codex, Copilot relies on a single Markdown document that provides ambient context about NineS capabilities.
+
+### 5.2 File Structure
+
+```
+.github/
+└── copilot-instructions.md     # NineS capability documentation
+```
+
+### 5.3 Instructions Content Format
+
+The `copilot-instructions.md` file contains:
+
+1. **Overview** — Brief description of NineS and its purpose.
+2. **Available Commands** — Table of all CLI commands with descriptions and usage hints.
+3. **Usage Examples** — Concrete examples for each command.
+4. **Configuration** — How NineS configuration works.
+5. **Error Handling** — Common errors and troubleshooting hints.
+
+The content is delimited by markers (`<!-- nines:start -->` / `<!-- nines:end -->`) for clean install/uninstall, similar to the CLAUDE.md approach.
+
+### 5.4 Capability-to-Command Mapping
+
+| NineS Capability | CLI Command | Usage Pattern |
+|---|---|---|
+| Evaluation | `nines eval` | `nines eval <task> [--scorer TYPE] [--sandbox]` |
+| Collection | `nines collect` | `nines collect <source> <query> [--limit N]` |
+| Analysis | `nines analyze` | `nines analyze <target> [--depth LEVEL]` |
+| Self-Evaluation | `nines self-eval` | `nines self-eval [--report] [--compare]` |
+| Iteration | `nines iterate` | `nines iterate [--max-rounds N]` |
+| Installation | `nines install` | `nines install --target <runtime>` |
+
+### 5.5 Installation Process
+
+1. Verify `nines` Python package is installed.
+2. Check if `.github/copilot-instructions.md` exists.
+3. If it exists, append the NineS section between markers (or update existing markers).
+4. If it does not exist, create it with the NineS section.
+5. Write `manifest.json` to `.github/` for version tracking.
+
+### 5.6 Uninstallation
+
+1. Remove the `<!-- nines:start -->` ... `<!-- nines:end -->` section from `.github/copilot-instructions.md`.
+2. If the file is now empty, remove it.
+
+---
+
+## 6. CLI Interface Definition
+
+### 6.1 Top-Level Structure
 
 ```
 nines [GLOBAL_OPTIONS] <COMMAND> [COMMAND_OPTIONS] [ARGS...]
@@ -421,7 +533,7 @@ nines [GLOBAL_OPTIONS] <COMMAND> [COMMAND_OPTIONS] [ARGS...]
 | `--version` | `-V` | `flag` | | Print version and exit. |
 | `--help` | `-h` | `flag` | | Show help and exit. |
 
-### 4.2 Command: `nines eval`
+### 6.2 Command: `nines eval`
 
 Run evaluation benchmarks.
 
@@ -457,7 +569,7 @@ nines eval "tasks/*.toml" --parallel 4 --matrix --report
 nines eval tasks/analysis.toml --baseline v1 --format markdown
 ```
 
-### 4.3 Command: `nines collect`
+### 6.3 Command: `nines collect`
 
 Search and collect information from data sources.
 
@@ -504,7 +616,7 @@ nines collect update --format json
 nines collect export json --output collected.json
 ```
 
-### 4.4 Command: `nines analyze`
+### 6.4 Command: `nines analyze`
 
 Analyze and decompose knowledge.
 
@@ -546,7 +658,7 @@ nines analyze structure ./project --format json
 nines analyze search "dependency injection patterns"
 ```
 
-### 4.5 Command: `nines self-eval`
+### 6.5 Command: `nines self-eval`
 
 Run self-evaluation.
 
@@ -583,7 +695,7 @@ nines self-eval baseline list
 nines self-eval history --format json
 ```
 
-### 4.6 Command: `nines iterate`
+### 6.6 Command: `nines iterate`
 
 Execute self-improvement iteration.
 
@@ -619,7 +731,7 @@ nines iterate gaps --format markdown
 nines iterate plan --format json
 ```
 
-### 4.7 Command: `nines install`
+### 6.7 Command: `nines install`
 
 Install or uninstall NineS as an agent skill.
 
@@ -631,7 +743,7 @@ nines install [OPTIONS]
 
 | Flag | Short | Type | Default | Description |
 |---|---|---|---|---|
-| `--target` | `-t` | `string` | **required** | Target runtime: `cursor`, `claude`, `all`. |
+| `--target` | `-t` | `string` | **required** | Target runtime: `cursor`, `claude`, `codex`, `copilot`, `all`. |
 | `--uninstall` | | `flag` | off | Remove NineS skill from target. |
 | `--global` | `-g` | `flag` | off | Install to global user directory instead of project. |
 | `--project-dir` | | `PATH` | `.` | Project root for local installation. |
@@ -648,7 +760,7 @@ nines install --target cursor --uninstall
 nines install --target all --force
 ```
 
-### 4.8 Exit Codes
+### 6.8 Exit Codes
 
 All commands follow a consistent exit code scheme:
 
@@ -665,7 +777,7 @@ All commands follow a consistent exit code scheme:
 | `20` | `CONVERGENCE_FAIL` | Iteration did not converge within max rounds. |
 | `130` | `INTERRUPTED` | Interrupted by user (SIGINT / Ctrl+C). |
 
-### 4.9 Error Reporting
+### 6.9 Error Reporting
 
 Errors are reported to stderr in a structured format:
 
@@ -697,9 +809,9 @@ When `--format json` is active, errors are also written as JSON:
 
 ---
 
-## 5. Programmatic API
+## 7. Programmatic API
 
-### 5.1 Package Structure
+### 7.1 Package Structure
 
 ```python
 import nines
@@ -713,7 +825,7 @@ nines.iterate(...)
 nines.install(...)
 ```
 
-### 5.2 Public API
+### 7.2 Public API
 
 #### `nines.eval`
 
@@ -952,7 +1064,7 @@ def install(
     """Install or uninstall NineS as an agent skill."""
 ```
 
-### 5.3 Configuration Object
+### 7.3 Configuration Object
 
 ```python
 from nines.core.config import NinesConfig
@@ -970,7 +1082,7 @@ config.iteration.max_rounds           # 5
 config.iteration.convergence_threshold  # 0.02
 ```
 
-### 5.4 Event System
+### 7.4 Event System
 
 ```python
 from nines.core.events import EventBus, Event, EventType
@@ -986,12 +1098,12 @@ result = nines.eval("suite", config=NinesConfig(event_bus=bus))
 
 ---
 
-## 6. Install / Uninstall Mechanism
+## 8. Install / Uninstall Mechanism
 
-### 6.1 Installation Flow
+### 8.1 Installation Flow
 
 ```
-nines install --target <cursor|claude|all> [--global] [--force]
+nines install --target <cursor|claude|codex|copilot|all> [--global] [--force]
 ```
 
 #### Step-by-step: `nines install --target cursor`
@@ -1063,10 +1175,63 @@ nines install --target <cursor|claude|all> [--global] [--force]
 | `.claude/commands/nines/manifest.json` | created | Version manifest |
 | `CLAUDE.md` | appended/created | Ambient NineS context |
 
-### 6.2 Uninstallation Flow
+#### Step-by-step: `nines install --target codex`
+
+1. **Resolve install directory:**
+   - Local (default): `<project_dir>/.codex/skills/nines/`
+   - Global (`--global`): `~/.codex/skills/nines/`
+2. **Check existing installation:** Same as Cursor flow.
+3. **Load manifest:** Same.
+4. **Generate SKILL.md:** Render from template using manifest data (same as Cursor format).
+5. **Generate command files:** Write command workflow files to `commands/`.
+6. **Write manifest copy:** Write `manifest.json` for version tracking.
+7. **Report:**
+   ```
+   ✓ NineS v1.0.0-pre installed to .codex/skills/nines/
+     Created: SKILL.md, 6 commands
+     Invoke: mention "nines-eval", "nines-collect", etc. in Codex chat
+   ```
+
+#### Files created: Codex
+
+| File | Purpose |
+|---|---|
+| `.codex/skills/nines/SKILL.md` | Main skill entry point |
+| `.codex/skills/nines/manifest.json` | Installed version manifest |
+| `.codex/skills/nines/commands/eval.md` | Eval command workflow |
+| `.codex/skills/nines/commands/collect.md` | Collect command workflow |
+| `.codex/skills/nines/commands/analyze.md` | Analyze command workflow |
+| `.codex/skills/nines/commands/self-eval.md` | Self-eval command workflow |
+| `.codex/skills/nines/commands/iterate.md` | Iterate command workflow |
+| `.codex/skills/nines/commands/install.md` | Install command workflow |
+
+#### Step-by-step: `nines install --target copilot`
+
+1. **Resolve install directory:**
+   - Local (default): `<project_dir>/.github/`
+   - Global (`--global`): `~/.github/`
+2. **Check existing installation:** Look for NineS markers in `.github/copilot-instructions.md`.
+3. **Load manifest:** Same.
+4. **Generate instructions content:** Render NineS capability documentation from template.
+5. **Update copilot-instructions.md:**
+   - If exists: append NineS section (delimited by markers `<!-- nines:start -->` / `<!-- nines:end -->`).
+   - If does not exist: create it with NineS section.
+6. **Report:**
+   ```
+   ✓ NineS v1.0.0-pre installed to .github/copilot-instructions.md
+     Updated: copilot-instructions.md (NineS section appended)
+   ```
+
+#### Files created/modified: Copilot
+
+| File | Action | Purpose |
+|---|---|---|
+| `.github/copilot-instructions.md` | appended/created | NineS capability documentation for Copilot |
+
+### 8.2 Uninstallation Flow
 
 ```
-nines install --target <cursor|claude|all> --uninstall
+nines install --target <cursor|claude|codex|copilot|all> --uninstall
 ```
 
 #### Cursor uninstall
@@ -1085,7 +1250,21 @@ nines install --target <cursor|claude|all> --uninstall
 5. If `.claude/commands/` is now empty, remove it.
 6. Report: `✓ NineS removed from .claude/commands/nines/ and CLAUDE.md`
 
-### 6.3 Version Management
+#### Codex uninstall
+
+1. Verify `.codex/skills/nines/` exists.
+2. Remove the entire `.codex/skills/nines/` directory.
+3. If `.codex/skills/` is now empty, remove it.
+4. Report: `✓ NineS removed from .codex/skills/nines/`
+
+#### Copilot uninstall
+
+1. Verify `.github/copilot-instructions.md` exists and contains NineS markers.
+2. Remove the `<!-- nines:start -->` ... `<!-- nines:end -->` section from `.github/copilot-instructions.md`.
+3. If the file is now empty, remove it.
+4. Report: `✓ NineS removed from .github/copilot-instructions.md`
+
+### 8.3 Version Management
 
 The installed `manifest.json` records the installed version. On subsequent `nines install`, version comparison drives behavior:
 
@@ -1107,7 +1286,7 @@ def get_installed_version(install_dir: Path) -> str | None:
     return manifest.get("version")
 ```
 
-### 6.4 Dry-Run Mode
+### 8.4 Dry-Run Mode
 
 `--dry-run` prints every file operation without executing:
 
@@ -1126,7 +1305,7 @@ $ nines install --target cursor --dry-run
 [dry-run] Total: 10 files, 15.1 KB
 ```
 
-### 6.5 Runtime Detection
+### 8.5 Runtime Detection
 
 The installer can auto-detect which runtimes are available when `--target all` is used:
 
@@ -1138,6 +1317,10 @@ def detect_runtimes(project_dir: Path) -> list[str]:
         detected.append("cursor")
     if (project_dir / ".claude").is_dir() or shutil.which("claude"):
         detected.append("claude_code")
+    if (project_dir / ".codex").is_dir() or shutil.which("codex"):
+        detected.append("codex")
+    if (project_dir / ".github").is_dir():
+        detected.append("copilot")
     return detected
 ```
 
@@ -1179,21 +1362,28 @@ When `--target all`, the installer iterates over detected runtimes and installs 
 
 ---
 
-## Appendix B: Future Runtime Support
+## Appendix B: Current and Future Runtime Support
+
+NineS currently supports 4 agent runtimes:
+
+| Runtime | Install Dir | Skill Format | Status |
+|---|---|---|---|
+| Cursor | `.cursor/skills/nines/` | SKILL.md + command workflows | Shipped |
+| Claude Code | `.claude/commands/nines/` | Slash commands + CLAUDE.md | Shipped |
+| Codex | `.codex/skills/nines/` | SKILL.md + command workflows | Shipped (v1.0.0-pre) |
+| Copilot | `.github/copilot-instructions.md` | Single instructions file | Shipped (v1.0.0-pre) |
 
 The adapter architecture is designed for extensibility. Adding a new runtime requires:
 
 1. Add a new entry to `compatibility.runtimes` in the manifest schema.
-2. Implement a `SkillEmitter` subclass (e.g., `CopilotEmitter`, `WindsurfEmitter`).
+2. Implement a `SkillEmitter` subclass (e.g., `WindsurfEmitter`).
 3. Define tool name mapping for that runtime.
 4. Create a command template with the appropriate adapter header.
 5. Register the emitter in the installer's runtime registry.
 
-Candidate runtimes for post-MVP support:
+Candidate runtimes for future support:
 
 | Runtime | Install Dir | Skill Format | Priority |
 |---|---|---|---|
-| Copilot | `.github/skills/` | Markdown + YAML frontmatter | Medium |
 | Windsurf | `.windsurf/skills/` | Markdown + adapter header | Medium |
-| Codex | `.codex/skills/` | Markdown | Low |
 | Augment | `.augment/skills/` | Markdown + adapter header | Low |

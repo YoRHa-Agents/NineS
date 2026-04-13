@@ -248,6 +248,7 @@ class AgentImpactAnalyzer:
     _TOKENS_PER_WORD = 1.3
 
     def __init__(self) -> None:
+        """Initialize agent impact analyzer."""
         self._agent_patterns = [
             re.compile(p, re.IGNORECASE)
             for p in self.AGENT_ARTIFACT_PATTERNS

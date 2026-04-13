@@ -27,6 +27,13 @@ NineS provides a unified CLI and library for benchmarking AI agent capabilities 
 Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
+# One-click install (installs NineS + agent skills for all runtimes)
+curl -fsSL https://raw.githubusercontent.com/YoRHa-Agents/NineS/main/scripts/install.sh | bash
+```
+
+Or install manually:
+
+```bash
 # Clone the repository
 git clone https://github.com/YoRHa-Agents/NineS.git && cd NineS
 
@@ -45,7 +52,7 @@ nines --version
 
 ### Agent Skill Installation
 
-NineS can be installed as an Agent Skill into Cursor or Claude Code:
+NineS can be installed as an Agent Skill into Cursor, Claude Code, Codex, or GitHub Copilot:
 
 ```bash
 # Install as a Cursor skill (creates .cursor/skills/nines/)
@@ -54,11 +61,20 @@ nines install --target cursor
 # Install as a Claude Code skill (creates .claude/commands/nines/)
 nines install --target claude
 
+# Install as a Codex skill (creates .codex/skills/nines/)
+nines install --target codex
+
+# Install as a GitHub Copilot skill (creates .github/copilot-instructions.md)
+nines install --target copilot
+
 # Install for all supported runtimes
 nines install --target all
 
-# Uninstall
+# Uninstall from a specific runtime
 nines install --target cursor --uninstall
+
+# Uninstall from all runtimes
+nines install --target all --uninstall
 ```
 
 ### Usage Examples
@@ -166,7 +182,7 @@ NineS is organized around three capability vertices and supporting infrastructur
 | `iteration/` | Self-evaluation, gap detection, improvement planning, convergence |
 | `orchestrator/` | Workflow execution, cross-vertex data flow, artifact passing |
 | `sandbox/` | Process/venv/filesystem isolation for evaluation execution |
-| `skill/` | Agent runtime adapter generation (Cursor, Claude Code) |
+| `skill/` | Agent runtime adapter generation (Cursor, Claude Code, Codex, Copilot) |
 | `cli/` | User-facing Click command interface |
 
 ## Configuration

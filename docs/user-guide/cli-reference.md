@@ -205,20 +205,33 @@ nines install [OPTIONS]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--target TARGET` | Target runtime: `cursor`, `claude`, `all` | Required |
-| `--uninstall` | Remove NineS skill from target | Off |
+| `--target TARGET` | Target runtime: `cursor`, `claude`, `codex`, `copilot`, `all` | Required |
+| `--uninstall` | Remove NineS skill files from the target runtime | Off |
 | `--global` | Install to global user directory | Off |
 | `--project-dir PATH` | Project root directory | Current directory |
 | `--dry-run` | Show what would be done | Off |
 | `--force` | Overwrite existing installation | Off |
+
+### Targets
+
+| Target | Description | Install Directory |
+|--------|-------------|-------------------|
+| `cursor` | Cursor IDE agent skill | `.cursor/skills/nines/` |
+| `claude` | Claude Code slash commands | `.claude/commands/nines/` |
+| `codex` | Codex agent skill | `.codex/skills/nines/` |
+| `copilot` | GitHub Copilot instructions | `.github/copilot-instructions.md` |
+| `all` | All detected runtimes | All of the above |
 
 ### Examples
 
 ```bash
 nines install --target cursor
 nines install --target claude --global
+nines install --target codex
+nines install --target copilot
 nines install --target all --dry-run
 nines install --target cursor --uninstall
+nines install --target all --uninstall
 ```
 
 ---

@@ -35,6 +35,7 @@ class NinesError(Exception):
         details: dict[str, Any] | None = None,
         cause: Exception | None = None,
     ) -> None:
+        """Initialize nines error."""
         self.message = message
         self.details: dict[str, Any] = details or {}
         self.cause = cause

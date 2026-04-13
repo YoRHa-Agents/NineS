@@ -15,6 +15,7 @@ import logging
 import subprocess
 import time
 from dataclasses import dataclass, field
+from datetime import UTC
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
@@ -44,11 +45,13 @@ class DimensionScore:
 
     @property
     def normalized(self) -> float:
+        """Return the score normalized to [0, 1]."""
         if self.max_value == 0:
             return 0.0
         return self.value / self.max_value
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "name": self.name,
             "value": self.value,
@@ -59,6 +62,7 @@ class DimensionScore:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DimensionScore:
+        """Deserialize from dictionary."""
         return cls(
             name=data["name"],
             value=data["value"],
@@ -101,12 +105,14 @@ class SelfEvalReport:
     duration: float = 0.0
 
     def get_score(self, dimension: str) -> DimensionScore | None:
+        """Return score."""
         for s in self.scores:
             if s.name == dimension:
                 return s
         return None
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
         return {
             "scores": [s.to_dict() for s in self.scores],
             "overall": self.overall,
@@ -117,6 +123,7 @@ class SelfEvalReport:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SelfEvalReport:
+        """Deserialize from dictionary."""
         return cls(
             scores=[DimensionScore.from_dict(s) for s in data.get("scores", [])],
             overall=data.get("overall", 0.0),
@@ -138,6 +145,7 @@ class SelfEvalRunner:
     """
 
     def __init__(self) -> None:
+        """Initialize self eval runner."""
         self._evaluators: dict[str, DimensionEvaluator] = {}
 
     def register_dimension(self, name: str, evaluator: DimensionEvaluator) -> None:
@@ -166,7 +174,7 @@ class SelfEvalRunner:
         SelfEvalReport
             Aggregate scores from all dimensions.
         """
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         start = time.monotonic()
         scores: list[DimensionScore] = []
@@ -193,7 +201,7 @@ class SelfEvalRunner:
             scores=scores,
             overall=overall,
             version=version,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             duration=duration,
         )
 
@@ -207,9 +215,11 @@ class CodeCoverageEvaluator:
     """Evaluator that reports a configured code coverage percentage."""
 
     def __init__(self, coverage_pct: float = 0.0) -> None:
+        """Initialize code coverage evaluator."""
         self._coverage = coverage_pct
 
     def evaluate(self) -> DimensionScore:
+        """Evaluate and return a code coverage score."""
         return DimensionScore(
             name="code_coverage",
             value=self._coverage,
@@ -222,9 +232,11 @@ class UnitTestCountEvaluator:
     """Evaluator that reports a count of tests."""
 
     def __init__(self, count: int = 0) -> None:
+        """Initialize unit test count evaluator."""
         self._count = count
 
     def evaluate(self) -> DimensionScore:
+        """Evaluate and return a test count score."""
         return DimensionScore(
             name="test_count",
             value=float(self._count),
@@ -240,9 +252,11 @@ class ModuleCountEvaluator:
     """Evaluator that reports a count of modules."""
 
     def __init__(self, count: int = 0) -> None:
+        """Initialize module count evaluator."""
         self._count = count
 
     def evaluate(self) -> DimensionScore:
+        """Evaluate and return a module count score."""
         return DimensionScore(
             name="module_count",
             value=float(self._count),
@@ -260,9 +274,11 @@ class LiveCodeCoverageEvaluator:
     """Evaluator that runs pytest --cov and parses real coverage."""
 
     def __init__(self, project_root: str | Path = ".") -> None:
+        """Initialize live code coverage evaluator."""
         self._project_root = Path(project_root)
 
     def evaluate(self) -> DimensionScore:
+        """Evaluate and return live code coverage."""
         try:
             result = subprocess.run(
                 ["python", "-m", "pytest", "--cov=nines", "--cov-report=term-missing", "-q"],
@@ -307,9 +323,11 @@ class LiveTestCountEvaluator:
     """Evaluator that counts test functions from test files."""
 
     def __init__(self, test_dir: str | Path = "tests") -> None:
+        """Initialize live test count evaluator."""
         self._test_dir = Path(test_dir)
 
     def evaluate(self) -> DimensionScore:
+        """Evaluate and return live test count."""
         count = 0
         files_scanned = 0
         try:
@@ -342,9 +360,11 @@ class LiveModuleCountEvaluator:
     """Evaluator that counts Python modules in src/nines/."""
 
     def __init__(self, src_dir: str | Path = "src/nines") -> None:
+        """Initialize live module count evaluator."""
         self._src_dir = Path(src_dir)
 
     def evaluate(self) -> DimensionScore:
+        """Evaluate and return live module count."""
         count = 0
         try:
             for py_file in self._src_dir.rglob("*.py"):
@@ -368,9 +388,11 @@ class DocstringCoverageEvaluator:
     """Evaluator that measures docstring coverage of public functions/classes."""
 
     def __init__(self, src_dir: str | Path = "src/nines") -> None:
+        """Initialize docstring coverage evaluator."""
         self._src_dir = Path(src_dir)
 
     def evaluate(self) -> DimensionScore:
+        """Evaluate and return docstring coverage."""
         total = 0
         documented = 0
         try:
@@ -406,9 +428,11 @@ class LintCleanlinessEvaluator:
     """Evaluator that measures lint cleanliness via ruff."""
 
     def __init__(self, src_dir: str | Path = "src/nines") -> None:
+        """Initialize lint cleanliness evaluator."""
         self._src_dir = Path(src_dir)
 
     def evaluate(self) -> DimensionScore:
+        """Evaluate and return lint cleanliness score."""
         violation_count = 0
         try:
             result = subprocess.run(

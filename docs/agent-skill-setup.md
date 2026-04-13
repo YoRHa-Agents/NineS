@@ -2,7 +2,7 @@
 
 <!-- auto-updated: version from src/nines/__init__.py -->
 
-NineS can be installed as an Agent Skill into Cursor or Claude Code, allowing AI coding assistants to use NineS capabilities directly from your IDE.
+NineS can be installed as an Agent Skill into Cursor, Claude Code, Codex, or GitHub Copilot, allowing AI coding assistants to use NineS capabilities directly from your IDE.
 
 ---
 
@@ -12,8 +12,42 @@ An Agent Skill is a set of instructions and command definitions that teach an AI
 
 - **Cursor** reads `.cursor/skills/nines/SKILL.md` and per-command workflow files
 - **Claude Code** reads `.claude/commands/nines/*.md` slash commands and `CLAUDE.md` context
+- **Codex** reads `.codex/skills/nines/SKILL.md` and per-command workflow files
+- **GitHub Copilot** reads `.github/copilot-instructions.md` for capability context
 
 The skill enables the AI assistant to run evaluations, collect information, analyze codebases, and execute self-improvement iterations on your behalf.
+
+---
+
+## One-Click Install
+
+The fastest way to install NineS and set up agent skill files for all runtimes:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/YoRHa-Agents/NineS/main/scripts/install.sh | bash
+```
+
+Or with a specific target runtime:
+
+```bash
+bash scripts/install.sh --target cursor
+bash scripts/install.sh --target codex
+bash scripts/install.sh --target copilot
+bash scripts/install.sh --target all
+```
+
+The install script handles Python version checking, package installation, and skill file generation in one step.
+
+---
+
+## Runtime Compatibility
+
+| Runtime | Target Flag | Install Directory | Skill Format | Min Version |
+|---------|------------|-------------------|--------------|-------------|
+| Cursor | `cursor` | `.cursor/skills/nines/` | `SKILL.md` + command workflows | 0.50.0 |
+| Claude Code | `claude` | `.claude/commands/nines/` | Slash commands + `CLAUDE.md` | 1.0.0 |
+| Codex | `codex` | `.codex/skills/nines/` | `SKILL.md` + command workflows | — |
+| GitHub Copilot | `copilot` | `.github/copilot-instructions.md` | Single instructions file | — |
 
 ---
 
@@ -72,6 +106,50 @@ A NineS section is also appended to `CLAUDE.md` with usage context. Use commands
 
 ---
 
+## Installing for Codex
+
+```bash
+nines install --target codex
+```
+
+This creates the following structure in your project:
+
+```
+.codex/
+└── skills/
+    └── nines/
+        ├── SKILL.md              # Main skill entry point
+        ├── manifest.json         # Version manifest
+        └── commands/
+            ├── eval.md           # nines eval workflow
+            ├── collect.md        # nines collect workflow
+            ├── analyze.md        # nines analyze workflow
+            ├── self-eval.md      # nines self-eval workflow
+            ├── iterate.md        # nines iterate workflow
+            └── install.md        # nines install workflow
+```
+
+Once installed, Codex can discover and invoke NineS commands through the skill entry point.
+
+---
+
+## Installing for GitHub Copilot
+
+```bash
+nines install --target copilot
+```
+
+This creates a single instructions file:
+
+```
+.github/
+└── copilot-instructions.md     # NineS capability documentation for Copilot
+```
+
+GitHub Copilot reads `.github/copilot-instructions.md` to understand NineS commands and capabilities. The file documents all available CLI commands and their usage patterns.
+
+---
+
 ## Installing for All Runtimes
 
 Install for every detected runtime at once:
@@ -80,7 +158,7 @@ Install for every detected runtime at once:
 nines install --target all
 ```
 
-NineS auto-detects available runtimes by checking for `.cursor/` or `.claude/` directories and runtime binaries on `$PATH`.
+NineS auto-detects available runtimes by checking for `.cursor/`, `.claude/`, `.codex/`, or `.github/` directories and runtime binaries on `$PATH`.
 
 ---
 
@@ -92,7 +170,7 @@ Install the skill globally (applies to all projects):
 nines install --target cursor --global
 ```
 
-Global installations write to `~/.cursor/skills/nines/` or `~/.claude/commands/nines/`.
+Global installations write to `~/.cursor/skills/nines/`, `~/.claude/commands/nines/`, `~/.codex/skills/nines/`, or `~/.github/copilot-instructions.md`.
 
 ---
 
@@ -109,6 +187,18 @@ Global installations write to `~/.cursor/skills/nines/` or `~/.claude/commands/n
 1. Type `/nines:` in the Claude Code prompt
 2. Auto-complete should show available NineS commands
 3. Run `/nines:self-eval --report` to test
+
+### Codex
+
+1. Open a project where the skill is installed
+2. Ask the assistant: "What NineS commands are available?"
+3. The assistant should list all commands from the SKILL.md
+
+### GitHub Copilot
+
+1. Open a project where `.github/copilot-instructions.md` exists
+2. Ask Copilot: "How do I run NineS evaluations?"
+3. Copilot should reference NineS CLI commands and usage patterns
 
 ---
 

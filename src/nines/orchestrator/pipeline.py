@@ -87,6 +87,7 @@ class Pipeline:
             registry = ScorerRegistry.with_builtins()
 
             def load_tasks(deps: dict[str, Any]) -> dict[str, Any]:
+                """Load tasks."""
                 tasks = runner.load_tasks(tasks_path)
                 logger.info(
                     "Loaded %d tasks from %s",
@@ -101,6 +102,7 @@ class Pipeline:
             def execute_tasks(
                 deps: dict[str, Any],
             ) -> dict[str, Any]:
+                """Execute tasks."""
                 tasks = deps["load"]["tasks"]
                 scorers = [registry.get("exact")]
                 results = runner.run(
@@ -117,6 +119,7 @@ class Pipeline:
             def score_results(
                 deps: dict[str, Any],
             ) -> dict[str, Any]:
+                """Score results."""
                 results = deps["execute"]["results"]
                 composites = [r.composite_score for r in results]
                 avg = sum(composites) / len(composites) if composites else 0.0
@@ -130,6 +133,7 @@ class Pipeline:
             def generate_report(
                 deps: dict[str, Any],
             ) -> dict[str, Any]:
+                """Generate report."""
                 results = deps["score"]["results"]
                 avg_score = deps["score"]["average_score"]
                 report_data = {
@@ -199,6 +203,7 @@ class Pipeline:
         )
 
         def discover(deps: dict[str, Any]) -> dict[str, Any]:
+            """Discover available collection sources."""
             logger.info("Discovering from sources: %s", sources)
             return {
                 "sources": sources,
@@ -206,6 +211,7 @@ class Pipeline:
             }
 
         def fetch(deps: dict[str, Any]) -> dict[str, Any]:
+            """Fetch discovered items from sources."""
             disc = deps["discover"]
             logger.info(
                 "Fetching %d discovered items",
@@ -217,6 +223,7 @@ class Pipeline:
             }
 
         def store(deps: dict[str, Any]) -> dict[str, Any]:
+            """Store fetched items to the given path."""
             logger.info("Storing to %s", store_path)
             return {"store_path": store_path, "stored": True}
 
@@ -256,6 +263,7 @@ class Pipeline:
             analysis = AnalysisPipeline()
 
             def parse(deps: dict[str, Any]) -> dict[str, Any]:
+                """Parse source files from the target path."""
                 result = analysis.run(target_path)
                 logger.info(
                     "Parsed %d findings from %s",
@@ -269,6 +277,7 @@ class Pipeline:
                 }
 
             def analyze(deps: dict[str, Any]) -> dict[str, Any]:
+                """Analyze parsed findings and metrics."""
                 result = deps["parse"]["result"]
                 logger.info(
                     "Analysis: %d findings, %d metric(s)",
@@ -283,6 +292,7 @@ class Pipeline:
                 }
 
             def index(deps: dict[str, Any]) -> dict[str, Any]:
+                """Index analysis results to disk."""
                 result = deps["analyze"]["result"]
                 out = Path(index_path)
                 out.parent.mkdir(parents=True, exist_ok=True)
@@ -353,6 +363,7 @@ class Pipeline:
             def analyze_step(
                 deps: dict[str, Any],
             ) -> dict[str, Any]:
+                """Analyze step."""
                 ap = AnalysisPipeline()
                 result = ap.run(target_path)
                 logger.info(
@@ -365,6 +376,7 @@ class Pipeline:
             def extract_keypoints(
                 deps: dict[str, Any],
             ) -> dict[str, Any]:
+                """Extract keypoints."""
                 if key_points_data:
                     kps = [KeyPoint.from_dict(d) for d in key_points_data]
                 else:
@@ -376,6 +388,7 @@ class Pipeline:
             def generate_benchmarks(
                 deps: dict[str, Any],
             ) -> dict[str, Any]:
+                """Generate benchmarks."""
                 kps = deps["extract_keypoints"]["key_points"]
                 gen = BenchmarkGenerator()
                 suite = gen.generate(kps, suite_id=sid)
@@ -389,6 +402,7 @@ class Pipeline:
             def evaluate(
                 deps: dict[str, Any],
             ) -> dict[str, Any]:
+                """Evaluate benchmark suite via multi-round runner."""
                 suite = deps["generate_benchmarks"]["suite"]
                 registry = ScorerRegistry.with_builtins()
                 scorers = [registry.get(n) for n in snames]
@@ -409,6 +423,7 @@ class Pipeline:
             def map_results(
                 deps: dict[str, Any],
             ) -> dict[str, Any]:
+                """Map results."""
                 kps = deps["extract_keypoints"]["key_points"]
                 report = deps["evaluate"]["report"]
                 suite = deps["generate_benchmarks"]["suite"]

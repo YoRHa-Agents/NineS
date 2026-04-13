@@ -31,6 +31,7 @@ class WorkflowEngine:
     """
 
     def __init__(self) -> None:
+        """Initialize workflow engine."""
         self._steps: list[WorkflowStep] = []
         self._step_map: dict[str, WorkflowStep] = {}
 
@@ -94,7 +95,7 @@ class WorkflowEngine:
             step = self._step_map[step_name]
 
             if any(dep in failed for dep in step.depends_on):
-                msg = f"Skipped due to failed dependency"
+                msg = "Skipped due to failed dependency"
                 result.errors[step_name] = msg
                 failed.add(step_name)
                 logger.warning("Step '%s' skipped: upstream dependency failed", step_name)
