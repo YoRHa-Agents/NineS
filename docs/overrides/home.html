@@ -3,9 +3,8 @@
 {% block tabs %}
   {{ super() }}
 
-  {# ── asset path prefix: EN is at root, other locales are one level deep ── #}
+  {# ── locale detection ── #}
   {% set lang = config.theme.language | default("en") %}
-  {% set asset_base = "../" if lang != "en" else "" %}
   {% if lang == "zh" %}
     {% set t = {
       "subtitle": "多顶点 AI 智能体评估、采集、分析与自迭代",
@@ -126,7 +125,47 @@
       <h2 class="nx-section__title">{{ t.vertices_title }}</h2>
       <p class="nx-section__desc">{{ t.vertices_desc }}</p>
       <div class="nx-vertex-diagram">
-        <img src="{{ asset_base }}assets/three-vertex-model.svg" alt="{{ t.vertices_title }}" class="nx-svg-diagram"/>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" class="nx-svg-diagram" role="img" aria-label="{{ t.vertices_title }}">
+          <defs>
+            <marker id="arrow-v" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <path d="M0,0 L8,3 L0,6" fill="none" stroke="var(--md-accent-fg-color)" stroke-width="1.2"/>
+            </marker>
+          </defs>
+          <!-- V1: Evaluation (top) -->
+          <g transform="translate(300, 100)">
+            <polygon points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26" fill="var(--md-default-bg-color)" stroke="var(--md-accent-fg-color)" stroke-width="1.5"/>
+            <text text-anchor="middle" y="-14" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="700" letter-spacing="0.1em" fill="var(--md-accent-fg-color)">V1</text>
+            <text text-anchor="middle" y="8" font-family="'Noto Sans', sans-serif" font-size="14" font-weight="600" letter-spacing="0.12em" fill="var(--md-accent-fg-color)" text-transform="uppercase">EVALUATION</text>
+            <text text-anchor="middle" y="82" font-family="'Noto Sans', sans-serif" font-size="10.5" fill="var(--md-default-fg-color--lighter)" letter-spacing="0.02em">19 Dimensions &#x00B7; Multi-Strategy Scoring</text>
+          </g>
+          <!-- V2: Collection (bottom-left) -->
+          <g transform="translate(150, 330)">
+            <polygon points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26" fill="var(--md-default-bg-color)" stroke="var(--md-accent-fg-color)" stroke-width="1.5"/>
+            <text text-anchor="middle" y="-14" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="700" letter-spacing="0.1em" fill="var(--md-accent-fg-color)">V2</text>
+            <text text-anchor="middle" y="8" font-family="'Noto Sans', sans-serif" font-size="14" font-weight="600" letter-spacing="0.12em" fill="var(--md-accent-fg-color)">COLLECTION</text>
+            <text text-anchor="middle" y="82" font-family="'Noto Sans', sans-serif" font-size="10.5" fill="var(--md-default-fg-color--lighter)" letter-spacing="0.02em">GitHub &#x00B7; arXiv &#x00B7; Multi-Source</text>
+          </g>
+          <!-- V3: Analysis (bottom-right) -->
+          <g transform="translate(450, 330)">
+            <polygon points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26" fill="var(--md-default-bg-color)" stroke="var(--md-accent-fg-color)" stroke-width="1.5"/>
+            <text text-anchor="middle" y="-14" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="700" letter-spacing="0.1em" fill="var(--md-accent-fg-color)">V3</text>
+            <text text-anchor="middle" y="8" font-family="'Noto Sans', sans-serif" font-size="14" font-weight="600" letter-spacing="0.12em" fill="var(--md-accent-fg-color)">ANALYSIS</text>
+            <text text-anchor="middle" y="82" font-family="'Noto Sans', sans-serif" font-size="10.5" fill="var(--md-default-fg-color--lighter)" letter-spacing="0.02em">AST &#x00B7; Dependency Graphs &#x00B7; Knowledge</text>
+          </g>
+          <!-- Flow arrows -->
+          <path d="M260,140 C220,200 180,250 170,278" fill="none" stroke="var(--md-accent-fg-color)" stroke-width="1.2" opacity="0.7" marker-end="url(#arrow-v)"/>
+          <path d="M198,350 C250,380 350,380 402,350" fill="none" stroke="var(--md-accent-fg-color)" stroke-width="1.2" opacity="0.7" marker-end="url(#arrow-v)"/>
+          <path d="M430,278 C420,250 380,200 340,140" fill="none" stroke="var(--md-accent-fg-color)" stroke-width="1.2" opacity="0.7" marker-end="url(#arrow-v)"/>
+          <!-- Center -->
+          <circle cx="300" cy="250" r="16" fill="none" stroke="var(--md-accent-fg-color)" stroke-width="0.8" opacity="0.4"/>
+          <circle cx="300" cy="250" r="3" fill="var(--md-accent-fg-color)" opacity="0.5"/>
+          <text x="300" y="282" text-anchor="middle" font-family="'Noto Sans', sans-serif" font-size="9" fill="var(--md-default-fg-color--lighter)" letter-spacing="0.15em" text-transform="uppercase">SELF-REINFORCING LOOP</text>
+          <!-- Corner marks -->
+          <g opacity="0.25" stroke="var(--md-accent-fg-color)" stroke-width="1" fill="none">
+            <path d="M8,8 L8,28 M8,8 L28,8"/><path d="M592,8 L592,28 M592,8 L572,8"/>
+            <path d="M8,442 L8,422 M8,442 L28,442"/><path d="M592,442 L592,422 M592,442 L572,442"/>
+          </g>
+        </svg>
       </div>
       <div class="nx-vertex-grid">
         <div class="nx-vertex-card">
@@ -161,7 +200,62 @@
     <div class="nx-section__inner">
       <h2 class="nx-section__title">{{ t.features_title }}</h2>
       <div class="nx-mapim-diagram">
-        <img src="{{ asset_base }}assets/mapim-cycle.svg" alt="MAPIM Cycle" class="nx-svg-diagram"/>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 420" class="nx-svg-diagram" role="img" aria-label="MAPIM Cycle">
+          <defs>
+            <marker id="arrow-m" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <path d="M0,0 L8,3 L0,6" fill="none" stroke="var(--md-accent-fg-color)" stroke-width="1.2"/>
+            </marker>
+          </defs>
+          <!-- MEASURE (top) -->
+          <g transform="translate(300, 70)">
+            <rect x="-60" y="-28" width="120" height="56" rx="3" fill="var(--md-default-bg-color)" stroke="var(--md-accent-fg-color)" stroke-width="1.5"/>
+            <text text-anchor="end" x="54" y="-10" font-family="'JetBrains Mono', monospace" font-size="20" font-weight="700" fill="var(--md-accent-fg-color)" opacity="0.3">M</text>
+            <text text-anchor="middle" y="-4" font-family="'Noto Sans', sans-serif" font-size="12" font-weight="600" letter-spacing="0.12em" fill="var(--md-accent-fg-color)">MEASURE</text>
+            <text text-anchor="middle" y="14" font-family="'Noto Sans', sans-serif" font-size="9.5" fill="var(--md-default-fg-color--lighter)">Evaluate capabilities</text>
+          </g>
+          <!-- ANALYZE (upper right) -->
+          <g transform="translate(433, 167)">
+            <rect x="-60" y="-28" width="120" height="56" rx="3" fill="var(--md-default-bg-color)" stroke="var(--md-accent-fg-color)" stroke-width="1.5"/>
+            <text text-anchor="end" x="54" y="-10" font-family="'JetBrains Mono', monospace" font-size="20" font-weight="700" fill="var(--md-accent-fg-color)" opacity="0.3">A</text>
+            <text text-anchor="middle" y="-4" font-family="'Noto Sans', sans-serif" font-size="12" font-weight="600" letter-spacing="0.12em" fill="var(--md-accent-fg-color)">ANALYZE</text>
+            <text text-anchor="middle" y="14" font-family="'Noto Sans', sans-serif" font-size="9.5" fill="var(--md-default-fg-color--lighter)">Identify gaps</text>
+          </g>
+          <!-- PLAN (lower right) -->
+          <g transform="translate(382, 317)">
+            <rect x="-60" y="-28" width="120" height="56" rx="3" fill="var(--md-default-bg-color)" stroke="var(--md-accent-fg-color)" stroke-width="1.5"/>
+            <text text-anchor="end" x="54" y="-10" font-family="'JetBrains Mono', monospace" font-size="20" font-weight="700" fill="var(--md-accent-fg-color)" opacity="0.3">P</text>
+            <text text-anchor="middle" y="-4" font-family="'Noto Sans', sans-serif" font-size="12" font-weight="600" letter-spacing="0.12em" fill="var(--md-accent-fg-color)">PLAN</text>
+            <text text-anchor="middle" y="14" font-family="'Noto Sans', sans-serif" font-size="9.5" fill="var(--md-default-fg-color--lighter)">Design improvements</text>
+          </g>
+          <!-- IMPROVE (lower left) -->
+          <g transform="translate(218, 317)">
+            <rect x="-60" y="-28" width="120" height="56" rx="3" fill="var(--md-default-bg-color)" stroke="var(--md-accent-fg-color)" stroke-width="1.5"/>
+            <text text-anchor="end" x="54" y="-10" font-family="'JetBrains Mono', monospace" font-size="20" font-weight="700" fill="var(--md-accent-fg-color)" opacity="0.3">I</text>
+            <text text-anchor="middle" y="-4" font-family="'Noto Sans', sans-serif" font-size="12" font-weight="600" letter-spacing="0.12em" fill="var(--md-accent-fg-color)">IMPROVE</text>
+            <text text-anchor="middle" y="14" font-family="'Noto Sans', sans-serif" font-size="9.5" fill="var(--md-default-fg-color--lighter)">Execute changes</text>
+          </g>
+          <!-- MEASURE loop (upper left, dashed) -->
+          <g transform="translate(167, 167)">
+            <rect x="-60" y="-28" width="120" height="56" rx="3" fill="var(--md-default-bg-color)" stroke="var(--md-accent-fg-color)" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <text text-anchor="end" x="54" y="-10" font-family="'JetBrains Mono', monospace" font-size="20" font-weight="700" fill="var(--md-accent-fg-color)" opacity="0.3">M</text>
+            <text text-anchor="middle" y="-4" font-family="'Noto Sans', sans-serif" font-size="12" font-weight="600" letter-spacing="0.12em" fill="var(--md-accent-fg-color)">MEASURE</text>
+            <text text-anchor="middle" y="14" font-family="'Noto Sans', sans-serif" font-size="9.5" fill="var(--md-default-fg-color--lighter)">Iterate again</text>
+          </g>
+          <!-- Flow arrows -->
+          <path d="M360,82 C390,100 400,130 410,139" fill="none" stroke="var(--md-accent-fg-color)" stroke-width="1.2" opacity="0.6" marker-end="url(#arrow-m)"/>
+          <path d="M460,195 C465,240 440,270 410,289" fill="none" stroke="var(--md-accent-fg-color)" stroke-width="1.2" opacity="0.6" marker-end="url(#arrow-m)"/>
+          <path d="M322,325 C300,335 280,335 278,325" fill="none" stroke="var(--md-accent-fg-color)" stroke-width="1.2" opacity="0.6" marker-end="url(#arrow-m)"/>
+          <path d="M190,289 C175,260 168,230 168,195" fill="none" stroke="var(--md-accent-fg-color)" stroke-width="1.2" opacity="0.6" marker-end="url(#arrow-m)"/>
+          <path d="M200,139 C220,110 250,85 240,82" fill="none" stroke="var(--md-accent-fg-color)" stroke-width="1" stroke-dasharray="3,3" opacity="0.5" marker-end="url(#arrow-m)"/>
+          <!-- Center -->
+          <circle cx="300" cy="210" r="30" fill="none" stroke="var(--md-accent-fg-color)" stroke-width="0.6" opacity="0.3"/>
+          <text x="300" y="214" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="10" fill="var(--md-default-fg-color--lighter)" letter-spacing="0.2em">MAPIM</text>
+          <!-- Corner marks -->
+          <g opacity="0.25" stroke="var(--md-accent-fg-color)" stroke-width="1" fill="none">
+            <path d="M8,8 L8,28 M8,8 L28,8"/><path d="M592,8 L592,28 M592,8 L572,8"/>
+            <path d="M8,412 L8,392 M8,412 L28,412"/><path d="M592,412 L592,392 M592,412 L572,412"/>
+          </g>
+        </svg>
       </div>
       <div class="nx-feature-grid">
         <div class="nx-feature">
