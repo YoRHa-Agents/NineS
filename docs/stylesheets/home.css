@@ -170,6 +170,28 @@
   padding-bottom: 5rem;
 }
 
+/* --- SVG Diagrams --- */
+.nx-vertex-diagram,
+.nx-mapim-diagram {
+  text-align: center;
+  margin: 0 auto 2.5rem;
+  max-width: 36rem;
+}
+
+.nx-svg-diagram {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .nx-vertex-diagram,
+  .nx-mapim-diagram {
+    max-width: 100%;
+  }
+}
+
 /* --- Vertex Cards --- */
 .nx-vertex-grid {
   display: grid;

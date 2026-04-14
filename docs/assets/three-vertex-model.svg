@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" width="600" height="450">
+  <defs>
+    <marker id="arrow-v" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="none" stroke="#C4A35A" stroke-width="1.2"/>
+    </marker>
+    <style>
+      .vertex-label { font-family: 'Noto Sans', 'Noto Sans SC', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; fill: #C4A35A; }
+      .vertex-tag { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; fill: #C4A35A; }
+      .vertex-desc { font-family: 'Noto Sans', 'Noto Sans SC', sans-serif; font-size: 10.5px; fill: #706B5F; letter-spacing: 0.02em; }
+      .hex { fill: none; stroke: #C4A35A; stroke-width: 1.5; }
+      .hex-inner { fill: rgba(196, 163, 90, 0.06); stroke: none; }
+      .flow-line { fill: none; stroke: #C4A35A; stroke-width: 1.2; opacity: 0.7; marker-end: url(#arrow-v); }
+      .center-label { font-family: 'Noto Sans', 'Noto Sans SC', sans-serif; font-size: 9px; fill: #9E8E6C; letter-spacing: 0.15em; text-transform: uppercase; }
+    </style>
+  </defs>
+
+  <!-- V1: Evaluation  top center -->
+  <g transform="translate(300, 100)">
+    <polygon class="hex-inner" points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26"/>
+    <polygon class="hex" points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26"/>
+    <text class="vertex-tag" text-anchor="middle" y="-14">V1</text>
+    <text class="vertex-label" text-anchor="middle" y="8">Evaluation</text>
+    <text class="vertex-desc" text-anchor="middle" y="82">19 Dimensions · Multi-Strategy Scoring</text>
+  </g>
+
+  <!-- V2: Collection  bottom left -->
+  <g transform="translate(150, 330)">
+    <polygon class="hex-inner" points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26"/>
+    <polygon class="hex" points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26"/>
+    <text class="vertex-tag" text-anchor="middle" y="-14">V2</text>
+    <text class="vertex-label" text-anchor="middle" y="8">Collection</text>
+    <text class="vertex-desc" text-anchor="middle" y="82">GitHub · arXiv · Multi-Source</text>
+  </g>
+
+  <!-- V3: Analysis  bottom right -->
+  <g transform="translate(450, 330)">
+    <polygon class="hex-inner" points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26"/>
+    <polygon class="hex" points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26"/>
+    <text class="vertex-tag" text-anchor="middle" y="-14">V3</text>
+    <text class="vertex-label" text-anchor="middle" y="8">Analysis</text>
+    <text class="vertex-desc" text-anchor="middle" y="82">AST · Dependency Graphs · Knowledge</text>
+  </g>
+
+  <!-- Flow arrows: V1 ’ V2 (left down) -->
+  <path class="flow-line" d="M260,140 C220,200 180,250 170,278"/>
+
+  <!-- Flow arrows: V2 ’ V3 (bottom across) -->
+  <path class="flow-line" d="M198,350 C250,380 350,380 402,350"/>
+
+  <!-- Flow arrows: V3 ’ V1 (right up) -->
+  <path class="flow-line" d="M430,278 C420,250 380,200 340,140"/>
+
+  <!-- Center decorative element -->
+  <g transform="translate(300, 250)">
+    <circle cx="0" cy="0" r="16" fill="none" stroke="#C4A35A" stroke-width="0.8" opacity="0.4"/>
+    <circle cx="0" cy="0" r="3" fill="#C4A35A" opacity="0.5"/>
+    <text class="center-label" text-anchor="middle" y="32">Self-Reinforcing Loop</text>
+  </g>
+
+  <!-- Decorative corner marks -->
+  <g opacity="0.25">
+    <path d="M8,8 L8,28 M8,8 L28,8" stroke="#C4A35A" stroke-width="1" fill="none"/>
+    <path d="M592,8 L592,28 M592,8 L572,8" stroke="#C4A35A" stroke-width="1" fill="none"/>
+    <path d="M8,442 L8,422 M8,442 L28,442" stroke="#C4A35A" stroke-width="1" fill="none"/>
+    <path d="M592,442 L592,422 M592,442 L572,442" stroke="#C4A35A" stroke-width="1" fill="none"/>
+  </g>
+</svg>

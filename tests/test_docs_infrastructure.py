@@ -87,13 +87,19 @@ def test_deploy_workflow_has_i18n_dependency(repo_root: Path) -> None:
 def test_version_hook_reads_version(repo_root: Path) -> None:
     mod = _load_version_hook(repo_root)
 
+    class _Conf:
+        def __init__(self) -> None:
+            self.extra: dict[str, str] = {}
+
     class _Env:
         def __init__(self) -> None:
             self.variables: dict[str, str] = {}
+            self.conf = _Conf()
 
     env = _Env()
     mod.define_env(env)
     assert env.variables.get("nines_version") == __version__
+    assert env.conf.extra.get("nines_version") == __version__
 
 
 def test_development_plan_pages_exist(repo_root: Path) -> None:
