@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 _ATOM_NS = "http://www.w3.org/2005/Atom"
 _ARXIV_NS = "http://arxiv.org/schemas/atom"
-_DEFAULT_BASE_URL = "http://export.arxiv.org/api/query"
+_DEFAULT_BASE_URL = "https://export.arxiv.org/api/query"
 _REQUEST_DELAY = 3.0
 
 

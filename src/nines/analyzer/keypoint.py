@@ -10,6 +10,7 @@ Covers: FR-314.
 from __future__ import annotations
 
 import logging
+import math
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -311,8 +312,11 @@ class KeyPointExtractor:
         points: list[KeyPoint] = []
         for mech in mechanisms:
             category = _MECHANISM_CATEGORY_MAP.get(mech.category, "engineering")
-            impact = _infer_impact_from_token_delta(mech.estimated_token_impact)
-            magnitude = min(1.0, abs(mech.estimated_token_impact) / 5000) * mech.confidence
+            impact = _infer_impact_from_token_delta(mech.estimated_token_impact, mech.category)
+            magnitude = min(
+                1.0,
+                (math.log1p(abs(mech.estimated_token_impact)) / math.log1p(50000)) * mech.confidence,
+            )
 
             points.append(
                 KeyPoint(
@@ -624,8 +628,13 @@ class KeyPointExtractor:
     def _deduplicate(self, points: list[KeyPoint]) -> list[KeyPoint]:
         """Remove duplicate or overlapping key points.
 
-        Two points are considered duplicates if they share the same
-        category and a sufficiently similar title (normalized).
+        Pass 1: title-based — two points with the same category and
+        normalized title are merged (higher magnitude wins).
+
+        Pass 2: semantic — within each category, if two points share
+        >60% of their description words, keep only the higher-magnitude
+        one.  This catches economics-derived vs. finding-derived points
+        that describe the same concern with different titles.
 
         Parameters
         ----------
@@ -646,7 +655,31 @@ class KeyPointExtractor:
                     seen[key] = point
             else:
                 seen[key] = point
-        return list(seen.values())
+
+        after_title = list(seen.values())
+        return self._deduplicate_semantic(after_title)
+
+    @staticmethod
+    def _deduplicate_semantic(points: list[KeyPoint]) -> list[KeyPoint]:
+        """Merge same-category points whose descriptions overlap heavily."""
+        by_category: dict[str, list[KeyPoint]] = {}
+        for p in points:
+            by_category.setdefault(p.category, []).append(p)
+
+        keep: list[KeyPoint] = []
+        for cat_points in by_category.values():
+            cat_points.sort(key=lambda kp: -kp.impact_magnitude)
+            dropped: set[int] = set()
+            for i, a in enumerate(cat_points):
+                if i in dropped:
+                    continue
+                for j in range(i + 1, len(cat_points)):
+                    if j in dropped:
+                        continue
+                    if _descriptions_overlap(a.description, cat_points[j].description):
+                        dropped.add(j)
+            keep.extend(p for idx, p in enumerate(cat_points) if idx not in dropped)
+        return keep
 
     def _prioritize(self, points: list[KeyPoint]) -> list[KeyPoint]:
         """Assign and sort by priority based on impact and category.
@@ -719,10 +752,32 @@ class KeyPointExtractor:
         return ". ".join(parts) + "."
 
 
-def _infer_impact_from_token_delta(token_impact: int) -> str:
-    """Map a token delta to an expected impact label."""
+_BENEFICIAL_MECHANISM_CATEGORIES = frozenset({
+    "behavioral_instruction",
+    "safety",
+    "persistence",
+})
+
+
+def _infer_impact_from_token_delta(
+    token_impact: int,
+    category: str = "",
+) -> str:
+    """Map a token delta to an expected impact label.
+
+    Parameters
+    ----------
+    token_impact:
+        Positive = adds tokens, negative = saves tokens.
+    category:
+        Mechanism category.  Beneficial categories (behavioral_instruction,
+        safety, persistence) are considered positive even when they add
+        tokens, because the added overhead delivers real value.
+    """
     if token_impact < -100:
         return "positive"
+    if category in _BENEFICIAL_MECHANISM_CATEGORIES:
+        return "positive" if token_impact > 0 else "neutral"
     if token_impact > 500:
         return "negative"
     if token_impact == 0:
@@ -748,6 +803,35 @@ def _finding_category_to_keypoint(finding_category: str) -> str:
         "low_confidence": "behavioral_shaping",
     }
     return mapping.get(finding_category, "engineering")
+
+
+def _description_words(text: str) -> set[str]:
+    """Extract lowercase non-trivial words from a description."""
+    return {
+        w for raw in text.lower().split()
+        if len(w := raw.strip("()[]{}.,;:!?\"'")) > 2
+    }
+
+
+def _descriptions_overlap(a: str, b: str) -> bool:
+    """Return True when two descriptions share >60 % of their words.
+
+    Also returns True when one description is a substring of the other
+    (after lowering), which catches the common case where a finding
+    message is embedded verbatim inside an economics summary.
+    """
+    if not a or not b:
+        return False
+    la, lb = a.lower(), b.lower()
+    if la in lb or lb in la:
+        return True
+    words_a = _description_words(a)
+    words_b = _description_words(b)
+    if not words_a or not words_b:
+        return False
+    smaller = min(len(words_a), len(words_b))
+    overlap = len(words_a & words_b)
+    return overlap / smaller > 0.6
 
 
 def _count_categories(points: list[KeyPoint]) -> dict[str, int]:

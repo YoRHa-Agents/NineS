@@ -27,6 +27,7 @@ from nines.analyzer.keypoint import (
     KeyPointExtractor,
     KeyPointReport,
     _count_categories,
+    _descriptions_overlap,
     _finding_category_to_keypoint,
     _infer_impact_from_token_delta,
     _mechanism_priority,
@@ -1024,3 +1025,226 @@ class TestHelpers:
 
     def test_count_categories_empty(self) -> None:
         assert _count_categories([]) == {}
+
+
+# ---------------------------------------------------------------------------
+# Issue 1: Beneficial-category impact inference
+# ---------------------------------------------------------------------------
+
+
+class TestBeneficialCategoryImpact:
+    """Behavioral_instruction, safety, and persistence mechanisms get positive impact."""
+
+    def test_behavioral_instruction_positive(self) -> None:
+        assert _infer_impact_from_token_delta(500, "behavioral_instruction") == "positive"
+
+    def test_safety_positive(self) -> None:
+        assert _infer_impact_from_token_delta(300, "safety") == "positive"
+
+    def test_persistence_positive(self) -> None:
+        assert _infer_impact_from_token_delta(200, "persistence") == "positive"
+
+    def test_beneficial_zero_tokens_neutral(self) -> None:
+        assert _infer_impact_from_token_delta(0, "safety") == "neutral"
+
+    def test_beneficial_negative_tokens_still_positive(self) -> None:
+        """Beneficial category saving tokens is still positive (saves tokens)."""
+        assert _infer_impact_from_token_delta(-500, "safety") == "positive"
+
+    def test_non_beneficial_high_tokens_negative(self) -> None:
+        assert _infer_impact_from_token_delta(1000, "context_compression") == "negative"
+
+    def test_no_category_preserves_old_behavior(self) -> None:
+        assert _infer_impact_from_token_delta(1000) == "negative"
+        assert _infer_impact_from_token_delta(-500) == "positive"
+        assert _infer_impact_from_token_delta(100) == "neutral"
+        assert _infer_impact_from_token_delta(0) == "uncertain"
+
+    def test_mechanism_extraction_behavioral_gets_positive(
+        self,
+    ) -> None:
+        """End-to-end: behavioral_instruction mechanism → positive impact key point."""
+        extractor = KeyPointExtractor()
+        mechs = [
+            AgentMechanism(
+                id="b1",
+                name="behavioral_rules",
+                category="behavioral_instruction",
+                description="Style rules for the agent",
+                evidence_files=["rules/style.md"],
+                estimated_token_impact=500,
+                confidence=0.6,
+            ),
+        ]
+        points = extractor._extract_from_mechanisms(mechs)
+        assert len(points) == 1
+        assert points[0].expected_impact == "positive"
+
+    def test_mechanism_extraction_safety_gets_positive(self) -> None:
+        extractor = KeyPointExtractor()
+        mechs = [
+            AgentMechanism(
+                id="s1",
+                name="safety_guardrails",
+                category="safety",
+                description="Safety rules",
+                evidence_files=["safety.md"],
+                estimated_token_impact=300,
+                confidence=0.9,
+            ),
+        ]
+        points = extractor._extract_from_mechanisms(mechs)
+        assert points[0].expected_impact == "positive"
+
+
+# ---------------------------------------------------------------------------
+# Issue 2: Logarithmic magnitude scale
+# ---------------------------------------------------------------------------
+
+
+class TestLogMagnitude:
+    """Impact magnitude uses log scale to differentiate across the range."""
+
+    def test_small_and_large_tokens_differ(self) -> None:
+        """1K-token and 10K-token mechanisms must have different magnitudes."""
+        extractor = KeyPointExtractor()
+        small = AgentMechanism(
+            id="s", name="s", category="context_compression",
+            description="d", estimated_token_impact=-1000, confidence=1.0,
+        )
+        large = AgentMechanism(
+            id="l", name="l", category="context_compression",
+            description="d", estimated_token_impact=-10000, confidence=1.0,
+        )
+        pts_s = extractor._extract_from_mechanisms([small])
+        pts_l = extractor._extract_from_mechanisms([large])
+        assert pts_s[0].impact_magnitude < pts_l[0].impact_magnitude
+
+    def test_5k_tokens_not_saturated(self) -> None:
+        """5K tokens at confidence 1.0 must be well below 1.0."""
+        extractor = KeyPointExtractor()
+        mech = AgentMechanism(
+            id="m", name="n", category="context_compression",
+            description="d", estimated_token_impact=5000, confidence=1.0,
+        )
+        pts = extractor._extract_from_mechanisms([mech])
+        assert pts[0].impact_magnitude < 0.85
+
+    def test_50k_tokens_reaches_one(self) -> None:
+        """50K tokens at confidence 1.0 should be at or near 1.0."""
+        extractor = KeyPointExtractor()
+        mech = AgentMechanism(
+            id="m", name="n", category="context_compression",
+            description="d", estimated_token_impact=50000, confidence=1.0,
+        )
+        pts = extractor._extract_from_mechanisms([mech])
+        assert pts[0].impact_magnitude >= 0.99
+
+    def test_magnitude_bounded(self) -> None:
+        """Even with enormous token impact, magnitude must not exceed 1.0."""
+        extractor = KeyPointExtractor()
+        mech = AgentMechanism(
+            id="m", name="n", category="context_compression",
+            description="d", estimated_token_impact=999999, confidence=1.0,
+        )
+        pts = extractor._extract_from_mechanisms([mech])
+        assert pts[0].impact_magnitude <= 1.0
+
+
+# ---------------------------------------------------------------------------
+# Issue 3: Semantic deduplication
+# ---------------------------------------------------------------------------
+
+
+class TestSemanticDeduplication:
+    """Economics and finding key points describing the same concern are merged."""
+
+    def test_overlapping_economics_finding_deduplicated(self) -> None:
+        """Token overhead analysis (economics) + Finding: context_economics → 1 point."""
+        extractor = KeyPointExtractor()
+        points = [
+            KeyPoint(
+                id="econ-1",
+                category="context_management",
+                title="Token overhead analysis",
+                description="Agent context overhead is 6000 tokens across 4 file(s). This is high and may degrade agent performance.",
+                impact_magnitude=0.6,
+                metadata={"source": "economics", "overhead_tokens": 6000},
+            ),
+            KeyPoint(
+                id="find-1",
+                category="context_management",
+                title="Finding: context_economics",
+                description="High overhead (6000 tokens)",
+                impact_magnitude=0.5,
+                metadata={"source": "finding", "severity": "warning"},
+            ),
+        ]
+        result = extractor._deduplicate(points)
+        assert len(result) == 1
+        assert result[0].impact_magnitude == 0.6
+
+    def test_non_overlapping_same_category_kept(self) -> None:
+        """Same category but unrelated descriptions must survive."""
+        extractor = KeyPointExtractor()
+        points = [
+            KeyPoint(
+                id="a",
+                category="context_management",
+                title="Token overhead analysis",
+                description="Agent context overhead is 6000 tokens.",
+                impact_magnitude=0.6,
+            ),
+            KeyPoint(
+                id="b",
+                category="context_management",
+                title="Break-even interaction threshold",
+                description="Break-even at 4 interaction(s) — overhead is recovered quickly.",
+                impact_magnitude=0.2,
+            ),
+        ]
+        result = extractor._deduplicate(points)
+        assert len(result) == 2
+
+    def test_descriptions_overlap_substring(self) -> None:
+        assert _descriptions_overlap(
+            "High overhead (6000 tokens)",
+            "Agent context overhead is 6000 tokens across 4 file(s). This is high.",
+        )
+
+    def test_descriptions_overlap_word_ratio(self) -> None:
+        assert _descriptions_overlap(
+            "Token overhead analysis shows 6000 tokens agent context",
+            "Token overhead is 6000 tokens in the agent context window",
+        )
+
+    def test_descriptions_no_overlap(self) -> None:
+        assert not _descriptions_overlap(
+            "Break-even at 4 interactions",
+            "Estimated savings ratio is 25.0%",
+        )
+
+    def test_empty_descriptions_no_overlap(self) -> None:
+        assert not _descriptions_overlap("", "something")
+
+    def test_different_categories_not_merged(self) -> None:
+        """Semantic dedup only applies within the same category."""
+        extractor = KeyPointExtractor()
+        points = [
+            KeyPoint(
+                id="a",
+                category="context_management",
+                title="Overhead",
+                description="High overhead 6000 tokens context",
+                impact_magnitude=0.6,
+            ),
+            KeyPoint(
+                id="b",
+                category="engineering",
+                title="Observation",
+                description="High overhead 6000 tokens context",
+                impact_magnitude=0.5,
+            ),
+        ]
+        result = extractor._deduplicate(points)
+        assert len(result) == 2

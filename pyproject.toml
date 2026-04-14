@@ -1,6 +1,6 @@
 [project]
 name = "nines"
-version = "2.0.0"
+version = "2.1.0"
 description = "NineS — A multi-vertex evaluation, collection, analysis, and self-iteration system for AI agents"
 readme = "README.md"
 requires-python = ">=3.12"

@@ -97,6 +97,8 @@ class AnalysisPipeline:
         *,
         agent_impact: bool = True,
         keypoints: bool = True,
+        strategy: str = "functional",
+        depth: str = "shallow",
     ) -> AnalysisResult:
         """Execute the full pipeline on *path*.
 
@@ -144,7 +146,7 @@ class AnalysisPipeline:
                     exc_info=True,
                 )
 
-        units = self.decompose(reviews, structure)
+        units = self.decompose(reviews, structure, strategy=strategy)
 
         all_findings: list[Finding] = []
         for review in reviews:
@@ -153,6 +155,8 @@ class AnalysisPipeline:
         elapsed_ms = (time.monotonic() - start) * 1000
 
         metrics = self._build_metrics(reviews, units, structure, elapsed_ms)
+        metrics["strategy"] = strategy
+        metrics["depth"] = depth
 
         if agent_impact:
             all_files = self.ingest_all(target)
@@ -252,8 +256,14 @@ class AnalysisPipeline:
         self,
         reviews: list[FileReview],
         structure: StructureReport | None = None,
+        *,
+        strategy: str = "functional",
     ) -> list[KnowledgeUnit]:
-        """Run functional decomposition on all reviews."""
+        """Run decomposition on all reviews using the given *strategy*."""
+        if strategy == "concern":
+            return self._decomposer.concern_decompose(reviews)
+        if strategy == "layer":
+            return self._decomposer.layer_decompose(reviews, structure)
         return self._decomposer.functional_decompose(reviews)
 
     @staticmethod
