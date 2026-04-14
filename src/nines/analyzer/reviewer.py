@@ -9,6 +9,7 @@ Covers: FR-301, FR-302.
 from __future__ import annotations
 
 import ast
+import hashlib
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -228,6 +229,11 @@ def _name_from_node(node: ast.expr) -> str:
     return ast.dump(node)
 
 
+def _file_hash(path: str) -> str:
+    """Deterministic 6-char hex prefix derived from the file path."""
+    return hashlib.sha256(path.encode()).hexdigest()[:6]
+
+
 class CodeReviewer:
     """Reviews Python source files using AST analysis.
 
@@ -312,6 +318,7 @@ class CodeReviewer:
         """Generate findings."""
         findings: list[Finding] = []
         idx = 0
+        fhash = _file_hash(path)
 
         all_funcs = list(visitor.functions)
         for cls in visitor.classes:
@@ -322,7 +329,7 @@ class CodeReviewer:
                 severity = "error" if func.complexity > 20 else "warning"
                 findings.append(
                     Finding(
-                        id=f"CC-{idx:04d}",
+                        id=f"CC-{fhash}-{idx:04d}",
                         severity=severity,
                         category="complexity",
                         message=(
@@ -337,7 +344,7 @@ class CodeReviewer:
 
         findings.append(
             Finding(
-                id=f"SUM-{idx:04d}",
+                id=f"SUM-{fhash}-{idx:04d}",
                 severity="info",
                 category="summary",
                 message=(
@@ -356,7 +363,7 @@ class CodeReviewer:
         if dep_modules:
             findings.append(
                 Finding(
-                    id=f"DEP-{idx:04d}",
+                    id=f"DEP-{fhash}-{idx:04d}",
                     severity="info",
                     category="dependencies",
                     message=f"Imports: {', '.join(dep_modules)}",

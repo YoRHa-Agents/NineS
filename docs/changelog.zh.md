@@ -4,6 +4,30 @@ NineS 的所有重要变更均记录于此。本项目遵循[语义化版本](ht
 
 ---
 
+## v2.1.0 — 2026-04-14
+
+**主题：** 自更新迭代 — 分析质量改进、策略路由、参考体系，由 DevolaFlow self-update 工作流驱动，分析 [Understand-Anything](https://github.com/Lum1104/Understand-Anything) 仓库。
+
+### 新增
+- **分解策略路由** — `--strategy concern|layer|functional` 现在正确调度至对应的 `Decomposer` 方法（此前硬编码为 `functional`）
+- **指标中记录策略和深度** — 分析结果的 metrics 中包含 `strategy` 和 `depth` 字段
+- **参考体系** — `references/` 目录下 6 篇 DevolaFlow 风格参考文档，含 YAML 前置元数据
+- **SKILL.md 参考导航指南** — 快速参考表，支持按需加载上下文
+- **关键点语义去重** — 同类别内描述词重叠 >60% 的关键点自动合并
+- 新增 27 项测试（总计 1093 项）
+
+### 修复
+- **Finding ID 冲突** — ID 现包含基于文件路径的确定性哈希前缀（`CC-{hash}-{idx}`），消除多文件分析时的重复 ID（修复前：Understand-Anything 仓库有 10 个重复 ID）
+- **有益机制影响判断** — `behavioral_instruction`、`safety`、`persistence` 机制正确归类为 `"positive"` 影响（修复前：因仅凭 token 数量判断而误标为 `"negative"`）
+- **影响幅度饱和** — 从线性公式改为对数尺度（`log1p`），产生可区分的幅度值（修复前：>5K token 全部为 1.0；修复后：0.817–0.862 区间）
+- **arxiv 收集器** — `_DEFAULT_BASE_URL` 从 `http://` 升级为 `https://`
+
+### 改进
+- **Understand-Anything 分析**: 0 个重复 Finding ID、5 个可区分的机制幅度、3 个正确标记为 positive 的有益机制
+- **全量测试**: 1093 项通过，0 个 lint 错误
+
+---
+
 ## v2.0.0 — 2026-04-13
 
 **主题：** 面向 Agent 的仓库分析重新对齐 — NineS 现在是专门分析仓库如何提升 AI Agent 效能的工具。

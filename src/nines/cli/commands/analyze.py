@@ -76,6 +76,8 @@ def analyze_cmd(
         target_path,
         agent_impact=agent_impact,
         keypoints=keypoints,
+        strategy=strategy,
+        depth=depth,
     )
 
     metrics = result.metrics

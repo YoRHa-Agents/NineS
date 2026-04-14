@@ -4,6 +4,30 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v2.1.0 — 2026-04-14
+
+**Theme:** Self-update iteration — analysis quality improvements, strategy routing, reference system, driven by DevolaFlow self-update workflow analyzing [Understand-Anything](https://github.com/Lum1104/Understand-Anything).
+
+### Added
+- **Decomposition strategy routing** — `--strategy concern|layer|functional` now correctly dispatches to the corresponding `Decomposer` method (was hardcoded to `functional`)
+- **Strategy and depth in metrics** — `strategy` and `depth` recorded in analysis result metrics for traceability
+- **Reference system** — 6 DevolaFlow-style reference documents in `references/` with YAML frontmatter (analysis-pipeline, agent-impact-analysis, key-point-extraction, evaluation-framework, iteration-protocol, index)
+- **SKILL.md Reference Navigation Guide** — quick-reference table for selective context loading
+- **Semantic key-point deduplication** — second-pass dedup merging points with >60% word overlap within same category
+- 27 new tests (1093 total)
+
+### Fixed
+- **Finding ID collision** — IDs now include a deterministic file-path hash prefix (`CC-{hash}-{idx}`), eliminating duplicates across multi-file analysis (was: 10 duplicates on Understand-Anything repo)
+- **Beneficial mechanism impact** — `behavioral_instruction`, `safety`, and `persistence` mechanisms correctly classified as `"positive"` impact (was: `"negative"` due to token-count-only heuristic)
+- **Impact magnitude saturation** — switched from linear to logarithmic scale (`log1p`), producing differentiated magnitudes (was: all 1.0 for >5K tokens; now: 0.817–0.862 range)
+- **arxiv collector** — `_DEFAULT_BASE_URL` upgraded from `http://` to `https://`
+
+### Improved
+- **Analysis of Understand-Anything**: 0 duplicate finding IDs, 5 differentiated mechanism magnitudes, 3 correctly-positive beneficial mechanisms
+- **Full test suite**: 1093 tests passing, 0 lint errors
+
+---
+
 ## v2.0.0 — 2026-04-13
 
 **Theme:** Agent-facing repository analysis realignment — NineS is now a purpose-built tool for analyzing how repositories improve AI Agent effectiveness.

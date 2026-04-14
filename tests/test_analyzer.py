@@ -439,3 +439,67 @@ class TestAnalysisPipeline:
         result = pipeline.run(sample_py_file, keypoints=True)
         assert "agent_impact" in result.metrics
         assert "key_points" in result.metrics
+
+    def test_pipeline_strategy_concern(self, sample_project: Path) -> None:
+        pipeline = AnalysisPipeline()
+        result = pipeline.run(sample_project, strategy="concern", agent_impact=False)
+
+        assert result.metrics["strategy"] == "concern"
+        unit_types = {
+            u.unit_type
+            for u in self._extract_units(result)
+        }
+        assert "concern" in unit_types
+
+    def test_pipeline_strategy_layer(self, sample_project: Path) -> None:
+        pipeline = AnalysisPipeline()
+        result = pipeline.run(sample_project, strategy="layer", agent_impact=False)
+
+        assert result.metrics["strategy"] == "layer"
+        unit_types = {
+            u.unit_type
+            for u in self._extract_units(result)
+        }
+        assert "layer" in unit_types
+
+    def test_pipeline_strategy_functional_default(
+        self,
+        sample_project: Path,
+    ) -> None:
+        pipeline = AnalysisPipeline()
+        result = pipeline.run(sample_project, agent_impact=False)
+
+        assert result.metrics["strategy"] == "functional"
+        unit_types = {
+            u.unit_type
+            for u in self._extract_units(result)
+        }
+        assert "function" in unit_types or "class" in unit_types
+        assert "concern" not in unit_types
+        assert "layer" not in unit_types
+
+    def test_pipeline_depth_in_metrics(self, sample_project: Path) -> None:
+        pipeline = AnalysisPipeline()
+        result = pipeline.run(
+            sample_project, depth="deep", agent_impact=False,
+        )
+        assert result.metrics["depth"] == "deep"
+
+    @staticmethod
+    def _extract_units(result) -> list[KnowledgeUnit]:
+        """Re-run decomposition to inspect produced units.
+
+        The pipeline stores the unit *count* in metrics but not the units
+        themselves, so we replay the decompose step.
+        """
+        pipeline = AnalysisPipeline()
+        target = Path(result.target)
+        py_files = pipeline.ingest(target)
+        reviews = pipeline.analyze(py_files)
+        structure = None
+        if target.is_dir():
+            from nines.analyzer.structure import StructureAnalyzer
+            structure = StructureAnalyzer().analyze_directory(target)
+        return pipeline.decompose(
+            reviews, structure, strategy=result.metrics["strategy"],
+        )
