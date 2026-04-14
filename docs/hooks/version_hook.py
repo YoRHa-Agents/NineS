@@ -13,3 +13,5 @@ def define_env(env):
             version = match.group(1)
     env.variables["nines_version"] = version
     env.variables["project_name"] = "NineS"
+    if hasattr(env, "conf") and hasattr(env.conf, "extra"):
+        env.conf.extra["nines_version"] = version

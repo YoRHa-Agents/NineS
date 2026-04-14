@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 420" width="600" height="420">
+  <defs>
+    <marker id="arrow-m" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="none" stroke="#C4A35A" stroke-width="1.2"/>
+    </marker>
+    <style>
+      .phase-label { font-family: 'Noto Sans', 'Noto Sans SC', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; fill: #C4A35A; }
+      .phase-letter { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700; fill: #C4A35A; opacity: 0.3; }
+      .phase-desc { font-family: 'Noto Sans', 'Noto Sans SC', sans-serif; font-size: 9.5px; fill: #706B5F; letter-spacing: 0.02em; }
+      .phase-box { fill: none; stroke: #C4A35A; stroke-width: 1.5; }
+      .phase-box-bg { fill: rgba(196, 163, 90, 0.05); stroke: none; }
+      .flow { fill: none; stroke: #C4A35A; stroke-width: 1.2; opacity: 0.6; marker-end: url(#arrow-m); }
+      .title-text { font-family: 'JetBrains Mono', monospace; font-size: 10px; fill: #9E8E6C; letter-spacing: 0.2em; text-transform: uppercase; }
+    </style>
+  </defs>
+
+  <!-- Pentagon layout: 5 phases around a circle of radius ~140 -->
+  <!-- Positions (cx, cy) for pentagon centered at (300, 210): -->
+  <!-- Measure:  300, 70   (top) -->
+  <!-- Analyze:  433, 167  (upper right) -->
+  <!-- Plan:     382, 317  (lower right) -->
+  <!-- Improve:  218, 317  (lower left) -->
+  <!-- (back to) Measure:  167, 167  (upper left)  this is the loop point -->
+
+  <!-- Phase: MEASURE (top) -->
+  <g transform="translate(300, 70)">
+    <rect class="phase-box-bg" x="-60" y="-28" width="120" height="56" rx="3"/>
+    <rect class="phase-box" x="-60" y="-28" width="120" height="56" rx="3"/>
+    <text class="phase-letter" text-anchor="end" x="54" y="-10">M</text>
+    <text class="phase-label" text-anchor="middle" y="-4">Measure</text>
+    <text class="phase-desc" text-anchor="middle" y="14">Evaluate capabilities</text>
+  </g>
+
+  <!-- Phase: ANALYZE (upper right) -->
+  <g transform="translate(433, 167)">
+    <rect class="phase-box-bg" x="-60" y="-28" width="120" height="56" rx="3"/>
+    <rect class="phase-box" x="-60" y="-28" width="120" height="56" rx="3"/>
+    <text class="phase-letter" text-anchor="end" x="54" y="-10">A</text>
+    <text class="phase-label" text-anchor="middle" y="-4">Analyze</text>
+    <text class="phase-desc" text-anchor="middle" y="14">Identify gaps</text>
+  </g>
+
+  <!-- Phase: PLAN (lower right) -->
+  <g transform="translate(382, 317)">
+    <rect class="phase-box-bg" x="-60" y="-28" width="120" height="56" rx="3"/>
+    <rect class="phase-box" x="-60" y="-28" width="120" height="56" rx="3"/>
+    <text class="phase-letter" text-anchor="end" x="54" y="-10">P</text>
+    <text class="phase-label" text-anchor="middle" y="-4">Plan</text>
+    <text class="phase-desc" text-anchor="middle" y="14">Design improvements</text>
+  </g>
+
+  <!-- Phase: IMPROVE (lower left) -->
+  <g transform="translate(218, 317)">
+    <rect class="phase-box-bg" x="-60" y="-28" width="120" height="56" rx="3"/>
+    <rect class="phase-box" x="-60" y="-28" width="120" height="56" rx="3"/>
+    <text class="phase-letter" text-anchor="end" x="54" y="-10">I</text>
+    <text class="phase-label" text-anchor="middle" y="-4">Improve</text>
+    <text class="phase-desc" text-anchor="middle" y="14">Execute changes</text>
+  </g>
+
+  <!-- Loop return: MEASURE (upper left  visual loop indicator) -->
+  <g transform="translate(167, 167)">
+    <rect class="phase-box-bg" x="-60" y="-28" width="120" height="56" rx="3"/>
+    <rect class="phase-box" x="-60" y="-28" width="120" height="56" rx="3" stroke-dasharray="4,3"/>
+    <text class="phase-letter" text-anchor="end" x="54" y="-10">M</text>
+    <text class="phase-label" text-anchor="middle" y="-4">Measure</text>
+    <text class="phase-desc" text-anchor="middle" y="14">Iterate again</text>
+  </g>
+
+  <!-- Flow arrows -->
+  <!-- Measure ’ Analyze -->
+  <path class="flow" d="M360,82 C390,100 400,130 410,139"/>
+  <!-- Analyze ’ Plan -->
+  <path class="flow" d="M460,195 C465,240 440,270 410,289"/>
+  <!-- Plan ’ Improve -->
+  <path class="flow" d="M322,325 C300,335 280,335 278,325"/>
+  <!-- Improve ’ Measure(loop) -->
+  <path class="flow" d="M190,289 C175,260 168,230 168,195"/>
+  <!-- Measure(loop) ’ Measure(top)  dashed loop-back -->
+  <path d="M200,139 C220,110 250,85 240,82" fill="none" stroke="#C4A35A" stroke-width="1" stroke-dasharray="3,3" opacity="0.5" marker-end="url(#arrow-m)"/>
+
+  <!-- Center title -->
+  <g transform="translate(300, 210)">
+    <circle cx="0" cy="0" r="30" fill="none" stroke="#C4A35A" stroke-width="0.6" opacity="0.3"/>
+    <text class="title-text" text-anchor="middle" y="4">MAPIM</text>
+  </g>
+
+  <!-- Decorative corner marks -->
+  <g opacity="0.25">
+    <path d="M8,8 L8,28 M8,8 L28,8" stroke="#C4A35A" stroke-width="1" fill="none"/>
+    <path d="M592,8 L592,28 M592,8 L572,8" stroke="#C4A35A" stroke-width="1" fill="none"/>
+    <path d="M8,412 L8,392 M8,412 L28,412" stroke="#C4A35A" stroke-width="1" fill="none"/>
+    <path d="M592,412 L592,392 M592,412 L572,412" stroke="#C4A35A" stroke-width="1" fill="none"/>
+  </g>
+</svg>

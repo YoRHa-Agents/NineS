@@ -3,6 +3,103 @@
 {% block tabs %}
   {{ super() }}
 
+  {# ── asset path prefix: EN is at root, other locales are one level deep ── #}
+  {% set lang = config.theme.language | default("en") %}
+  {% set asset_base = "../" if lang != "en" else "" %}
+  {% if lang == "zh" %}
+    {% set t = {
+      "subtitle": "多顶点 AI 智能体评估、采集、分析与自迭代",
+      "tagline": "一个自我改进的工具集——通过 19 个可度量维度和 MAPIM 循环，对 AI 智能体能力进行评估、学习和迭代。",
+      "btn_start": "快速开始",
+      "btn_github": "在 GitHub 查看",
+      "vertices_title": "三顶点能力模型",
+      "vertices_desc": "三个相互连接的顶点构成自增强循环——每个顶点向其他顶点输送数据，产生涌现智能。",
+      "v1_name": "评估",
+      "v1_desc": "结构化评估，支持多种评分策略、N 轴矩阵评估以及 pass@k 等可靠性指标。",
+      "v1_li": ["TOML 任务定义", "精确 / 模糊 / 量规 / 组合评分器", "沙箱执行与污染检测", "Markdown 和 JSON 报告"],
+      "v2_name": "采集",
+      "v2_desc": "发现、抓取并追踪外部数据源，支持增量采集和基于快照的变更检测。",
+      "v2_li": ["GitHub REST + GraphQL", "arXiv 搜索与元数据", "SQLite 存储 + FTS5 全文索引", "令牌桶限流"],
+      "v3_name": "分析",
+      "v3_desc": "通过 AST 解析、模式检测和多策略分解，将代码库分析为结构化知识。",
+      "v3_li": ["圈复杂度", "跨文件依赖图", "功能 / 关注点 / 层次分解", "知识索引与搜索"],
+      "features_title": "核心特性",
+      "f1_name": "自迭代 (MAPIM)",
+      "f1_desc": "覆盖 19 个维度的闭环自改进。度量 → 分析 → 计划 → 改进 → 度量。",
+      "f2_name": "沙箱执行",
+      "f2_desc": "三层隔离——进程、虚拟环境和临时目录——支持 4 个维度的污染检测。",
+      "f3_name": "19 评估维度",
+      "f3_desc": "从评分精度到结构识别，再到系统级收敛率。",
+      "f4_name": "可扩展评分器",
+      "f4_desc": "基于协议的评分体系，支持注册表和入口点插件发现，无需继承。",
+      "f5_name": "确定性执行",
+      "f5_desc": "主种子传播确保每次评估运行完全可复现。",
+      "f6_name": "智能体技能支持",
+      "f6_desc": "通过一条 <code>nines install</code> 命令，将 NineS 安装为 Cursor 或 Claude Code 的技能。",
+      "quickstart_title": "快速开始",
+      "quickstart_desc": "一分钟内启动运行。",
+      "qs_comment1": "# 克隆并安装",
+      "qs_comment2": "# 运行第一次评估",
+      "qs_comment3": "# 分析代码库",
+      "qs_comment4": "# 运行全部 19 维度自评估",
+      "explore_title": "探索",
+      "ex1_name": "用户指南",
+      "ex1_desc": "评估、采集、分析和自迭代工作流的深入指南。",
+      "ex2_name": "示例展示",
+      "ex2_desc": "展示 NineS 实际运行的真实案例和示例任务。",
+      "ex3_name": "系统架构",
+      "ex3_desc": "系统设计、模块依赖和三顶点数据流模型。",
+      "ex4_name": "评估标准",
+      "ex4_desc": "全部 19 个维度、评分方法论和收敛检测。"
+    } %}
+  {% else %}
+    {% set t = {
+      "subtitle": "Multi-Vertex AI Agent Evaluation, Collection, Analysis &amp; Self-Iteration",
+      "tagline": "A self-improving toolkit that evaluates, learns from, and iterates on AI agent capabilities — through 19 measurable dimensions and the MAPIM cycle.",
+      "btn_start": "Get Started",
+      "btn_github": "View on GitHub",
+      "vertices_title": "Three-Vertex Capability Model",
+      "vertices_desc": "Three interconnected vertices form a self-reinforcing loop — each vertex feeds data to the others, creating emergent intelligence.",
+      "v1_name": "Evaluation",
+      "v1_desc": "Structured evaluations with multiple scoring strategies, matrix evaluation across N axes, and reliability metrics like pass@k.",
+      "v1_li": ["TOML task definitions", "Exact / Fuzzy / Rubric / Composite scorers", "Sandboxed execution with pollution detection", "Markdown &amp; JSON reports"],
+      "v2_name": "Collection",
+      "v2_desc": "Discover, fetch, and track external data sources with incremental collection and snapshot-based change detection.",
+      "v2_li": ["GitHub REST + GraphQL", "arXiv search &amp; metadata", "SQLite storage with FTS5", "Token-bucket rate limiting"],
+      "v3_name": "Analysis",
+      "v3_desc": "Analyze codebases into structured knowledge through AST parsing, pattern detection, and multi-strategy decomposition.",
+      "v3_li": ["Cyclomatic complexity", "Cross-file dependency graphs", "Functional / concern / layer decomposition", "Knowledge indexing &amp; search"],
+      "features_title": "Key Features",
+      "f1_name": "Self-Iteration (MAPIM)",
+      "f1_desc": "Closed-loop self-improvement across 19 dimensions. Measure → Analyze → Plan → Improve → Measure.",
+      "f2_name": "Sandboxed Execution",
+      "f2_desc": "Three-layer isolation — process, venv, and tmpdir — with pollution detection across 4 dimensions.",
+      "f3_name": "19 Evaluation Dimensions",
+      "f3_desc": "From scoring accuracy to structure recognition to system-wide convergence rate.",
+      "f4_name": "Extensible Scorers",
+      "f4_desc": "Protocol-based scoring with registry and entry-point plugin discovery. No inheritance required.",
+      "f5_name": "Deterministic Execution",
+      "f5_desc": "Master seed propagation ensures every evaluation run is exactly reproducible.",
+      "f6_name": "Agent Skill Support",
+      "f6_desc": "Install NineS as a skill into Cursor or Claude Code with a single <code>nines install</code> command.",
+      "quickstart_title": "Quick Start",
+      "quickstart_desc": "Get running in under a minute.",
+      "qs_comment1": "# Clone and install",
+      "qs_comment2": "# Run your first evaluation",
+      "qs_comment3": "# Analyze a codebase",
+      "qs_comment4": "# Run self-evaluation across all 19 dimensions",
+      "explore_title": "Explore",
+      "ex1_name": "User Guide",
+      "ex1_desc": "In-depth guides for evaluation, collection, analysis, and self-iteration workflows.",
+      "ex2_name": "Showcase",
+      "ex2_desc": "Real-world examples and sample tasks demonstrating NineS in action.",
+      "ex3_name": "Architecture",
+      "ex3_desc": "System design, module dependencies, and the three-vertex data flow model.",
+      "ex4_name": "Evaluation Criteria",
+      "ex4_desc": "All 19 dimensions, scoring methodology, and convergence detection."
+    } %}
+  {% endif %}
+
   <style>
     .md-main__inner { margin: 0; }
     .md-content { display: none; }
@@ -14,11 +111,11 @@
     <div class="nx-hero__inner">
       <div class="nx-hero__badge">v{{ config.extra.nines_version }}</div>
       <h1 class="nx-hero__title">NineS</h1>
-      <p class="nx-hero__subtitle">Multi-Vertex AI Agent Evaluation, Collection, Analysis &amp; Self-Iteration</p>
-      <p class="nx-hero__tagline">A self-improving toolkit that evaluates, learns from, and iterates on AI agent capabilities — through 19 measurable dimensions and the MAPIM cycle.</p>
+      <p class="nx-hero__subtitle">{{ t.subtitle }}</p>
+      <p class="nx-hero__tagline">{{ t.tagline }}</p>
       <div class="nx-hero__actions">
-        <a href="quick-start/" class="md-button md-button--primary nx-btn">Get Started</a>
-        <a href="{{ config.repo_url }}" class="md-button nx-btn nx-btn--outline">View on GitHub</a>
+        <a href="quick-start/" class="md-button md-button--primary nx-btn">{{ t.btn_start }}</a>
+        <a href="{{ config.repo_url }}" class="md-button nx-btn nx-btn--outline">{{ t.btn_github }}</a>
       </div>
     </div>
     <div class="nx-hero__decoration"></div>
@@ -26,40 +123,34 @@
 
   <section class="nx-section nx-vertices">
     <div class="nx-section__inner">
-      <h2 class="nx-section__title">Three-Vertex Capability Model</h2>
-      <p class="nx-section__desc">Three interconnected vertices form a self-reinforcing loop — each vertex feeds data to the others, creating emergent intelligence.</p>
+      <h2 class="nx-section__title">{{ t.vertices_title }}</h2>
+      <p class="nx-section__desc">{{ t.vertices_desc }}</p>
+      <div class="nx-vertex-diagram">
+        <img src="{{ asset_base }}assets/three-vertex-model.svg" alt="{{ t.vertices_title }}" class="nx-svg-diagram"/>
+      </div>
       <div class="nx-vertex-grid">
         <div class="nx-vertex-card">
           <div class="nx-vertex-card__tag">V1</div>
-          <h3>Evaluation</h3>
-          <p>Structured evaluations with multiple scoring strategies, matrix evaluation across N axes, and reliability metrics like pass@k.</p>
+          <h3>{{ t.v1_name }}</h3>
+          <p>{{ t.v1_desc }}</p>
           <ul>
-            <li>TOML task definitions</li>
-            <li>Exact / Fuzzy / Rubric / Composite scorers</li>
-            <li>Sandboxed execution with pollution detection</li>
-            <li>Markdown &amp; JSON reports</li>
+            {% for item in t.v1_li %}<li>{{ item }}</li>{% endfor %}
           </ul>
         </div>
         <div class="nx-vertex-card">
           <div class="nx-vertex-card__tag">V2</div>
-          <h3>Collection</h3>
-          <p>Discover, fetch, and track external data sources with incremental collection and snapshot-based change detection.</p>
+          <h3>{{ t.v2_name }}</h3>
+          <p>{{ t.v2_desc }}</p>
           <ul>
-            <li>GitHub REST + GraphQL</li>
-            <li>arXiv search &amp; metadata</li>
-            <li>SQLite storage with FTS5</li>
-            <li>Token-bucket rate limiting</li>
+            {% for item in t.v2_li %}<li>{{ item }}</li>{% endfor %}
           </ul>
         </div>
         <div class="nx-vertex-card">
           <div class="nx-vertex-card__tag">V3</div>
-          <h3>Analysis</h3>
-          <p>Analyze codebases into structured knowledge through AST parsing, pattern detection, and multi-strategy decomposition.</p>
+          <h3>{{ t.v3_name }}</h3>
+          <p>{{ t.v3_desc }}</p>
           <ul>
-            <li>Cyclomatic complexity</li>
-            <li>Cross-file dependency graphs</li>
-            <li>Functional / concern / layer decomposition</li>
-            <li>Knowledge indexing &amp; search</li>
+            {% for item in t.v3_li %}<li>{{ item }}</li>{% endfor %}
           </ul>
         </div>
       </div>
@@ -68,37 +159,40 @@
 
   <section class="nx-section nx-features">
     <div class="nx-section__inner">
-      <h2 class="nx-section__title">Key Features</h2>
+      <h2 class="nx-section__title">{{ t.features_title }}</h2>
+      <div class="nx-mapim-diagram">
+        <img src="{{ asset_base }}assets/mapim-cycle.svg" alt="MAPIM Cycle" class="nx-svg-diagram"/>
+      </div>
       <div class="nx-feature-grid">
         <div class="nx-feature">
           <div class="nx-feature__icon">⟳</div>
-          <h3>Self-Iteration (MAPIM)</h3>
-          <p>Closed-loop self-improvement across 19 dimensions. Measure → Analyze → Plan → Improve → Measure.</p>
+          <h3>{{ t.f1_name }}</h3>
+          <p>{{ t.f1_desc }}</p>
         </div>
         <div class="nx-feature">
           <div class="nx-feature__icon">⬡</div>
-          <h3>Sandboxed Execution</h3>
-          <p>Three-layer isolation — process, venv, and tmpdir — with pollution detection across 4 dimensions.</p>
+          <h3>{{ t.f2_name }}</h3>
+          <p>{{ t.f2_desc }}</p>
         </div>
         <div class="nx-feature">
           <div class="nx-feature__icon">◈</div>
-          <h3>19 Evaluation Dimensions</h3>
-          <p>From scoring accuracy to structure recognition to system-wide convergence rate.</p>
+          <h3>{{ t.f3_name }}</h3>
+          <p>{{ t.f3_desc }}</p>
         </div>
         <div class="nx-feature">
           <div class="nx-feature__icon">⊞</div>
-          <h3>Extensible Scorers</h3>
-          <p>Protocol-based scoring with registry and entry-point plugin discovery. No inheritance required.</p>
+          <h3>{{ t.f4_name }}</h3>
+          <p>{{ t.f4_desc }}</p>
         </div>
         <div class="nx-feature">
           <div class="nx-feature__icon">◎</div>
-          <h3>Deterministic Execution</h3>
-          <p>Master seed propagation ensures every evaluation run is exactly reproducible.</p>
+          <h3>{{ t.f5_name }}</h3>
+          <p>{{ t.f5_desc }}</p>
         </div>
         <div class="nx-feature">
           <div class="nx-feature__icon">⌘</div>
-          <h3>Agent Skill Support</h3>
-          <p>Install NineS as a skill into Cursor or Claude Code with a single <code>nines install</code> command.</p>
+          <h3>{{ t.f6_name }}</h3>
+          <p>{{ t.f6_desc }}</p>
         </div>
       </div>
     </div>
@@ -106,20 +200,20 @@
 
   <section class="nx-section nx-quickstart">
     <div class="nx-section__inner">
-      <h2 class="nx-section__title">Quick Start</h2>
-      <p class="nx-section__desc">Get running in under a minute.</p>
+      <h2 class="nx-section__title">{{ t.quickstart_title }}</h2>
+      <p class="nx-section__desc">{{ t.quickstart_desc }}</p>
       <div class="nx-code-block">
-        <pre><code><span class="nx-comment"># Clone and install</span>
+        <pre><code><span class="nx-comment">{{ t.qs_comment1 }}</span>
 git clone https://github.com/YoRHa-Agents/NineS.git &amp;&amp; cd NineS
 uv sync
 
-<span class="nx-comment"># Run your first evaluation</span>
+<span class="nx-comment">{{ t.qs_comment2 }}</span>
 uv run nines eval samples/eval/hello_world.toml
 
-<span class="nx-comment"># Analyze a codebase</span>
+<span class="nx-comment">{{ t.qs_comment3 }}</span>
 uv run nines analyze ./src/nines --depth standard
 
-<span class="nx-comment"># Run self-evaluation across all 19 dimensions</span>
+<span class="nx-comment">{{ t.qs_comment4 }}</span>
 uv run nines self-eval</code></pre>
       </div>
     </div>
@@ -127,23 +221,23 @@ uv run nines self-eval</code></pre>
 
   <section class="nx-section nx-explore">
     <div class="nx-section__inner">
-      <h2 class="nx-section__title">Explore</h2>
+      <h2 class="nx-section__title">{{ t.explore_title }}</h2>
       <div class="nx-explore-grid">
         <a href="user-guide/" class="nx-explore-card">
-          <h3>User Guide</h3>
-          <p>In-depth guides for evaluation, collection, analysis, and self-iteration workflows.</p>
+          <h3>{{ t.ex1_name }}</h3>
+          <p>{{ t.ex1_desc }}</p>
         </a>
         <a href="showcase/" class="nx-explore-card">
-          <h3>Showcase</h3>
-          <p>Real-world examples and sample tasks demonstrating NineS in action.</p>
+          <h3>{{ t.ex2_name }}</h3>
+          <p>{{ t.ex2_desc }}</p>
         </a>
         <a href="architecture/overview/" class="nx-explore-card">
-          <h3>Architecture</h3>
-          <p>System design, module dependencies, and the three-vertex data flow model.</p>
+          <h3>{{ t.ex3_name }}</h3>
+          <p>{{ t.ex3_desc }}</p>
         </a>
         <a href="evaluation-criteria/" class="nx-explore-card">
-          <h3>Evaluation Criteria</h3>
-          <p>All 19 dimensions, scoring methodology, and convergence detection.</p>
+          <h3>{{ t.ex4_name }}</h3>
+          <p>{{ t.ex4_desc }}</p>
         </a>
       </div>
     </div>
