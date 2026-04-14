@@ -14,14 +14,6 @@
     </style>
   </defs>
 
-  <!-- Pentagon layout: 5 phases around a circle of radius ~140 -->
-  <!-- Positions (cx, cy) for pentagon centered at (300, 210): -->
-  <!-- Measure:  300, 70   (top) -->
-  <!-- Analyze:  433, 167  (upper right) -->
-  <!-- Plan:     382, 317  (lower right) -->
-  <!-- Improve:  218, 317  (lower left) -->
-  <!-- (back to) Measure:  167, 167  (upper left)  this is the loop point -->
-
   <!-- Phase: MEASURE (top) -->
   <g transform="translate(300, 70)">
     <rect class="phase-box-bg" x="-60" y="-28" width="120" height="56" rx="3"/>
@@ -58,7 +50,7 @@
     <text class="phase-desc" text-anchor="middle" y="14">Execute changes</text>
   </g>
 
-  <!-- Loop return: MEASURE (upper left  visual loop indicator) -->
+  <!-- Loop return: MEASURE (upper left) -->
   <g transform="translate(167, 167)">
     <rect class="phase-box-bg" x="-60" y="-28" width="120" height="56" rx="3"/>
     <rect class="phase-box" x="-60" y="-28" width="120" height="56" rx="3" stroke-dasharray="4,3"/>
@@ -67,16 +59,15 @@
     <text class="phase-desc" text-anchor="middle" y="14">Iterate again</text>
   </g>
 
-  <!-- Flow arrows -->
-  <!-- Measure ’ Analyze -->
+  <!-- Measure to Analyze -->
   <path class="flow" d="M360,82 C390,100 400,130 410,139"/>
-  <!-- Analyze ’ Plan -->
+  <!-- Analyze to Plan -->
   <path class="flow" d="M460,195 C465,240 440,270 410,289"/>
-  <!-- Plan ’ Improve -->
+  <!-- Plan to Improve -->
   <path class="flow" d="M322,325 C300,335 280,335 278,325"/>
-  <!-- Improve ’ Measure(loop) -->
+  <!-- Improve to Measure(loop) -->
   <path class="flow" d="M190,289 C175,260 168,230 168,195"/>
-  <!-- Measure(loop) ’ Measure(top)  dashed loop-back -->
+  <!-- Measure(loop) back to Measure(top) -->
   <path d="M200,139 C220,110 250,85 240,82" fill="none" stroke="#C4A35A" stroke-width="1" stroke-dasharray="3,3" opacity="0.5" marker-end="url(#arrow-m)"/>
 
   <!-- Center title -->
