@@ -14,40 +14,40 @@
     </style>
   </defs>
 
-  <!-- V1: Evaluation  top center -->
+  <!-- V1: Evaluation - top center -->
   <g transform="translate(300, 100)">
     <polygon class="hex-inner" points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26"/>
     <polygon class="hex" points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26"/>
     <text class="vertex-tag" text-anchor="middle" y="-14">V1</text>
     <text class="vertex-label" text-anchor="middle" y="8">Evaluation</text>
-    <text class="vertex-desc" text-anchor="middle" y="82">19 Dimensions · Multi-Strategy Scoring</text>
+    <text class="vertex-desc" text-anchor="middle" y="82">19 Dimensions &#x00B7; Multi-Strategy Scoring</text>
   </g>
 
-  <!-- V2: Collection  bottom left -->
+  <!-- V2: Collection - bottom left -->
   <g transform="translate(150, 330)">
     <polygon class="hex-inner" points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26"/>
     <polygon class="hex" points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26"/>
     <text class="vertex-tag" text-anchor="middle" y="-14">V2</text>
     <text class="vertex-label" text-anchor="middle" y="8">Collection</text>
-    <text class="vertex-desc" text-anchor="middle" y="82">GitHub · arXiv · Multi-Source</text>
+    <text class="vertex-desc" text-anchor="middle" y="82">GitHub &#x00B7; arXiv &#x00B7; Multi-Source</text>
   </g>
 
-  <!-- V3: Analysis  bottom right -->
+  <!-- V3: Analysis - bottom right -->
   <g transform="translate(450, 330)">
     <polygon class="hex-inner" points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26"/>
     <polygon class="hex" points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26"/>
     <text class="vertex-tag" text-anchor="middle" y="-14">V3</text>
     <text class="vertex-label" text-anchor="middle" y="8">Analysis</text>
-    <text class="vertex-desc" text-anchor="middle" y="82">AST · Dependency Graphs · Knowledge</text>
+    <text class="vertex-desc" text-anchor="middle" y="82">AST &#x00B7; Dependency Graphs &#x00B7; Knowledge</text>
   </g>
 
-  <!-- Flow arrows: V1 ’ V2 (left down) -->
+  <!-- Flow: V1 to V2 -->
   <path class="flow-line" d="M260,140 C220,200 180,250 170,278"/>
 
-  <!-- Flow arrows: V2 ’ V3 (bottom across) -->
+  <!-- Flow: V2 to V3 -->
   <path class="flow-line" d="M198,350 C250,380 350,380 402,350"/>
 
-  <!-- Flow arrows: V3 ’ V1 (right up) -->
+  <!-- Flow: V3 to V1 -->
   <path class="flow-line" d="M430,278 C420,250 380,200 340,140"/>
 
   <!-- Center decorative element -->
