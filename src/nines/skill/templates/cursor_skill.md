@@ -1,6 +1,6 @@
 # NineS — Self-Iterating Agent Toolflow
 
-Use when you need to evaluate agent capabilities, collect external information (GitHub repos, arXiv papers), analyze codebases into structured knowledge, run self-evaluation across 19 quality dimensions, or execute self-improvement iteration cycles.
+Use when you need to evaluate agent capabilities, collect external information (GitHub repos, arXiv papers), analyze codebases into structured knowledge (including multi-language knowledge graphs with `--strategy graph`), run self-evaluation across 24 quality dimensions, or execute self-improvement iteration cycles.
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ Use when you need to evaluate agent capabilities, collect external information (
 |---------|------------|---------|
 | `nines eval` | Benchmark agent capabilities against task suites | `nines eval tasks/coding.toml --scorer composite` |
 | `nines collect` | Search and collect data from GitHub, arXiv, RSS | `nines collect github "LLM evaluation" --limit 20` |
-| `nines analyze` | Analyze a codebase into knowledge units | `nines analyze ./repo --depth deep --index` |
+| `nines analyze` | Analyze a codebase into knowledge units or a full knowledge graph | `nines analyze ./repo --strategy graph` |
 | `nines self-eval` | Run self-evaluation across all dimensions | `nines self-eval --compare --baseline v1` |
 | `nines iterate` | Execute a MAPIM self-improvement cycle | `nines iterate --max-rounds 5` |
 | `nines install` | Install NineS as an Agent Skill | `nines install --target cursor` |
@@ -47,20 +47,21 @@ nines collect <source> <query> [--incremental] [--store PATH] [--limit N]
 
 ## Workflow: Knowledge Analysis
 
-Analyze and decompose codebases into structured knowledge units. Supports AST analysis, complexity metrics, architecture pattern detection, and searchable knowledge indexing.
+Analyze and decompose codebases into structured knowledge units or a full knowledge graph. Supports AST analysis, multi-language scanning, import graph construction, architecture layer detection, graph verification, and analysis summarization.
 
 ```bash
-nines analyze <target> [--depth LEVEL] [--decompose] [--index] [--output FORMAT]
+nines analyze <target> [--strategy functional|concern|layer|graph] [--depth LEVEL] [--output FORMAT]
 ```
 
 **Examples:**
-- Deep analysis: `nines analyze ./target-repo --depth deep`
-- Decompose and index: `nines analyze ./target-repo --decompose --index`
-- Markdown report: `nines analyze ./target-repo --output markdown`
+- Build full knowledge graph: `nines analyze --target-path ./target-repo --strategy graph`
+- Deep agent-impact analysis: `nines analyze --target-path ./target-repo --depth deep`
+- JSON output: `nines -f json analyze --target-path ./target-repo -o analysis/`
+- Skip agent-impact: `nines analyze --target-path ./target-repo --no-agent-impact`
 
 ## Workflow: Self-Evaluation
 
-Run self-evaluation across 19 dimensions spanning evaluation quality (V1), search effectiveness (V2), analysis accuracy (V3), and system-wide health. Compares against stored baselines.
+Run self-evaluation across 24 dimensions spanning evaluation quality (V1), search effectiveness (V2), analysis accuracy (V3), knowledge graph quality (V4: D21-D24), and system-wide health. Compares against stored baselines.
 
 ```bash
 nines self-eval [--dimensions DIM,...] [--baseline VERSION] [--compare] [--report]

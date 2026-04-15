@@ -6,8 +6,8 @@
 |---------|-------------|
 | `nines-eval` | Run evaluation benchmarks on agent capabilities. |
 | `nines-collect` | Search and collect information from configured sources. |
-| `nines-analyze` | Analyze and decompose collected knowledge into structured units. |
-| `nines-self-eval` | Run self-evaluation across all capability dimensions. |
+| `nines-analyze` | Analyze and decompose collected knowledge into structured units. Use `--strategy graph` for full knowledge graph with multi-language scanning, verification, and summary. |
+| `nines-self-eval` | Run self-evaluation across all 24 capability dimensions. |
 | `nines-iterate` | Execute a self-improvement iteration cycle. |
 | `nines-install` | Install or uninstall NineS as an agent skill. |
 | `nines-update` | Check for and install NineS updates, refresh skill files. |
@@ -16,6 +16,20 @@
 
 The `nines` CLI binary must be on `$PATH`.
 All commands delegate to `nines <subcommand>` via the Shell tool.
+
+## v3.0.0 — Knowledge Graph Analysis
+
+The `graph` decomposition strategy builds a complete knowledge graph:
+- **Multi-language scanning** — 30+ languages, 7 file categories, framework detection
+- **Cross-language import graph** — AST (Python) + regex (JS/TS/Go/Rust) dependency resolution
+- **Typed knowledge graph** — 11 node types, 10 edge types, architecture layers
+- **Graph verification** — Referential integrity, orphan detection, layer coverage
+- **Analysis summary** — Fan-in/fan-out rankings, entry point detection, agent impact text
+- **4 new self-eval dimensions** (D21-D24) — Graph coverage, verification, layer quality, summary completeness
+
+```bash
+nines analyze --target-path ./repo --strategy graph
+```
 
 ## Reference Navigation Guide
 
