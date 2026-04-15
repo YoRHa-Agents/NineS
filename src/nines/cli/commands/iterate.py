@@ -31,6 +31,12 @@ from nines.iteration.eval_evaluators import (
     SandboxIsolationEvaluator,
 )
 from nines.iteration.gap_detector import GapDetector
+from nines.iteration.graph_evaluators import (
+    GraphDecompositionCoverageEvaluator,
+    GraphVerificationPassRateEvaluator,
+    LayerAssignmentQualityEvaluator,
+    SummaryCompletenessEvaluator,
+)
 from nines.iteration.planner import ImprovementPlanner
 from nines.iteration.self_eval import (
     CodeCoverageEvaluator,
@@ -79,8 +85,9 @@ def _register_capability_dims(
     src_dir: str,
     samples_dir: str,
     golden_dir: str,
+    project_root: str = ".",
 ) -> None:
-    """Register all D01-D20 capability dimensions."""
+    """Register all D01-D24 capability dimensions."""
     runner.register_dimension("scoring_accuracy", ScoringAccuracyEvaluator(golden_dir))
     runner.register_dimension("eval_coverage", EvalCoverageEvaluator(samples_dir))
     runner.register_dimension("scoring_reliability", ReliabilityEvaluator(golden_dir))
@@ -101,6 +108,22 @@ def _register_capability_dims(
     runner.register_dimension("convergence_rate", ConvergenceRateEvaluator(src_dir))
     runner.register_dimension("cross_vertex_synergy", CrossVertexSynergyEvaluator())
     runner.register_dimension("agent_analysis_quality", AgentAnalysisQualityEvaluator(src_dir))
+    runner.register_dimension(
+        "graph_decomposition_coverage",
+        GraphDecompositionCoverageEvaluator(project_root),
+    )
+    runner.register_dimension(
+        "graph_verification_pass_rate",
+        GraphVerificationPassRateEvaluator(project_root),
+    )
+    runner.register_dimension(
+        "layer_assignment_quality",
+        LayerAssignmentQualityEvaluator(project_root),
+    )
+    runner.register_dimension(
+        "summary_completeness",
+        SummaryCompletenessEvaluator(project_root),
+    )
 
 
 def _build_live_evaluators(
@@ -136,7 +159,7 @@ def _build_live_evaluators(
         LintCleanlinessEvaluator(src_dir=resolved_src),
     )
 
-    _register_capability_dims(runner, resolved_src, samples_dir, golden_dir)
+    _register_capability_dims(runner, resolved_src, samples_dir, golden_dir, str(project_root))
 
     return runner
 

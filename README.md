@@ -14,7 +14,7 @@ NineS analyzes target repositories to understand HOW they make AI Agents work be
 
 ## Evaluation Criteria
 
-NineS tracks 19 self-evaluation dimensions across four categories (V1 Evaluation, V2 Collection, V3 Analysis, System-wide) to assess and improve its analytical capabilities. Each dimension has a concrete measurement method, scoring formula, and improvement direction. The system uses composite scoring with configurable weights, statistical reliability via pass@k and Pass³ metrics, and a 4-method convergence detector to ensure the MAPIM self-improvement loop terminates at genuine stability.
+NineS tracks 24 self-evaluation dimensions across five categories (V1 Evaluation, V2 Collection, V3 Analysis, V4 Graph Analysis, System-wide) to assess and improve its analytical capabilities. Each dimension has a concrete measurement method, scoring formula, and improvement direction. The system uses composite scoring with configurable weights, statistical reliability via pass@k and Pass³ metrics, and a 4-method convergence detector to ensure the MAPIM self-improvement loop terminates at genuine stability.
 
 → [Full Evaluation Criteria](https://yorha-agents.github.io/NineS/en/evaluation-criteria/)
 
@@ -108,6 +108,9 @@ nines collect github "AI agent evaluation" --incremental --store ./data/collecti
 # Analyze a target repository for Agent impact (default behavior)
 nines analyze --target-path ./target-repo --depth deep
 
+# Build a full knowledge graph with multi-language scanning, verification, and summary
+nines analyze --target-path ./target-repo --strategy graph
+
 # Output agent-impact analysis as JSON
 nines -f json analyze --target-path ./target-repo -o analysis/
 
@@ -118,7 +121,7 @@ nines analyze --target-path ./target-repo --no-agent-impact
 #### Self-evaluation
 
 ```bash
-# Run full self-evaluation across all 19 dimensions
+# Run full self-evaluation across all 24 dimensions
 nines self-eval --project-root . --src-dir src/nines --test-dir tests
 
 # Capability dimensions only (faster)
@@ -156,7 +159,10 @@ NineS is organized around three capability vertices and supporting infrastructur
 │  Scorers    │ arXiv        │    Code Reviewer        │
 │  Reporters  │ Store        │    Structure Analyzer   │
 │  Metrics    │ Tracker      │    Decomposer           │
-│  Matrix     │ Scheduler    │    Indexer / Search     │
+│  Matrix     │ Scheduler    │    Graph Decomposer     │
+│             │              │    Scanner / ImportGraph │
+│             │              │    Verifier / Summarizer │
+│             │              │    Indexer / Search      │
 ├─────────────┴──────────────┴────────────────────────┤
 │            Self-Iteration (iteration/)              │
 │  SelfEvalRunner │ Baseline │ GapDetector │ Planner  │
@@ -175,7 +181,7 @@ NineS is organized around three capability vertices and supporting infrastructur
 | `core/` | Foundation layer: protocols, models, errors, events, configuration |
 | `eval/` | V1 — Task evaluation, scoring, reliability metrics, reporting |
 | `collector/` | V2 — External data discovery, collection, tracking, change detection |
-| `analyzer/` | V3 — Agent-impact analysis, key-point decomposition, mechanism detection, knowledge indexing |
+| `analyzer/` | V3 — Agent-impact analysis, key-point decomposition, mechanism detection, knowledge graph construction, multi-language scanning, graph verification, knowledge indexing |
 | `iteration/` | Self-evaluation, gap detection, improvement planning, convergence |
 | `orchestrator/` | Workflow execution, cross-vertex data flow, artifact passing |
 | `sandbox/` | Process/venv/filesystem isolation for evaluation execution |
@@ -193,14 +199,15 @@ NineS uses TOML configuration with three priority levels (highest first):
 
 ## Self-Evaluation Dimensions
 
-NineS tracks 19 self-evaluation dimensions across four categories:
+NineS tracks 24 self-evaluation dimensions across five categories:
 
 | Category | Dimensions | Description |
 |----------|------------|-------------|
 | V1 Evaluation (D01–D05) | Scoring Accuracy, Coverage, Reliability, Report Quality, Scorer Agreement | Evaluation pipeline health |
-| V2 Collection (D06, D09–D10) | Source Coverage, Data Completeness, Throughput | Information collection quality |
+| V2 Collection (D06–D10) | Source Coverage, Freshness, Change Detection, Data Completeness, Throughput | Information collection quality |
 | V3 Analysis (D11–D15) | Decomposition, Abstraction, Code Review, Index Recall, Structure Recognition | Knowledge analysis accuracy |
-| System-wide (D16–D19) | Pipeline Latency, Sandbox Isolation, Convergence Rate, Cross-Vertex Synergy | Overall system health |
+| V4 Graph Analysis (D21–D24) | Graph Coverage, Verification Pass Rate, Layer Quality, Summary Completeness | Knowledge graph quality |
+| System-wide (D16–D20) | Pipeline Latency, Sandbox Isolation, Convergence Rate, Cross-Vertex Synergy, Agent Analysis Quality | Overall system health |
 
 ## Development
 

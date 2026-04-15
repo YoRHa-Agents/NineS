@@ -4,6 +4,42 @@ NineS 的所有重要变更均记录于此。本项目遵循[语义化版本](ht
 
 ---
 
+## v3.0.0 — 2026-04-14
+
+**主题：** 知识图谱分析引擎 — 整合 [Understand-Anything](https://github.com/Lum1104/Understand-Anything) 的仓库分解与分析能力，构建完整的分析→分解→验证→总结核心能力。
+
+> 破坏性变更：新增 `graph` 分解策略，自评扩展至 24 维度，分析管道支持多语言扫描和知识图谱构建。
+
+### 新增
+- **多语言项目扫描器** (`scanner.py`) — 支持 30+ 编程语言的文件发现、语言检测、类别分类（code/config/docs/infra/data/script/markup），以及框架检测
+- **跨语言导入图构建器** (`import_graph.py`) — 基于 AST（Python）和正则（JS/TS/Go/Rust）的项目内部依赖图构建
+- **知识图谱数据模型** (`graph_models.py`) — `GraphNode`、`GraphEdge`、`ArchitectureLayer`、`KnowledgeGraph`、`VerificationResult`、`AnalysisSummary` 等完整类型化模型
+- **图谱分解策略** (`graph_decomposer.py`) — 新增 `--strategy graph` 选项，构建含类型化节点/边/层的完整知识图谱
+- **图谱验证器** (`graph_verifier.py`) — 引用完整性、重复边、孤立节点、层覆盖率、类型合法性等 7 项检查
+- **分析摘要生成器** (`summarizer.py`) — 从知识图谱生成结构化摘要，含 fan-in/fan-out 排名、入口点检测、Agent 影响文本
+- **4 个新自评维度** (D21-D24):
+  - `graph_decomposition_coverage` (D21) — 图谱文件覆盖率
+  - `graph_verification_pass_rate` (D22) — 图谱结构完整性
+  - `layer_assignment_quality` (D23) — 架构层分配质量
+  - `summary_completeness` (D24) — 摘要完整性
+- **分析管道 `graph` 策略集成** — `nines analyze --strategy graph` 自动执行：扫描→导入图→知识图谱→验证→摘要
+- **CLI 图谱输出** — `nines analyze` 文本报告新增知识图谱统计信息（扫描文件、语言、框架、导入边、图节点/边/层、验证结果）
+- 新增 67 项测试（总计 1189 项）
+
+### 设计决策
+- **确定性优先，LLM 辅助** — 借鉴 Understand-Anything 的两阶段设计（脚本先行→LLM 补充），所有核心逻辑基于 AST/正则/路径启发式，不依赖 LLM
+- **类型化图谱合约** — 节点类型（11 种）、边类型（10 种）、文件类别（7 种）均有 `frozenset` 约束，验证器强制检查
+- **路径 + Fan-in 混合层分配** — 结合路径模式匹配和 fan-in 排名提升，高依赖节点自动归入核心层
+- **一切为 Agent 能力验证服务** — 自评维度 D21-D24 直接度量图谱分解与验证质量，驱动迭代改进
+
+### 改进
+- **自评从 20 维扩展至 24 维** — D21-D24 覆盖图谱分解、验证、层分配、摘要
+- **分析管道新增组件注入** — `AnalysisPipeline.__init__` 支持注入 `scanner`、`graph_decomposer`、`graph_verifier`、`summarizer`
+- **`analyzer/__init__.py` 公开 API 扩展** — 导出所有新模块的公开类
+- **全量测试**: 1189 项通过，0 个 lint 错误
+
+---
+
 ## v2.1.0 — 2026-04-14
 
 **主题：** 自更新迭代 — 分析质量改进、策略路由、参考体系，由 DevolaFlow self-update 工作流驱动，分析 [Understand-Anything](https://github.com/Lum1104/Understand-Anything) 仓库。

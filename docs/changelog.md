@@ -4,6 +4,38 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v3.0.0 — 2026-04-14
+
+**Theme:** Knowledge Graph Analysis Engine — Integrates [Understand-Anything](https://github.com/Lum1104/Understand-Anything) repo decomposition and analysis capabilities into a complete analyze → decompose → verify → summarize pipeline.
+
+> Breaking changes: New `graph` decomposition strategy, self-eval expanded to 24 dimensions, analysis pipeline supports multi-language scanning and knowledge graph construction.
+
+### Added
+- **Multi-language project scanner** (`scanner.py`) — Discovers 30+ programming languages, detects file categories (code/config/docs/infra/data/script/markup), identifies frameworks from manifests
+- **Cross-language import graph builder** (`import_graph.py`) — AST-based (Python) and regex-based (JS/TS/Go/Rust) project-internal dependency graph construction
+- **Knowledge graph data models** (`graph_models.py`) — `GraphNode`, `GraphEdge`, `ArchitectureLayer`, `KnowledgeGraph`, `VerificationResult`, `AnalysisSummary` with typed constants and full serialization
+- **Graph decomposition strategy** (`graph_decomposer.py`) — New `--strategy graph` builds a complete knowledge graph with typed nodes, edges, and architecture layers
+- **Graph verifier** (`graph_verifier.py`) — 7 verification checks: referential integrity, duplicate edges, orphan nodes, layer coverage, node/edge type validity, self-loops
+- **Analysis summarizer** (`summarizer.py`) — Produces structured summaries with fan-in/fan-out rankings, entry point detection, and agent impact text
+- **4 new self-eval dimensions** (D21-D24): graph decomposition coverage, verification pass rate, layer assignment quality, summary completeness
+- **Pipeline graph strategy integration** — `nines analyze --strategy graph` auto-executes: scan → import graph → knowledge graph → verify → summarize
+- **CLI graph output** — Text report includes knowledge graph statistics (scanned files, languages, frameworks, import edges, graph nodes/edges/layers, verification results)
+- 67 new tests (total: 1189)
+
+### Design Decisions
+- **Deterministic-first, LLM-assist-second** — Following Understand-Anything's two-phase design (scripts first → LLM enrichment), all core logic is AST/regex/path-heuristic based with no LLM dependency
+- **Typed graph contract** — 11 node types, 10 edge types, 7 file categories constrained by `frozenset` constants; verifier enforces schema compliance
+- **Path + fan-in hybrid layer assignment** — Combines path-pattern matching with fan-in ranking promotion; high-dependency nodes auto-promoted to core layer
+- **Everything serves Agent capability verification** — D21-D24 directly measure graph decomposition and verification quality, driving iterative improvement
+
+### Improved
+- **Self-eval expanded from 20 to 24 dimensions** — D21-D24 cover graph decomposition, verification, layer assignment, summary
+- **Pipeline constructor expanded** — `AnalysisPipeline.__init__` accepts `scanner`, `graph_decomposer`, `graph_verifier`, `summarizer` injection
+- **`analyzer/__init__.py` public API expanded** — Exports all new module public classes
+- **Full test suite**: 1189 tests passing, 0 lint errors
+
+---
+
 ## v2.1.0 — 2026-04-14
 
 **Theme:** Self-update iteration — analysis quality improvements, strategy routing, reference system, driven by DevolaFlow self-update workflow analyzing [Understand-Anything](https://github.com/Lum1104/Understand-Anything).

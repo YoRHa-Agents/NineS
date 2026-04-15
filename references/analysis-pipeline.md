@@ -1,10 +1,11 @@
 ---
 id: "nines/references/analysis-pipeline"
-version: "1.0.0"
+version: "2.0.0"
 purpose: >
   Documents the full NineS analysis pipeline architecture including
-  ingestion, code review, decomposition strategies, agent-impact
-  analysis, key-point extraction, and the CLI interface.
+  ingestion, code review, decomposition strategies (functional, concern,
+  layer, graph), agent-impact analysis, key-point extraction, knowledge
+  graph construction, verification, and the CLI interface.
 triggers:
   - "analysis"
   - "pipeline"
@@ -107,6 +108,45 @@ Builds on functional decomposition, then classifies each unit into cross-cutting
 
 Classifies units into architectural layers using `LAYER_INDICATORS`: presentation, application, domain, infrastructure, testing. Unmatched → `unclassified`.
 
+### 4.4 Graph (v3.0.0)
+
+The `graph` strategy builds a full `KnowledgeGraph` using the enhanced pipeline:
+
+```
+ ┌──────────────────┐
+ │ ProjectScanner   │  Multi-language file discovery + categorization
+ └──────┬───────────┘
+        ▼
+ ┌──────────────────┐
+ │ImportGraphBuilder │  Cross-language import dependency graph
+ └──────┬───────────┘
+        ▼
+ ┌──────────────────┐
+ │ GraphDecomposer  │  Build KnowledgeGraph with typed nodes/edges/layers
+ └──────┬───────────┘
+        ▼
+ ┌──────────────────┐
+ │ GraphVerifier    │  Structural integrity checks (7 validators)
+ └──────┬───────────┘
+        ▼
+ ┌──────────────────┐
+ │AnalysisSummarizer│  Fan-in/out rankings, entry points, agent impact text
+ └──────────────────┘
+```
+
+**Key data models:**
+
+| Model | Purpose |
+|-------|---------|
+| `GraphNode` | File, function, class, module, config, document — 11 types |
+| `GraphEdge` | imports, contains, calls, configures, deploys — 10 types |
+| `ArchitectureLayer` | Groups nodes by architecture layer |
+| `KnowledgeGraph` | Complete typed graph with query methods |
+| `VerificationResult` | Pass/fail + issues + coverage metrics |
+| `AnalysisSummary` | Structured summary with rankings |
+
+**Layer detection** uses path-based classification with fan-in promotion: 7 layer patterns (presentation, application, domain, infrastructure, testing, documentation, configuration) plus fan-in-based core promotion for unclassified high-dependency nodes.
+
 ## 5. CLI Configuration
 
 ```
@@ -116,7 +156,7 @@ nines analyze --target-path PATH [OPTIONS]
 | Flag | Type | Default | Effect |
 |------|------|---------|--------|
 | `--target-path` | PATH (required) | — | File or directory to analyze |
-| `--strategy` | functional\|concern\|layer | functional | Decomposition strategy |
+| `--strategy` | functional\|concern\|layer\|graph | functional | Decomposition strategy |
 | `--depth` | shallow\|deep | shallow | Analysis depth (recorded in metrics) |
 | `--agent-impact/--no-agent-impact` | bool | True | Run agent impact analysis |
 | `--keypoints/--no-keypoints` | bool | True | Extract key points (implies agent-impact) |

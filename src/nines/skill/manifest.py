@@ -46,8 +46,14 @@ def _default_commands() -> list[CommandDef]:
         ),
         CommandDef(
             name="nines-analyze",
-            description="Analyze and decompose collected knowledge into structured units.",
-            argument_hint="<target> [--depth LEVEL] [--decompose] [--index] [--output FORMAT]",
+            description=(
+                "Analyze and decompose collected knowledge into "
+                "structured units or knowledge graphs."
+            ),
+            argument_hint=(
+                "<target> [--strategy functional|concern|layer|graph] "
+                "[--depth LEVEL] [--output FORMAT]"
+            ),
             capability="analyze",
         ),
         CommandDef(
@@ -89,7 +95,7 @@ class SkillManifest:
     version: str = __version__
     description: str = (
         "Self-iterating agent toolflow for evaluation, "
-        "information collection, and knowledge analysis."
+        "information collection, and knowledge graph analysis."
     )
     author: str = "YoRHa-Agents"
     license: str = "MIT"

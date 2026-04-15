@@ -6,7 +6,12 @@ produces an :class:`~nines.core.models.AnalysisResult`.
 Optionally integrates :class:`AgentImpactAnalyzer` and
 :class:`KeyPointExtractor` when the corresponding flags are enabled.
 
-Covers: FR-310, FR-311, FR-313, FR-314.
+The ``"graph"`` strategy builds a rich :class:`KnowledgeGraph` using
+the multi-language :class:`ProjectScanner`, :class:`ImportGraphBuilder`,
+:class:`GraphDecomposer`, :class:`GraphVerifier`, and
+:class:`AnalysisSummarizer`.
+
+Covers: FR-310, FR-311, FR-313, FR-314, FR-315, FR-319.
 """
 
 from __future__ import annotations
@@ -18,9 +23,14 @@ from typing import Any
 
 from nines.analyzer.agent_impact import AgentImpactAnalyzer
 from nines.analyzer.decomposer import Decomposer
+from nines.analyzer.graph_decomposer import GraphDecomposer
+from nines.analyzer.graph_verifier import GraphVerifier
+from nines.analyzer.import_graph import ImportGraphBuilder
 from nines.analyzer.keypoint import KeyPointExtractor
 from nines.analyzer.reviewer import CodeReviewer, FileReview
+from nines.analyzer.scanner import ProjectScanner
 from nines.analyzer.structure import StructureAnalyzer, StructureReport
+from nines.analyzer.summarizer import AnalysisSummarizer
 from nines.core.errors import AnalyzerError
 from nines.core.models import AnalysisResult, Finding, KnowledgeUnit
 
@@ -83,6 +93,10 @@ class AnalysisPipeline:
         decomposer: Decomposer | None = None,
         agent_impact_analyzer: AgentImpactAnalyzer | None = None,
         keypoint_extractor: KeyPointExtractor | None = None,
+        scanner: ProjectScanner | None = None,
+        graph_decomposer: GraphDecomposer | None = None,
+        graph_verifier: GraphVerifier | None = None,
+        summarizer: AnalysisSummarizer | None = None,
     ) -> None:
         """Initialize analysis pipeline."""
         self._reviewer = reviewer or CodeReviewer()
@@ -90,6 +104,10 @@ class AnalysisPipeline:
         self._decomposer = decomposer or Decomposer()
         self._agent_impact = agent_impact_analyzer
         self._keypoint = keypoint_extractor
+        self._scanner = scanner or ProjectScanner()
+        self._graph_decomposer = graph_decomposer or GraphDecomposer()
+        self._graph_verifier = graph_verifier or GraphVerifier()
+        self._summarizer = summarizer or AnalysisSummarizer()
 
     def run(
         self,
@@ -106,6 +124,9 @@ class AnalysisPipeline:
         If *path* is a directory, all relevant files are ingested for
         agent-impact analysis and Python files are used for code review
         and decomposition.
+
+        The ``"graph"`` strategy activates the enhanced pipeline:
+        multi-language scan → import graph → knowledge graph → verify → summarize.
 
         Agent-impact analysis is enabled by default since it is the core
         mission of NineS.  Pass ``agent_impact=False`` for a legacy
@@ -124,6 +145,11 @@ class AnalysisPipeline:
             When ``True`` (the default; implies *agent_impact*),
             additionally run :class:`KeyPointExtractor` and store results
             under the ``"key_points"`` metrics key.
+        strategy:
+            Decomposition strategy: ``"functional"``, ``"concern"``,
+            ``"layer"``, or ``"graph"``.
+        depth:
+            Analysis depth hint (``"shallow"`` or ``"deep"``).
         """
         if not agent_impact:
             keypoints = False
@@ -158,6 +184,10 @@ class AnalysisPipeline:
         metrics["strategy"] = strategy
         metrics["depth"] = depth
 
+        if strategy == "graph" and target.is_dir():
+            graph_metrics = self._run_graph_pipeline(target, reviews)
+            metrics["knowledge_graph"] = graph_metrics
+
         if agent_impact:
             all_files = self.ingest_all(target)
             metrics["total_files_scanned"] = len(all_files)
@@ -182,6 +212,44 @@ class AnalysisPipeline:
             findings=all_findings,
             metrics=metrics,
         )
+
+    def _run_graph_pipeline(
+        self,
+        target: Path,
+        reviews: list[FileReview],
+    ) -> dict[str, Any]:
+        """Execute the graph-based analysis pipeline.
+
+        Returns a dictionary with the knowledge graph, verification,
+        and summary data suitable for inclusion in metrics.
+        """
+        logger.info("Running graph pipeline on %s", target)
+
+        scan_result = self._scanner.scan(target)
+        import_builder = ImportGraphBuilder()
+        import_graph = import_builder.build(target, scan_result.files)
+
+        graph = self._graph_decomposer.build_graph(
+            scan_result, import_graph, reviews,
+        )
+
+        verification = self._graph_verifier.verify(graph)
+        summary = self._summarizer.summarize(graph, verification)
+
+        return {
+            "graph": graph.to_dict(),
+            "verification": verification.to_dict(),
+            "summary": summary.to_dict(),
+            "scan": {
+                "total_files": scan_result.total_files,
+                "languages": scan_result.languages,
+                "frameworks": scan_result.frameworks,
+            },
+            "import_graph": {
+                "edges": len(import_graph.edges),
+                "unresolved": len(import_graph.unresolved),
+            },
+        }
 
     def ingest(self, target: Path) -> list[Path]:
         """Discover Python files at *target*.

@@ -12,7 +12,7 @@ from nines.analyzer.pipeline import AnalysisPipeline
 
 logger = logging.getLogger(__name__)
 
-_VALID_STRATEGIES = ("functional", "concern", "layer")
+_VALID_STRATEGIES = ("functional", "concern", "layer", "graph")
 
 
 @click.command("analyze")
@@ -125,6 +125,28 @@ def analyze_cmd(
         lines.append(f"  Knowledge units: {metrics.get('knowledge_units', 0)}")
         lines.append(f"  Findings: {findings_count}")
         lines.append(f"  Duration: {metrics.get('duration_ms', 0.0):.1f} ms")
+
+        if "knowledge_graph" in metrics:
+            kg = metrics["knowledge_graph"]
+            lines.append("")
+            lines.append("  Knowledge graph:")
+            scan_info = kg.get("scan", {})
+            lines.append(f"    Scanned files: {scan_info.get('total_files', 0)}")
+            lines.append(f"    Languages: {', '.join(scan_info.get('languages', []))}")
+            lines.append(f"    Frameworks: {', '.join(scan_info.get('frameworks', []))}")
+            ig = kg.get("import_graph", {})
+            lines.append(f"    Import edges: {ig.get('edges', 0)}")
+            lines.append(f"    Unresolved imports: {ig.get('unresolved', 0)}")
+            graph_data = kg.get("graph", {})
+            lines.append(f"    Graph nodes: {len(graph_data.get('nodes', []))}")
+            lines.append(f"    Graph edges: {len(graph_data.get('edges', []))}")
+            lines.append(f"    Layers: {len(graph_data.get('layers', []))}")
+            ver = kg.get("verification", {})
+            lines.append(
+                f"    Verification: {'PASSED' if ver.get('passed') else 'FAILED'} "
+                f"({len(ver.get('issues', []))} issues, "
+                f"{ver.get('layer_coverage_pct', 0):.1f}% layer coverage)"
+            )
 
         report = "\n".join(lines)
 
