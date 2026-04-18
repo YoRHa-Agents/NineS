@@ -555,7 +555,6 @@ def test_runner_records_timeouts_in_report_field() -> None:
     assert hung_score.metadata.get("status") == "timeout"
 
 
-
 # ---------------------------------------------------------------------------
 # C01 Phase 1 — runner threads ctx, report carries fingerprint, missing src
 # logs a warning
@@ -611,9 +610,7 @@ def test_self_eval_report_includes_context_fingerprint(tmp_path: Path) -> None:
     expected_fp = ctx.fingerprint()
 
     runner = SelfEvalRunner()
-    runner.register_dimension(
-        "stub_cap", CodeCoverageEvaluator(coverage_pct=70.0)
-    )
+    runner.register_dimension("stub_cap", CodeCoverageEvaluator(coverage_pct=70.0))
     report = runner.run_all(version="fp-test", ctx=ctx)
 
     assert report.context_fingerprint == expected_fp
@@ -628,9 +625,7 @@ def test_self_eval_report_includes_context_fingerprint(tmp_path: Path) -> None:
 
     # And a run *without* ctx leaves context_fingerprint as None.
     runner_no_ctx = SelfEvalRunner()
-    runner_no_ctx.register_dimension(
-        "stub_cap", CodeCoverageEvaluator(coverage_pct=70.0)
-    )
+    runner_no_ctx.register_dimension("stub_cap", CodeCoverageEvaluator(coverage_pct=70.0))
     no_ctx_report = runner_no_ctx.run_all(version="legacy")
     assert no_ctx_report.context_fingerprint is None
 
@@ -657,10 +652,7 @@ def test_runner_logs_warning_on_missing_src_dir(
     with caplog.at_level("WARNING", logger="nines.iteration.self_eval"):
         report = runner.run_all()  # ctx=None, loose mode
 
-    assert any(
-        "ca" in rec.getMessage() and rec.levelname == "WARNING"
-        for rec in caplog.records
-    ), (
+    assert any("ca" in rec.getMessage() and rec.levelname == "WARNING" for rec in caplog.records), (
         "expected a WARNING about ctx=None + ctx-aware dim; "
         f"got: {[r.getMessage() for r in caplog.records]}"
     )

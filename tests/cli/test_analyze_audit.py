@@ -91,9 +91,7 @@ def test_analyze_audit_advisory_mode_does_not_block(tmp_path: Path) -> None:
             AnalysisPipeline as RealAnalysisPipeline,
         )
 
-        pipeline_cls.build_report_metadata = (
-            RealAnalysisPipeline.build_report_metadata
-        )
+        pipeline_cls.build_report_metadata = RealAnalysisPipeline.build_report_metadata
         runner = CliRunner()
         result = runner.invoke(
             cli,
@@ -142,9 +140,7 @@ def test_analyze_strict_audit_blocks_on_critical(tmp_path: Path) -> None:
             AnalysisPipeline as RealAnalysisPipeline,
         )
 
-        pipeline_cls.build_report_metadata = (
-            RealAnalysisPipeline.build_report_metadata
-        )
+        pipeline_cls.build_report_metadata = RealAnalysisPipeline.build_report_metadata
         runner = CliRunner()
         result = runner.invoke(
             cli,
@@ -191,9 +187,7 @@ def test_analyze_audit_emits_audit_report_in_json(tmp_path: Path) -> None:
             AnalysisPipeline as RealAnalysisPipeline,
         )
 
-        pipeline_cls.build_report_metadata = (
-            RealAnalysisPipeline.build_report_metadata
-        )
+        pipeline_cls.build_report_metadata = RealAnalysisPipeline.build_report_metadata
         runner = CliRunner()
         result = runner.invoke(
             cli,
@@ -227,13 +221,10 @@ def test_analyze_audit_emits_audit_report_in_json(tmp_path: Path) -> None:
     ]
     summary = audit_report["summary"]
     assert summary["critical"] >= 2, (
-        f"expected >= 2 critical findings (duplicate id + break_even); "
-        f"summary={summary}"
+        f"expected >= 2 critical findings (duplicate id + break_even); summary={summary}"
     )
     # Sanity: the per-finding dicts include the contract fields.
-    crit_finding = next(
-        f for f in audit_report["findings"] if f["severity"] == "critical"
-    )
+    crit_finding = next(f for f in audit_report["findings"] if f["severity"] == "critical")
     assert {"check_name", "category", "severity", "message", "affected_keys", "evidence"} <= set(
         crit_finding,
     )

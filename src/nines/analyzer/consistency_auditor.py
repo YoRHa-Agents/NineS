@@ -198,9 +198,7 @@ class FindingIDUniquenessCheck(AuditCheck):
                     f"{sorted(duplicates)}; downstream dashboards that "
                     "dedupe on id would silently drop the collisions"
                 ),
-                affected_keys=[
-                    f"findings[*].id={fid}" for fid in sorted(duplicates)
-                ],
+                affected_keys=[f"findings[*].id={fid}" for fid in sorted(duplicates)],
                 evidence={
                     "duplicate_ids": dict(sorted(duplicates.items())),
                     "total_findings": len(ids),
@@ -250,9 +248,7 @@ class FindingIDNamespaceCheck(AuditCheck):
                         "legacy ID format detected — may collide cross-project "
                         f"({len(legacy)} legacy ID(s); first few: {legacy[:3]})"
                     ),
-                    affected_keys=[
-                        f"findings[*].id={fid}" for fid in legacy[:10]
-                    ],
+                    affected_keys=[f"findings[*].id={fid}" for fid in legacy[:10]],
                     evidence={
                         "legacy_ids": legacy,
                         "expected_pattern": _NAMESPACED_ID_RE.pattern,
@@ -270,9 +266,7 @@ class FindingIDNamespaceCheck(AuditCheck):
                         f"first few: {unknown[:3]}); expected namespaced "
                         f"{_NAMESPACED_ID_RE.pattern!r}"
                     ),
-                    affected_keys=[
-                        f"findings[*].id={fid}" for fid in unknown[:10]
-                    ],
+                    affected_keys=[f"findings[*].id={fid}" for fid in unknown[:10]],
                     evidence={"unknown_ids": unknown},
                 ),
             )
@@ -298,11 +292,7 @@ class EconomicsFormulaVersionCheck(AuditCheck):
     category = "economics"
 
     def check(self, report: dict[str, Any]) -> list[AuditFinding]:
-        econ = (
-            (report.get("metrics") or {})
-            .get("agent_impact", {})
-            .get("economics", {})
-        )
+        econ = (report.get("metrics") or {}).get("agent_impact", {}).get("economics", {})
         if not isinstance(econ, dict) or not econ:
             # No economics block — out of scope for this check (e.g.
             # the analyzer was run with --no-agent-impact).
@@ -365,11 +355,7 @@ class EconomicsBreakEvenSanityCheck(AuditCheck):
     category = "economics"
 
     def check(self, report: dict[str, Any]) -> list[AuditFinding]:
-        econ = (
-            (report.get("metrics") or {})
-            .get("agent_impact", {})
-            .get("economics", {})
-        )
+        econ = (report.get("metrics") or {}).get("agent_impact", {}).get("economics", {})
         if not isinstance(econ, dict) or not econ:
             return []
         be = econ.get("break_even_interactions")
@@ -437,11 +423,7 @@ class GraphVerificationPassedCheck(AuditCheck):
             return []
         passed = bool(ver.get("passed", False))
         issues = ver.get("issues") or []
-        critical = [
-            i
-            for i in issues
-            if isinstance(i, dict) and i.get("severity") == "critical"
-        ]
+        critical = [i for i in issues if isinstance(i, dict) and i.get("severity") == "critical"]
         if passed and not critical:
             return []
         return [
@@ -655,10 +637,7 @@ class ConsistencyAuditor:
                         check_name=c.name,
                         category=c.category,
                         severity="critical",
-                        message=(
-                            f"check {c.name} raised "
-                            f"{type(exc).__name__}: {exc}"
-                        ),
+                        message=(f"check {c.name} raised {type(exc).__name__}: {exc}"),
                         affected_keys=[],
                         evidence={"exception": repr(exc)},
                     ),

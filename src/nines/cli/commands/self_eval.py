@@ -23,13 +23,13 @@ from nines.iteration.collection_evaluators import (
     SourceCoverageEvaluator,
     SourceFreshnessEvaluator,
 )
+from nines.iteration.context import EvaluationContext
 from nines.iteration.eval_evaluators import (
     EvalCoverageEvaluator,
     PipelineLatencyEvaluator,
     ReportQualityEvaluator,
     SandboxIsolationEvaluator,
 )
-from nines.iteration.context import EvaluationContext
 from nines.iteration.self_eval import (
     DimensionScore,
     DocstringCoverageEvaluator,
@@ -324,10 +324,7 @@ def self_eval_cmd(
     # is the NineS source — warn loudly so operators know foreign-repo
     # runs need an explicit ``--src-dir``.
     if src_dir == "src/nines":
-        logger.warning(
-            "Using default NineS src_dir; ctx-aware dims will report "
-            "NineS's own values"
-        )
+        logger.warning("Using default NineS src_dir; ctx-aware dims will report NineS's own values")
     eval_ctx = EvaluationContext.from_cli(
         project_root=project_root,
         src_dir=src_dir,

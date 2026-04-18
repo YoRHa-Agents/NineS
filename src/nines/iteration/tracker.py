@@ -173,7 +173,7 @@ class IterationTracker:
     def record_gate_results(
         self,
         version: str,
-        results: list["GateResult"],
+        results: list[GateResult],
     ) -> None:
         """Append C07 gate results to the per-version history.
 
@@ -209,7 +209,7 @@ class IterationTracker:
             len(bucket),
         )
 
-    def gate_history(self, version: str) -> list["GateResult"]:
+    def gate_history(self, version: str) -> list[GateResult]:
         """Return the chronological gate results for ``version``.
 
         Returns an empty list when no gates have been recorded for the

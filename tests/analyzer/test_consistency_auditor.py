@@ -29,9 +29,7 @@ from nines.analyzer.consistency_auditor import (  # noqa: E402
     FindingIDUniquenessCheck,
     GraphVerificationPassedCheck,
     ReportMetadataPresenceCheck,
-    SchemaVersioningCheck,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures helpers
@@ -83,9 +81,7 @@ def _clean_report() -> dict:
 def test_finding_id_uniqueness_check_passes_on_unique() -> None:
     """A clean report with all-unique IDs produces zero findings."""
     out = FindingIDUniquenessCheck().check(_clean_report())
-    assert out == [], (
-        f"unique IDs must produce zero findings; got {[f.message for f in out]}"
-    )
+    assert out == [], f"unique IDs must produce zero findings; got {[f.message for f in out]}"
 
 
 def test_finding_id_uniqueness_check_fails_on_duplicates() -> None:
@@ -121,9 +117,7 @@ def test_finding_id_namespace_check_warns_on_legacy_format() -> None:
         {"id": "AI-0002", "severity": "info", "category": "x", "message": "legacy 2"},
     ]
     out = FindingIDNamespaceCheck().check(report)
-    assert len(out) == 1, (
-        f"expected one warn finding for legacy IDs; got {len(out)}: {out}"
-    )
+    assert len(out) == 1, f"expected one warn finding for legacy IDs; got {len(out)}: {out}"
     assert out[0].severity == "warn"
     assert "legacy ID format detected" in out[0].message
     assert out[0].evidence["legacy_ids"] == ["AI-0001", "AI-0002"]
@@ -148,9 +142,7 @@ def test_economics_formula_version_check_critical_on_missing() -> None:
     assert len(out) == 1
     assert out[0].severity == "critical"
     assert "formula_version is missing" in out[0].message
-    assert (
-        "metrics.agent_impact.economics.formula_version" in out[0].affected_keys
-    )
+    assert "metrics.agent_impact.economics.formula_version" in out[0].affected_keys
 
 
 def test_economics_formula_version_check_warn_on_v1() -> None:
@@ -186,9 +178,7 @@ def test_economics_break_even_sanity_check_passes_when_derivable() -> None:
     econ["overhead_tokens"] = 200
     econ["per_interaction_savings_tokens"] = 100
     out2 = EconomicsBreakEvenSanityCheck().check(report)
-    assert out2 == [], (
-        f"break_even == 2 with overhead==2*saved must pass; got {out2}"
-    )
+    assert out2 == [], f"break_even == 2 with overhead==2*saved must pass; got {out2}"
 
 
 def test_economics_break_even_sanity_check_fails_on_regression() -> None:
@@ -321,9 +311,7 @@ def test_consistency_auditor_aggregates_findings_correctly() -> None:
     assert by_cat["economics"] >= 1
     assert by_cat["schema_metadata"] >= 1
     # Total findings count matches sum of per-severity counts
-    total = (
-        audit.summary["critical"] + audit.summary["warn"] + audit.summary["info"]
-    )
+    total = audit.summary["critical"] + audit.summary["warn"] + audit.summary["info"]
     assert total == len(audit.findings)
     # Round-trip via to_dict
     payload = audit.to_dict()

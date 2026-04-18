@@ -24,7 +24,6 @@ from nines.iteration.gates import (
 )
 from nines.iteration.self_eval import DimensionScore, SelfEvalReport
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

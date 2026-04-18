@@ -181,7 +181,6 @@ class Reporter(Protocol):
         ...
 
 
-
 # ---------------------------------------------------------------------------
 # C01 Phase 1 — project-aware DimensionEvaluator (Wave 2)
 # ---------------------------------------------------------------------------
@@ -216,7 +215,7 @@ class DimensionEvaluator(Protocol):
     instead the runner uses ``getattr(ev, "requires_context", False)``.
     """
 
-    def evaluate(self, *, ctx: "EvaluationContext | None" = None) -> Any:
+    def evaluate(self, *, ctx: EvaluationContext | None = None) -> Any:
         """Run evaluation for this dimension.
 
         Parameters
@@ -234,7 +233,7 @@ class DimensionEvaluator(Protocol):
         ...
 
 
-__all__ = [  # type: ignore[misc]
+__all__ = [
     "Analyzer",
     "DimensionEvaluator",
     "Executor",

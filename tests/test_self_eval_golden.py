@@ -104,9 +104,7 @@ def _load_fixture(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _runner_from_fixture(
-    fixture: dict[str, Any], *, version: str | None = None
-) -> SelfEvalRunner:
+def _runner_from_fixture(fixture: dict[str, Any], *, version: str | None = None) -> SelfEvalRunner:
     """Wire a SelfEvalRunner with MockEvaluators that reproduce *fixture*."""
     runner = SelfEvalRunner()
     for s in fixture["scores"]:
@@ -191,15 +189,10 @@ def test_self_eval_against_foreign_repo_diverges_from_nines() -> None:
 
     # ... and crucially must NOT match the NineS golden on the
     # silent-fallback signal.
-    nines_decomp = next(
-        s for s in nines["scores"] if s["name"] == "decomposition_coverage"
-    )
-    foreign_decomp = next(
-        s for s in foreign["scores"] if s["name"] == "decomposition_coverage"
-    )
+    nines_decomp = next(s for s in nines["scores"] if s["name"] == "decomposition_coverage")
+    foreign_decomp = next(s for s in foreign["scores"] if s["name"] == "decomposition_coverage")
     assert (
-        nines_decomp["metadata"]["total_elements"]
-        != foreign_decomp["metadata"]["total_elements"]
+        nines_decomp["metadata"]["total_elements"] != foreign_decomp["metadata"]["total_elements"]
     ), (
         "Foreign and NineS fixtures must differ on decomposition_coverage."
         "total_elements — otherwise the silent-fallback regression is "
@@ -264,9 +257,7 @@ def test_silent_fallback_detection_regression_assertion() -> None:
     report = runner.run_all(version=foreign_fixture["version"])
     projected = _trim_report(report, weights=foreign_fixture["weights"])
 
-    leaked_score = next(
-        s for s in projected["scores"] if s["name"] == "decomposition_coverage"
-    )
+    leaked_score = next(s for s in projected["scores"] if s["name"] == "decomposition_coverage")
 
     # The leaked report must NOT match the foreign golden — that is
     # the regression detector's job.

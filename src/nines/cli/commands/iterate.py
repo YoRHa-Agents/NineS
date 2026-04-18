@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import click
 
@@ -33,6 +34,7 @@ from nines.iteration.eval_evaluators import (
 from nines.iteration.gap_detector import GapDetector
 from nines.iteration.gates import (
     GateRunner,
+    QualityGate,
     RegressionGate,
     SelfEvalCoverageGate,
     Snapshot,
@@ -180,7 +182,7 @@ def _build_stub_evaluators() -> SelfEvalRunner:
     return runner
 
 
-def _build_iteration_gates(history: list[float]) -> list:
+def _build_iteration_gates(history: list[float]) -> list[QualityGate]:
     """Construct the C07 gate set used by ``nines iterate``.
 
     The gate set is intentionally minimal: a coverage gate plus a
@@ -188,10 +190,7 @@ def _build_iteration_gates(history: list[float]) -> list:
     economics gates are owned by ``nines analyze`` and not duplicated
     here.
     """
-    snapshots = [
-        Snapshot(version=f"round-{i}", overall=value)
-        for i, value in enumerate(history)
-    ]
+    snapshots = [Snapshot(version=f"round-{i}", overall=value) for i, value in enumerate(history)]
     return [
         SelfEvalCoverageGate(min_overall=0.85),
         RegressionGate(history=snapshots, regression_threshold=0.05),
@@ -202,7 +201,7 @@ def _emit_gate_summary(
     runner: GateRunner,
     report: SelfEvalReport,
     output_format: str,
-) -> tuple[dict, bool]:
+) -> tuple[dict[str, Any], bool]:
     """Run gates and emit a click-friendly summary.
 
     Returns ``(summary_dict, should_abort)``.  When the runner is in
@@ -216,15 +215,13 @@ def _emit_gate_summary(
         return summary, runner.should_abort(results)
 
     mode_label = "advisory" if runner.advisory_mode else "strict"
-    click.echo("--- Quality gates ({}) ---".format(mode_label))
+    click.echo(f"--- Quality gates ({mode_label}) ---")
     click.echo(
         "passed={passed} failed={failed} bypassed={bypassed} "
         "warned={warned} blocked={blocked}".format(**summary)
     )
     for entry in summary["results"]:
-        click.echo(
-            "  [{severity}] {gate_name}: {status} - {verdict}".format(**entry)
-        )
+        click.echo("  [{severity}] {gate_name}: {status} - {verdict}".format(**entry))
 
     return summary, runner.should_abort(results)
 
@@ -366,7 +363,7 @@ def iterate_cmd(
 
     # --- C07 quality gates -------------------------------------------------
     advisory_mode = not strict_gates
-    gate_summary: dict | None = None
+    gate_summary: dict[str, Any] | None = None
     should_abort = False
     if (gates_enabled or strict_gates) and last_report is not None:
         # When --strict-gates is given, force gates on regardless of the

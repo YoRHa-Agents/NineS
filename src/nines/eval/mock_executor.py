@@ -200,8 +200,7 @@ class MockEvaluator:
             msg = f"MockEvaluator.sleep_seconds must be >= 0, got {self.sleep_seconds}"
             raise ValueError(msg)
         if self.raise_on_call is not None and not (
-            isinstance(self.raise_on_call, type)
-            and issubclass(self.raise_on_call, BaseException)
+            isinstance(self.raise_on_call, type) and issubclass(self.raise_on_call, BaseException)
         ):
             msg = (
                 "MockEvaluator.raise_on_call must be a BaseException subclass, "
@@ -234,9 +233,7 @@ class MockEvaluator:
             time.sleep(self.sleep_seconds)
 
         if self.raise_on_call is not None:
-            raise self.raise_on_call(
-                f"MockEvaluator(name={self.name!r}) configured to raise"
-            )
+            raise self.raise_on_call(f"MockEvaluator(name={self.name!r}) configured to raise")
 
         # Copy metadata so external callers cannot mutate the
         # evaluator's stored dict via the returned score.

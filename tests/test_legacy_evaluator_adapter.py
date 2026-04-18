@@ -118,9 +118,7 @@ def test_modern_evaluator_passthrough(tmp_path: Path) -> None:
 
     # NOT wrapped — runner stores the original instance directly.
     stored = runner._evaluators["modern_dim"]
-    assert stored is modern, (
-        f"modern evaluator was wrapped unnecessarily: {type(stored).__name__}"
-    )
+    assert stored is modern, f"modern evaluator was wrapped unnecessarily: {type(stored).__name__}"
 
     ctx = EvaluationContext.from_cli(project_root=str(tmp_path), src_dir="src")
     report = runner.run_all(ctx=ctx)

@@ -202,12 +202,8 @@ class EvaluationContext:
             "project_root": str(self.project_root),
             "src_dir": str(self.src_dir),
             "test_dir": str(self.test_dir) if self.test_dir is not None else None,
-            "samples_dir": (
-                str(self.samples_dir) if self.samples_dir is not None else None
-            ),
-            "golden_dir": (
-                str(self.golden_dir) if self.golden_dir is not None else None
-            ),
+            "samples_dir": (str(self.samples_dir) if self.samples_dir is not None else None),
+            "golden_dir": (str(self.golden_dir) if self.golden_dir is not None else None),
             "metadata": dict(self.metadata),
             "fingerprint": self.fingerprint(),
         }

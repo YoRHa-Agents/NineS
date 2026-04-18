@@ -230,10 +230,7 @@ def analyze_cmd(
                     truncated = af.message
                     if len(truncated) > 200:
                         truncated = truncated[:197] + "..."
-                    lines.append(
-                        f"    [{af.severity}/{af.category}] "
-                        f"{af.check_name}: {truncated}"
-                    )
+                    lines.append(f"    [{af.severity}/{af.category}] {af.check_name}: {truncated}")
 
         report = "\n".join(lines)
 
@@ -274,12 +271,15 @@ def analyze_cmd(
     # operators always get the forensic file/JSON before the gate
     # short-circuits with a non-zero exit code.
     # ------------------------------------------------------------------
-    if audit and strict_audit and audit_report_obj is not None:
-        if ConsistencyAuditor.should_block(audit_report_obj):
-            crit = audit_report_obj.summary.get("critical", 0)
-            click.echo(
-                f"Strict audit gate: {crit} critical consistency "
-                "finding(s) detected.",
-                err=True,
-            )
-            ctx.exit(STRICT_AUDIT_EXIT_CODE)
+    if (
+        audit
+        and strict_audit
+        and audit_report_obj is not None
+        and ConsistencyAuditor.should_block(audit_report_obj)
+    ):
+        crit = audit_report_obj.summary.get("critical", 0)
+        click.echo(
+            f"Strict audit gate: {crit} critical consistency finding(s) detected.",
+            err=True,
+        )
+        ctx.exit(STRICT_AUDIT_EXIT_CODE)

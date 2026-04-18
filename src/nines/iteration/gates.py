@@ -31,15 +31,15 @@ import statistics
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
-if TYPE_CHECKING:  # pragma: no cover - type-checking-only imports
-    pass
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
 
-class GateStatus(str, Enum):
+class GateStatus(str, Enum):  # noqa: UP042 — keep (str, Enum) form to preserve __str__ semantics
     """Lifecycle state of a single gate evaluation.
 
     The values are deliberately ordered to read as a state machine:
@@ -188,10 +188,7 @@ class GraphVerificationGate(QualityGate):
                 metric_name="knowledge_graph.verification.passed",
                 metric_value=0.0,
                 threshold=float(self.threshold_critical_issues),
-                verdict=(
-                    "No knowledge_graph.verification metrics present; "
-                    "gate bypassed."
-                ),
+                verdict=("No knowledge_graph.verification metrics present; gate bypassed."),
                 severity="info",
                 metadata={"reason": "missing_metrics"},
             )
@@ -253,9 +250,7 @@ class EconomicsScoreGate(QualityGate):
 
     def __init__(self, min_score: float = 0.10) -> None:
         if not 0.0 <= min_score <= 1.0:
-            raise ValueError(
-                f"min_score must be in [0.0, 1.0], got {min_score}"
-            )
+            raise ValueError(f"min_score must be in [0.0, 1.0], got {min_score}")
         self.min_score = float(min_score)
 
     def evaluate(self, report: Any) -> GateResult:
@@ -271,10 +266,7 @@ class EconomicsScoreGate(QualityGate):
                 metric_name="agent_impact.economics.economics_score",
                 metric_value=0.0,
                 threshold=self.min_score,
-                verdict=(
-                    "No agent_impact.economics metrics present; "
-                    "gate bypassed."
-                ),
+                verdict=("No agent_impact.economics metrics present; gate bypassed."),
                 severity="info",
                 metadata={"reason": "missing_metrics"},
             )
@@ -289,9 +281,7 @@ class EconomicsScoreGate(QualityGate):
                 metric_name="economics_score",
                 metric_value=score,
                 threshold=self.min_score,
-                verdict=(
-                    f"economics_score={score:.4f} < threshold={self.min_score:.4f}"
-                ),
+                verdict=(f"economics_score={score:.4f} < threshold={self.min_score:.4f}"),
                 severity="warn",
                 metadata={"formula_version": formula_version},
             )
@@ -302,9 +292,7 @@ class EconomicsScoreGate(QualityGate):
             metric_name="economics_score",
             metric_value=score,
             threshold=self.min_score,
-            verdict=(
-                f"economics_score={score:.4f} >= threshold={self.min_score:.4f}"
-            ),
+            verdict=(f"economics_score={score:.4f} >= threshold={self.min_score:.4f}"),
             severity="info",
             metadata={"formula_version": formula_version},
         )
@@ -323,9 +311,7 @@ class SelfEvalCoverageGate(QualityGate):
 
     def __init__(self, min_overall: float = 0.85) -> None:
         if not 0.0 <= min_overall <= 1.0:
-            raise ValueError(
-                f"min_overall must be in [0.0, 1.0], got {min_overall}"
-            )
+            raise ValueError(f"min_overall must be in [0.0, 1.0], got {min_overall}")
         self.min_overall = float(min_overall)
 
     def evaluate(self, report: Any) -> GateResult:
@@ -351,9 +337,7 @@ class SelfEvalCoverageGate(QualityGate):
                 metric_name="overall",
                 metric_value=overall_f,
                 threshold=self.min_overall,
-                verdict=(
-                    f"overall={overall_f:.4f} < threshold={self.min_overall:.4f}"
-                ),
+                verdict=(f"overall={overall_f:.4f} < threshold={self.min_overall:.4f}"),
                 severity="warn",
                 metadata={},
             )
@@ -364,9 +348,7 @@ class SelfEvalCoverageGate(QualityGate):
             metric_name="overall",
             metric_value=overall_f,
             threshold=self.min_overall,
-            verdict=(
-                f"overall={overall_f:.4f} >= threshold={self.min_overall:.4f}"
-            ),
+            verdict=(f"overall={overall_f:.4f} >= threshold={self.min_overall:.4f}"),
             severity="info",
             metadata={},
         )
@@ -418,13 +400,9 @@ class RegressionGate(QualityGate):
         window_size: int = 3,
     ) -> None:
         if regression_threshold < 0.0:
-            raise ValueError(
-                f"regression_threshold must be >= 0, got {regression_threshold}"
-            )
+            raise ValueError(f"regression_threshold must be >= 0, got {regression_threshold}")
         if window_size < 1:
-            raise ValueError(
-                f"window_size must be >= 1, got {window_size}"
-            )
+            raise ValueError(f"window_size must be >= 1, got {window_size}")
         self.history: list[Snapshot] = list(history or [])
         self.regression_threshold = float(regression_threshold)
         self.window_size = int(window_size)
@@ -459,7 +437,7 @@ class RegressionGate(QualityGate):
                 metadata={"history_size": len(self.history)},
             )
 
-        recent = self.history[-self.window_size:]
+        recent = self.history[-self.window_size :]
         mean_recent = statistics.fmean(snap.overall for snap in recent)
         delta = mean_recent - float(overall)
 

@@ -81,7 +81,7 @@ class ImprovementPlan:
 
     suggestions: list[Suggestion] = field(default_factory=list)
     total_gaps: int = 0
-    gate_results: list["GateResult"] = field(default_factory=list)
+    gate_results: list[GateResult] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary, including gate results when present."""
@@ -160,7 +160,7 @@ class ImprovementPlanner:
         self,
         gap_analysis: GapAnalysis | None = None,
         *,
-        gate_results: list["GateResult"] | None = None,
+        gate_results: list[GateResult] | None = None,
     ) -> ImprovementPlan:
         """Build an :class:`ImprovementPlan` with optional gate verdicts.
 
@@ -183,10 +183,7 @@ class ImprovementPlanner:
             A plan with both severity-ordered suggestions and any
             attached gate verdicts.
         """
-        if gap_analysis is not None:
-            plan = self.plan(gap_analysis)
-        else:
-            plan = ImprovementPlan()
+        plan = self.plan(gap_analysis) if gap_analysis is not None else ImprovementPlan()
 
         if gate_results:
             plan.gate_results = list(gate_results)

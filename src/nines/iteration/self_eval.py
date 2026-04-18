@@ -25,13 +25,14 @@ from typing import TYPE_CHECKING, Any, ClassVar, Protocol, cast, runtime_checkab
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from nines.iteration.context import EvaluationContext
+
 from nines.core.budget import (
     EvaluatorBudgetExceeded,
     TimeBudget,
     evaluator_budget,
 )
 from nines.core.errors import ConfigError
-from nines.iteration.context import EvaluationContext
 
 
 def _budgeted_subprocess_timeout(
@@ -163,8 +164,7 @@ class _BudgetedEvaluator(Protocol):
     ``inspect.signature`` gate.
     """
 
-    def evaluate(self, *, budget: TimeBudget | None = None) -> DimensionScore:
-        ...
+    def evaluate(self, *, budget: TimeBudget | None = None) -> DimensionScore: ...
 
 
 class LegacyEvaluatorAdapter:
@@ -435,9 +435,7 @@ class SelfEvalRunner:
         try:
             sig = inspect.signature(evaluator.evaluate)
             params = sig.parameters
-            has_var_keyword = any(
-                p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()
-            )
+            has_var_keyword = any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
             accepts_budget = "budget" in params or has_var_keyword
             accepts_ctx = "ctx" in params or has_var_keyword
         except (TypeError, ValueError):
@@ -446,8 +444,7 @@ class SelfEvalRunner:
             # downstream evaluator errors still surface through the
             # ``except Exception`` branch in run_all.
             logger.debug(
-                "inspect.signature failed for evaluator %r; "
-                "calling without budget/ctx",
+                "inspect.signature failed for evaluator %r; calling without budget/ctx",
                 evaluator,
             )
 
@@ -503,9 +500,7 @@ class SelfEvalRunner:
 
         if ctx is None:
             offenders = [
-                n
-                for n, ev in self._evaluators.items()
-                if getattr(ev, "requires_context", False)
+                n for n, ev in self._evaluators.items() if getattr(ev, "requires_context", False)
             ]
             if offenders:
                 if self._strict_ctx:

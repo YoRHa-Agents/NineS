@@ -70,14 +70,11 @@ def test_evaluator_budget_aborts_runaway_mock_evaluator() -> None:
 
     # Crucially, must NOT have waited for the full sleep.
     assert elapsed < 10.0, (
-        f"Runner waited the full {elapsed:.2f}s sleep — budget did not "
-        "fire at all."
+        f"Runner waited the full {elapsed:.2f}s sleep — budget did not fire at all."
     )
 
     # Report must record exactly which dim breached.
-    assert report.timeouts == ["hangs"], (
-        f"report.timeouts={report.timeouts}, expected ['hangs']"
-    )
+    assert report.timeouts == ["hangs"], f"report.timeouts={report.timeouts}, expected ['hangs']"
 
     # Placeholder score must encode timeout status.
     assert len(report.scores) == 1
