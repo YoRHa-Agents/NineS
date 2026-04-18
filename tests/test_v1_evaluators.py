@@ -326,3 +326,292 @@ def test_register_with_self_eval_runner() -> None:
 
     names = {s.name for s in report.scores}
     assert names == {"scoring_accuracy", "scoring_reliability", "scorer_agreement"}
+
+
+# ---------------------------------------------------------------------------
+# Release follow-up N2 — Live* evaluators wire TimeBudget into subprocess.run
+#
+# The Live* evaluators live in ``nines.iteration.self_eval`` (not
+# ``v1_evaluators``), but per the v2.2.0 release follow-up these tests are
+# co-located with the other release-blocker checks.  The tests mock
+# ``subprocess.run`` and assert that ``timeout=`` matches
+# ``min(default_timeout, budget.hard_seconds * 0.9)``.
+# ---------------------------------------------------------------------------
+
+import subprocess  # noqa: E402
+from unittest.mock import MagicMock, patch  # noqa: E402
+
+from nines.core.budget import TimeBudget  # noqa: E402
+from nines.iteration.self_eval import (  # noqa: E402
+    LintCleanlinessEvaluator,
+    LiveCodeCoverageEvaluator,
+    LiveTestCountEvaluator,
+)
+
+
+_BUDGET = TimeBudget(soft_seconds=5.0, hard_seconds=10.0)
+_HARD_MARGIN = 0.9  # mirrors ``_budgeted_subprocess_timeout`` default
+_EXPECTED_TIMEOUT = _BUDGET.hard_seconds * _HARD_MARGIN  # 9.0s for hard=10
+
+
+def _captured_timeout(mock_run: MagicMock) -> float:
+    """Pull the ``timeout=`` kwarg from the most recent subprocess.run call."""
+    call = mock_run.call_args
+    assert call is not None, "subprocess.run was never invoked"
+    timeout_kw = call.kwargs.get("timeout")
+    assert timeout_kw is not None, (
+        "subprocess.run invoked without timeout= kwarg "
+        f"(args={call.args}, kwargs={call.kwargs})"
+    )
+    return float(timeout_kw)
+
+
+# ---------------------------------------------------------------------------
+# LiveCodeCoverageEvaluator (D-cov)
+# ---------------------------------------------------------------------------
+
+
+@patch("nines.iteration.self_eval.subprocess.run")
+def test_live_coverage_evaluator_respects_budget(mock_run: MagicMock) -> None:
+    """N2: pytest --cov subprocess timeout shrinks to budget.hard*0.9."""
+    mock_run.return_value = MagicMock(
+        stdout="TOTAL   100   20   80%\n", returncode=0,
+    )
+    ev = LiveCodeCoverageEvaluator(project_root="/fake")
+    score = ev.evaluate(budget=_BUDGET)
+
+    assert score.value == 80.0
+    timeout_used = _captured_timeout(mock_run)
+    assert timeout_used <= 9.0, (
+        f"expected timeout <= 9.0s under budget hard=10s, got {timeout_used}"
+    )
+    assert abs(timeout_used - _EXPECTED_TIMEOUT) < 1e-6
+
+
+@patch("nines.iteration.self_eval.subprocess.run")
+def test_live_coverage_evaluator_uses_default_when_no_budget(
+    mock_run: MagicMock,
+) -> None:
+    """N2: backward compat — without a budget the original 300s timeout
+    is preserved."""
+    mock_run.return_value = MagicMock(
+        stdout="TOTAL   100   20   80%\n", returncode=0,
+    )
+    ev = LiveCodeCoverageEvaluator(project_root="/fake")
+    ev.evaluate()  # no budget kwarg
+
+    timeout_used = _captured_timeout(mock_run)
+    assert timeout_used == 300.0, (
+        f"expected default 300s timeout without budget, got {timeout_used}"
+    )
+
+
+@patch("nines.iteration.self_eval.subprocess.run")
+def test_live_coverage_evaluator_caps_at_default_when_budget_huge(
+    mock_run: MagicMock,
+) -> None:
+    """N2: when the budget is larger than the default, the default wins
+    (``min`` semantics)."""
+    mock_run.return_value = MagicMock(
+        stdout="TOTAL   100   20   80%\n", returncode=0,
+    )
+    ev = LiveCodeCoverageEvaluator(project_root="/fake")
+    huge = TimeBudget(soft_seconds=600.0, hard_seconds=600.0)
+    ev.evaluate(budget=huge)
+
+    timeout_used = _captured_timeout(mock_run)
+    # 600 * 0.9 = 540 > 300 default, so default 300 wins.
+    assert timeout_used == 300.0
+
+
+# ---------------------------------------------------------------------------
+# LiveTestCountEvaluator (D-test_count)
+# ---------------------------------------------------------------------------
+
+
+@patch("nines.iteration.self_eval.subprocess.run")
+def test_live_test_count_evaluator_respects_budget(mock_run: MagicMock) -> None:
+    """N2: pytest --collect-only subprocess timeout shrinks to budget*0.9."""
+    mock_run.return_value = MagicMock(
+        stdout="5 tests collected\n", returncode=0,
+    )
+    ev = LiveTestCountEvaluator(test_dir="/fake/tests", project_root="/fake")
+    score = ev.evaluate(budget=_BUDGET)
+
+    assert score.value == 5.0
+    timeout_used = _captured_timeout(mock_run)
+    assert timeout_used <= 9.0, (
+        f"expected timeout <= 9.0s under budget hard=10s, got {timeout_used}"
+    )
+    assert abs(timeout_used - _EXPECTED_TIMEOUT) < 1e-6
+
+
+@patch("nines.iteration.self_eval.subprocess.run")
+def test_live_test_count_evaluator_uses_default_when_no_budget(
+    mock_run: MagicMock,
+) -> None:
+    """N2: backward compat — without a budget the original 120s timeout
+    is preserved."""
+    mock_run.return_value = MagicMock(
+        stdout="5 tests collected\n", returncode=0,
+    )
+    ev = LiveTestCountEvaluator(test_dir="/fake/tests", project_root="/fake")
+    ev.evaluate()
+
+    timeout_used = _captured_timeout(mock_run)
+    assert timeout_used == 120.0
+
+
+# ---------------------------------------------------------------------------
+# LintCleanlinessEvaluator (D-lint)
+# ---------------------------------------------------------------------------
+
+
+@patch("nines.iteration.self_eval.subprocess.run")
+def test_lint_cleanliness_evaluator_respects_budget(mock_run: MagicMock) -> None:
+    """N2: ruff check subprocess timeout shrinks to budget*0.9."""
+    mock_run.return_value = MagicMock(stdout="", returncode=0)
+    ev = LintCleanlinessEvaluator(src_dir="/fake")
+    score = ev.evaluate(budget=_BUDGET)
+
+    assert score.value == 100.0
+    timeout_used = _captured_timeout(mock_run)
+    assert timeout_used <= 9.0, (
+        f"expected timeout <= 9.0s under budget hard=10s, got {timeout_used}"
+    )
+    assert abs(timeout_used - _EXPECTED_TIMEOUT) < 1e-6
+
+
+@patch("nines.iteration.self_eval.subprocess.run")
+def test_lint_cleanliness_evaluator_uses_default_when_no_budget(
+    mock_run: MagicMock,
+) -> None:
+    """N2: backward compat — without a budget the original 300s timeout
+    is preserved."""
+    mock_run.return_value = MagicMock(stdout="", returncode=0)
+    ev = LintCleanlinessEvaluator(src_dir="/fake")
+    ev.evaluate()
+
+    timeout_used = _captured_timeout(mock_run)
+    assert timeout_used == 300.0
+
+
+# ---------------------------------------------------------------------------
+# N2 — runner threads the budget through register_dimension(... budget=)
+# ---------------------------------------------------------------------------
+
+
+@patch("nines.iteration.self_eval.subprocess.run")
+def test_runner_threads_budget_into_live_evaluators(mock_run: MagicMock) -> None:
+    """N2 integration: SelfEvalRunner.register_dimension(name, ev,
+    budget=...) routes the budget into ``evaluate(budget=...)`` for
+    evaluators whose signature accepts it."""
+    from nines.iteration.self_eval import SelfEvalRunner
+
+    mock_run.return_value = MagicMock(
+        stdout="TOTAL   100   20   80%\n", returncode=0,
+    )
+    runner = SelfEvalRunner(default_budget=TimeBudget(5.0, 30.0))
+    # register with a dim-specific budget that will dominate.
+    dim_budget = TimeBudget(soft_seconds=2.0, hard_seconds=8.0)
+    runner.register_dimension(
+        "code_coverage",
+        LiveCodeCoverageEvaluator(project_root="/fake"),
+        budget=dim_budget,
+    )
+
+    report = runner.run_all(version="t")
+    assert len(report.scores) == 1
+    assert report.timeouts == []  # no real subprocess timeout
+
+    # The evaluator's subprocess.run should see the dim's budget,
+    # not the runner default.
+    timeout_used = _captured_timeout(mock_run)
+    assert abs(timeout_used - dim_budget.hard_seconds * 0.9) < 1e-6
+
+
+def test_runner_calls_legacy_evaluators_without_budget() -> None:
+    """N2 backward compat: evaluators whose ``evaluate`` doesn't accept
+    ``budget`` are invoked with no kwargs (no TypeError)."""
+    from nines.iteration.self_eval import (
+        DimensionScore,
+        SelfEvalRunner,
+    )
+
+    class LegacyEvaluator:
+        """Pre-N2 evaluator with a no-arg evaluate signature."""
+
+        called_with: dict = {}
+
+        def evaluate(self) -> DimensionScore:  # no budget kwarg
+            return DimensionScore(name="legacy", value=0.5, max_value=1.0)
+
+    runner = SelfEvalRunner(default_budget=TimeBudget(1.0, 5.0))
+    runner.register_dimension("legacy", LegacyEvaluator())
+    report = runner.run_all()
+
+    assert len(report.scores) == 1
+    assert report.scores[0].name == "legacy"
+    assert report.scores[0].value == 0.5
+    assert report.timeouts == []
+
+
+def test_budgeted_subprocess_timeout_helper() -> None:
+    """N2 helper: ``min(default, budget.hard*0.9)`` semantics + None
+    passthrough."""
+    from nines.iteration.self_eval import _budgeted_subprocess_timeout
+
+    # No budget => default unchanged.
+    assert _budgeted_subprocess_timeout(120.0, None) == 120.0
+
+    # Budget shrinks below default.
+    out = _budgeted_subprocess_timeout(120.0, TimeBudget(5.0, 30.0))
+    assert abs(out - 27.0) < 1e-6  # 30 * 0.9 = 27
+
+    # Budget larger than default => default wins.
+    out = _budgeted_subprocess_timeout(60.0, TimeBudget(60.0, 600.0))
+    assert out == 60.0
+
+    # Custom margin (passes through).
+    out = _budgeted_subprocess_timeout(
+        100.0, TimeBudget(5.0, 50.0), margin=0.5,
+    )
+    assert out == 25.0
+
+    # Catch the realistic timeout-budget mismatch — subprocess timeout
+    # must always be < budget.hard_seconds so the daemon-thread guard
+    # doesn't fire while the subprocess is mid-call.
+    budget = TimeBudget(5.0, 60.0)
+    out = _budgeted_subprocess_timeout(300.0, budget)
+    assert out < budget.hard_seconds, (
+        f"subprocess timeout {out} must stay below daemon budget "
+        f"{budget.hard_seconds}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# N2 documentation — AgentAnalysisQualityEvaluator is pure-Python
+# ---------------------------------------------------------------------------
+
+
+def test_agent_analysis_quality_is_pure_python() -> None:
+    """Documents the design choice: ``AgentAnalysisQualityEvaluator``
+    runs the AnalysisPipeline + AgentImpactAnalyzer in-process, never
+    shelling out, so the only safety net under hang is the
+    daemon-thread budget from C04 (no subprocess timeout to wire).
+
+    This test is a regression detector: if a future contributor adds a
+    ``subprocess.run`` to that evaluator, this assertion fails and they
+    must wire it through the same N2 mechanism as the Live* family.
+    """
+    import inspect as _inspect
+
+    from nines.iteration.capability_evaluators import (
+        AgentAnalysisQualityEvaluator,
+    )
+
+    source = _inspect.getsource(AgentAnalysisQualityEvaluator)
+    assert "subprocess" not in source, (
+        "AgentAnalysisQualityEvaluator gained a subprocess call; "
+        "wire its budget through _budgeted_subprocess_timeout per N2"
+    )

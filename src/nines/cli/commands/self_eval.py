@@ -36,6 +36,7 @@ from nines.iteration.self_eval import (
     LiveCodeCoverageEvaluator,
     LiveModuleCountEvaluator,
     LiveTestCountEvaluator,
+    SelfEvalReport,
     SelfEvalRunner,
 )
 from nines.iteration.system_evaluators import (
@@ -127,7 +128,7 @@ def _mean_normalized(scores: list[DimensionScore]) -> float:
 
 
 def _format_text_report(
-    report_data: dict,
+    report: SelfEvalReport,
     capability_scores: list[DimensionScore],
     hygiene_scores: list[DimensionScore],
 ) -> str:
@@ -140,8 +141,8 @@ def _format_text_report(
     )
 
     lines = [
-        f"Self-Evaluation Report (version={report_data['version'] or 'untagged'})",
-        f"  Timestamp: {report_data['timestamp']}",
+        f"Self-Evaluation Report (version={report.version or 'untagged'})",
+        f"  Timestamp: {report.timestamp}",
     ]
     if hygiene_scores:
         lines.append(
@@ -151,7 +152,11 @@ def _format_text_report(
         )
     else:
         lines.append(f"  Overall: {overall:.4f} (capability only)")
-    lines.append(f"  Duration: {report_data['duration']:.3f}s")
+    lines.append(f"  Duration: {report.duration:.3f}s")
+    if report.timeouts:
+        lines.append(
+            "  Timeouts (C04): " + ", ".join(report.timeouts)
+        )
 
     score_map = {s.name: s for s in capability_scores + hygiene_scores}
 
@@ -187,10 +192,20 @@ def _format_text_report(
 
 
 def _build_json_output(
-    report_data: dict,
+    report: SelfEvalReport,
     capability_scores: list[DimensionScore],
     hygiene_scores: list[DimensionScore],
 ) -> str:
+    """Emit JSON for ``nines self-eval --format json``.
+
+    Forwards every field from :py:meth:`SelfEvalReport.to_dict` so any
+    new attribute on the report (``timeouts`` from C04, future
+    ``context_fingerprint`` from C01, ...) automatically propagates to
+    operators without a per-field CLI patch (release follow-up N1).
+
+    The CLI overlays its own weighted ``overall`` plus the capability/
+    hygiene split since the runner emits an unweighted mean.
+    """
     cap_mean = _mean_normalized(capability_scores)
     hyg_mean = _mean_normalized(hygiene_scores)
     overall = (
@@ -199,21 +214,23 @@ def _build_json_output(
         else cap_mean
     )
 
-    payload = {
-        "version": report_data["version"],
-        "timestamp": report_data["timestamp"],
-        "duration": report_data["duration"],
-        "overall": overall,
-        "capability_mean": cap_mean,
-        "hygiene_mean": hyg_mean,
-        "weights": {
-            "capability": CAPABILITY_WEIGHT,
-            "hygiene": HYGIENE_WEIGHT,
-        },
-        "capability_scores": [s.to_dict() for s in capability_scores],
-        "hygiene_scores": [s.to_dict() for s in hygiene_scores],
-        "scores": [s.to_dict() for s in capability_scores + hygiene_scores],
+    # Forward every report field, then layer on CLI-specific computed
+    # values.  ``report.to_dict()`` includes ``timeouts`` (C04) and any
+    # future fields added to ``SelfEvalReport``.
+    payload = report.to_dict()
+    payload["overall"] = overall
+    payload["capability_mean"] = cap_mean
+    payload["hygiene_mean"] = hyg_mean
+    payload["weights"] = {
+        "capability": CAPABILITY_WEIGHT,
+        "hygiene": HYGIENE_WEIGHT,
     }
+    payload["capability_scores"] = [s.to_dict() for s in capability_scores]
+    payload["hygiene_scores"] = [s.to_dict() for s in hygiene_scores]
+    # Preserve the legacy flat ``scores`` list (existing callers may
+    # depend on it); the report-derived payload already provides
+    # ``scores`` but we re-set it to the cap+hyg ordering used above.
+    payload["scores"] = [s.to_dict() for s in capability_scores + hygiene_scores]
     return json.dumps(payload, indent=2, default=str)
 
 
@@ -364,17 +381,14 @@ def self_eval_cmd(
     capability_scores = [s for s in report.scores if s.name in _ALL_CAPABILITY_DIMS]
     hygiene_scores = [s for s in report.scores if s.name in set(_HYGIENE_DIMS)]
 
-    report_data = {
-        "version": report.version,
-        "timestamp": report.timestamp,
-        "duration": report.duration,
-    }
-
+    # Pass the SelfEvalReport object directly so renderers see every
+    # field on it (notably ``timeouts`` from C04, plus any future
+    # additions).  Release follow-up N1.
     if output_format == "json":
-        output_text = _build_json_output(report_data, capability_scores, hygiene_scores)
+        output_text = _build_json_output(report, capability_scores, hygiene_scores)
     else:
         output_text = _format_text_report(
-            report_data, capability_scores, hygiene_scores,
+            report, capability_scores, hygiene_scores,
         )
 
     if output_dir:
