@@ -66,6 +66,13 @@ class SourceCoverageEvaluator:
     and ``fetch`` async methods.
 
     Score = active_sources / configured_sources.
+
+    NineS-meta evaluator (C01 Phase 2 design note)
+    ----------------------------------------------
+    This evaluator validates NineS's own collector module imports
+    (``nines.collector.github``, ``nines.collector.arxiv``). The
+    answer is independent of the project under self-eval, so it
+    deliberately does **not** declare ``requires_context = True``.
     """
 
     def evaluate(self) -> DimensionScore:
@@ -126,6 +133,12 @@ class SourceFreshnessEvaluator:
     the configured staleness window (default 30 days).
 
     Score = fresh_sources / total_sources.
+
+    NineS-meta evaluator (C01 Phase 2 design note)
+    ----------------------------------------------
+    Uses a synthetic in-memory ``DataStore`` round-trip; the result
+    is independent of the project under self-eval. Deliberately not
+    ctx-aware.
     """
 
     _STALENESS_DAYS = 30
@@ -233,6 +246,11 @@ class ChangeDetectionEvaluator:
     and verifies the update is reflected on retrieval.
 
     Score = 1.0 if change detected, 0.0 otherwise.
+
+    NineS-meta evaluator (C01 Phase 2 design note)
+    ----------------------------------------------
+    Tests NineS's own ``DataStore`` change-detection semantics with
+    a synthetic in-memory fixture. Independent of the target project.
     """
 
     def evaluate(self) -> DimensionScore:
@@ -322,6 +340,11 @@ class DataCompletenessEvaluator:
     preserves them.
 
     Score = valid_schema_fields / total_expected_fields.
+
+    NineS-meta evaluator (C01 Phase 2 design note)
+    ----------------------------------------------
+    Validates NineS's own ``Repository`` / ``Paper`` schema
+    definitions. Independent of the target project.
     """
 
     def evaluate(self) -> DimensionScore:
@@ -413,6 +436,11 @@ class CollectionThroughputEvaluator:
     elapsed time.  No network access required.
 
     Score = 1.0 - min(elapsed_seconds, 5.0) / 5.0.
+
+    NineS-meta evaluator (C01 Phase 2 design note)
+    ----------------------------------------------
+    Benchmarks NineS's own ``DataStore`` SQLite throughput on a
+    synthetic batch. Independent of the target project.
     """
 
     _BATCH_SIZE = 200

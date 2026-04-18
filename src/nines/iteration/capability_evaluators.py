@@ -199,22 +199,50 @@ class AbstractionQualityEvaluator:
     Runs the AnalysisPipeline, then checks how many resulting
     KnowledgeUnit instances have non-empty ``tags`` and a valid
     ``unit_type`` category.
+
+    C01 Phase 2: project-aware. Reads ``ctx.src_dir`` at evaluation
+    time so foreign repos report classification quality on their own
+    sources rather than silently re-evaluating NineS itself when the
+    constructor argument is omitted (closes baseline §4.8 silent-
+    fallback bug).
     """
 
+    requires_context: ClassVar[bool] = True
+
     def __init__(self, src_dir: str | Path = "src/nines") -> None:
-        """Initialize abstraction quality evaluator."""
+        """Initialize abstraction quality evaluator.
+
+        Parameters
+        ----------
+        src_dir:
+            Legacy default used only when ``ctx`` is omitted. The
+            modern code path supplies a ctx and overrides this value.
+        """
         self._src_dir = Path(src_dir)
 
-    def evaluate(self) -> DimensionScore:
-        """Run the analysis pipeline and score classification quality."""
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+    ) -> DimensionScore:
+        """Run the analysis pipeline and score classification quality.
+
+        Parameters
+        ----------
+        ctx:
+            Project context. See
+            :meth:`DecompositionCoverageEvaluator.evaluate` for the
+            ``ctx=None`` legacy fallback contract.
+        """
+        src_dir = ctx.src_dir if ctx is not None else self._src_dir
         try:
             pipeline = AnalysisPipeline()
-            py_files = pipeline.ingest(self._src_dir)
+            py_files = pipeline.ingest(src_dir)
             reviews = pipeline.analyze(py_files)
 
             structure = None
             try:
-                structure = StructureAnalyzer().analyze_directory(self._src_dir)
+                structure = StructureAnalyzer().analyze_directory(src_dir)
             except Exception as exc:
                 logger.warning("Structure analysis skipped: %s", exc)
 
@@ -225,7 +253,11 @@ class AbstractionQualityEvaluator:
                     name="abstraction_quality",
                     value=0.0,
                     max_value=1.0,
-                    metadata={"total_units": 0, "well_classified": 0},
+                    metadata={
+                        "total_units": 0,
+                        "well_classified": 0,
+                        "src_dir": str(src_dir),
+                    },
                 )
 
             well_classified = sum(1 for u in units if self._is_well_classified(u))
@@ -239,11 +271,13 @@ class AbstractionQualityEvaluator:
                     "total_units": len(units),
                     "well_classified": well_classified,
                     "files_analyzed": len(reviews),
+                    "src_dir": str(src_dir),
                 },
             )
         except Exception as exc:
             logger.error(
-                "AbstractionQualityEvaluator failed: %s",
+                "AbstractionQualityEvaluator failed for %s: %s",
+                src_dir,
                 exc,
                 exc_info=True,
             )
@@ -251,6 +285,7 @@ class AbstractionQualityEvaluator:
                 name="abstraction_quality",
                 value=0.0,
                 max_value=1.0,
+                metadata={"src_dir": str(src_dir), "error": str(exc)},
             )
 
     @staticmethod
@@ -274,17 +309,37 @@ class CodeReviewAccuracyEvaluator:
     category, and message.  Also verifies that complexity values fall within
     the 1-50 range.  Composite score: 70% finding quality, 30% complexity
     reasonableness.
+
+    C01 Phase 2: project-aware. Reads ``ctx.src_dir`` so the reviewed
+    corpus follows the supplied project rather than silently
+    defaulting to NineS's own ``src/nines`` (closes baseline §4.8
+    silent-fallback bug).
     """
+
+    requires_context: ClassVar[bool] = True
 
     def __init__(self, src_dir: str | Path = "src/nines") -> None:
         """Initialize code review accuracy evaluator."""
         self._src_dir = Path(src_dir)
 
-    def evaluate(self) -> DimensionScore:
-        """Review all source files and score finding quality."""
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+    ) -> DimensionScore:
+        """Review all source files and score finding quality.
+
+        Parameters
+        ----------
+        ctx:
+            Project context. See
+            :meth:`DecompositionCoverageEvaluator.evaluate` for the
+            ``ctx=None`` legacy fallback contract.
+        """
+        src_dir = ctx.src_dir if ctx is not None else self._src_dir
         try:
             reviewer = CodeReviewer()
-            py_files = _collect_python_files(self._src_dir)
+            py_files = _collect_python_files(src_dir)
 
             reviews = []
             for fpath in py_files:
@@ -302,7 +357,11 @@ class CodeReviewAccuracyEvaluator:
                     name="code_review_accuracy",
                     value=0.0,
                     max_value=1.0,
-                    metadata={"total_findings": 0, "valid_findings": 0},
+                    metadata={
+                        "total_findings": 0,
+                        "valid_findings": 0,
+                        "src_dir": str(src_dir),
+                    },
                 )
 
             valid_count = sum(1 for f in all_findings if self._is_valid_finding(f))
@@ -325,11 +384,13 @@ class CodeReviewAccuracyEvaluator:
                     "reasonable_complexities": reasonable,
                     "complexity_reasonableness": round(complexity_ratio, 4),
                     "files_analyzed": len(reviews),
+                    "src_dir": str(src_dir),
                 },
             )
         except Exception as exc:
             logger.error(
-                "CodeReviewAccuracyEvaluator failed: %s",
+                "CodeReviewAccuracyEvaluator failed for %s: %s",
+                src_dir,
                 exc,
                 exc_info=True,
             )
@@ -337,6 +398,7 @@ class CodeReviewAccuracyEvaluator:
                 name="code_review_accuracy",
                 value=0.0,
                 max_value=1.0,
+                metadata={"src_dir": str(src_dir), "error": str(exc)},
             )
 
     @staticmethod
@@ -628,9 +690,9 @@ class StructureRecognitionEvaluator:
 
 
 class AgentAnalysisQualityEvaluator:
-    """D16: Measures NineS's ability to correctly analyze agent-impact on a known repo.
+    """D20: Measures NineS's ability to correctly analyze agent-impact on a known repo.
 
-    Runs AgentImpactAnalyzer on the NineS src directory itself and checks:
+    Runs AgentImpactAnalyzer on the configured project tree and checks:
     1. Agent-facing artifacts are detected (SKILL.md templates exist)
     2. At least 1 mechanism is identified
     3. Context economics produces non-empty results
@@ -638,26 +700,54 @@ class AgentAnalysisQualityEvaluator:
     5. Pipeline with agent_impact + keypoints runs without error
 
     Score = checks_passed / total_checks.
+
+    C01 Phase 2: project-aware. Reads ``ctx.project_root`` and
+    ``ctx.src_dir`` so foreign-repo runs analyze the *target* project's
+    agent-facing artifacts rather than silently re-analyzing NineS
+    itself when the constructor argument is omitted (closes baseline
+    §4.8 silent-fallback bug).
     """
+
+    requires_context: ClassVar[bool] = True
 
     def __init__(self, src_dir: str | Path = "src/nines") -> None:
         """Initialize agent analysis quality evaluator."""
         self._src_dir = Path(src_dir)
 
-    def evaluate(self) -> DimensionScore:
-        """Run agent-impact analysis on the golden test repo and score quality."""
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+    ) -> DimensionScore:
+        """Run agent-impact analysis on the project tree and score quality.
+
+        Parameters
+        ----------
+        ctx:
+            Project context. When supplied, uses ``ctx.project_root``
+            (the target repo to analyze) and ``ctx.src_dir`` (the
+            source tree). When ``None``, falls back to the
+            constructor-time ``src_dir`` and the legacy
+            walk-up-to-find-``src`` heuristic.
+        """
         from nines.analyzer.agent_impact import AgentImpactAnalyzer
+
+        if ctx is not None:
+            src_dir = ctx.src_dir
+            project_root = ctx.project_root
+        else:
+            src_dir = self._src_dir
+            project_root = self._resolve_project_root_from(src_dir)
 
         checks_passed = 0
         total_checks = 5
         details: dict[str, Any] = {}
 
         try:
-            if not self._src_dir.is_dir():
-                raise FileNotFoundError(f"Source directory does not exist: {self._src_dir}")
+            if not src_dir.is_dir():
+                raise FileNotFoundError(f"Source directory does not exist: {src_dir}")
 
             analyzer = AgentImpactAnalyzer()
-            project_root = self._resolve_project_root()
 
             report = analyzer.analyze(project_root)
 
@@ -689,7 +779,7 @@ class AgentAnalysisQualityEvaluator:
                 checks_passed += 1
 
         except Exception as exc:
-            logger.error("AgentAnalysisQualityEvaluator failed: %s", exc)
+            logger.error("AgentAnalysisQualityEvaluator failed for %s: %s", project_root, exc)
             details["error"] = str(exc)
 
         score = checks_passed / total_checks if total_checks > 0 else 0.0
@@ -702,12 +792,19 @@ class AgentAnalysisQualityEvaluator:
                 "checks_passed": checks_passed,
                 "total_checks": total_checks,
                 "details": details,
+                "src_dir": str(src_dir),
+                "project_root": str(project_root),
             },
         )
 
-    def _resolve_project_root(self) -> Path:
-        """Walk up from src_dir to find the project root (parent of 'src')."""
-        project_root = self._src_dir
+    @staticmethod
+    def _resolve_project_root_from(src_dir: Path) -> Path:
+        """Walk up from *src_dir* to find the project root (parent of 'src').
+
+        Static so the legacy ``ctx=None`` path can use it without
+        relying on ``self._src_dir`` mutation.
+        """
+        project_root = src_dir
         while project_root.name != "src" and project_root != project_root.parent:
             project_root = project_root.parent
         if project_root.name == "src":
