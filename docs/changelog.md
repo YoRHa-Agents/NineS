@@ -4,6 +4,63 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v2.3.0 — 2026-04-18 (Wave 2 Paradigm Extension; pyproject v3.2.0)
+
+**Theme:** Wave 2 of the v2.2.0 paradigm-extension iteration — closes the project-blindness gap (§4.8) and institutionalises Wave 1's data-quality wins via gates and auditors.
+
+**Semver:** Released as `v3.2.0` (additive backward-compatible features); codename `v2.3.0 Wave 2` preserved for continuity with the design / accept-list documents.
+
+**Status:** Released from `feat/v2.3.0-wave2-paradigm-extension` after 4 empirically-validated candidates (C01 Phase 1, C06 full harness, C07 quality-gate FSM, C10 cross-artifact auditor). All 4 verdicts CONFIRMED via per-candidate benchmarks at `.local/v2.3.0/benchmark/`. The 4 remaining candidates from the v2.2.0 accept list (C08 weighted MetricRegistry, C11a/b mechanism diversification, C12 breakdown reporter) stay deferred per the user's 'tested-benefit-only' rollout rule.
+
+### Added (Wave 2 — 4 candidates, all CONFIRMED)
+
+- **C01 Phase 1 — Project-aware `EvaluationContext`** (`src/nines/iteration/context.py` ~120 lines + `LegacyEvaluatorAdapter` in `iteration/self_eval.py`). New frozen dataclass carries `project_root` / `src_dir` / `test_dir` / `samples_dir` / `golden_dir` / `metadata` and exposes `fingerprint()` (8-char `blake2s` of resolved paths) and `from_cli(...)` factory. `DimensionEvaluator` Protocol gains optional kw-only `ctx` parameter; non-ctx-aware evaluators auto-wrap in `LegacyEvaluatorAdapter` at registration. 3 evaluators migrated (D11 `decomposition_coverage`, D14 `index_recall`, D15 `structure_recognition`). `SelfEvalReport` gains `context_fingerprint` field. Empirical proof: caveman / UA / NineS now report distinct project-specific values (caveman 0 / UA 40 / NineS 963 for `total_elements`) with 3 distinct fingerprints (`9cfbf3b1` / `5a527c18` / `63c58172`) — confirms §4.8 silent-fallback bug is fixed for the 3 migrated dims. 13 new tests.
+
+- **C06 full harness — `MockEvaluator` + golden fixtures + hang-detection** (`src/nines/eval/mock_executor.py` extended + `tests/data/golden/self_eval_fixtures/`). New `MockEvaluator(DimensionEvaluator)` class for deterministic dim simulation; 2 golden fixtures (`nines_v3_1_0_capability.json`, `foreign_caveman_capability.json`) pin known-good `SelfEvalReport` shapes; joint hang-detection test asserts C04 budget aborts a 10-second mock evaluator within 2.245s; silent-fallback regression test detects 5 divergent dims when foreign-repo eval leaks NineS values. 5-run determinism verified (sha256 byte-identical). 16 new tests. Unblocks future C08 + C12 work.
+
+- **C07 — Quality-gate state machine** (`src/nines/iteration/gates.py` ~660 lines + planner/tracker integration). 4 built-in gates: `GraphVerificationGate` (consumes C03 output), `EconomicsScoreGate` (consumes C09 output), `SelfEvalCoverageGate` (consumes self-eval output), `RegressionGate` (consumes IterationTracker history). Lifecycle: `PROPOSED → EVALUATING → PASSED / FAILED / ESCALATED / BYPASSED`. Default ships in `advisory_mode=True` (warns but doesn't block) for one minor; `--strict-gates` CLI flag opt-in for blocking. Empirical proof: clean report passes (`should_abort=False`); strict-mode bad report blocks (`should_abort=True`); advisory-mode bad report warns without blocking. `ImprovementPlan.gate_results` + `IterationTracker.record_gate_results / gate_history` extensions. 16 new tests. Institutionalises Wave 1's C03 + C04 + C09 wins so future PRs can't silently re-introduce the bugs.
+
+- **C10 — Cross-artifact consistency auditor** (`src/nines/analyzer/consistency_auditor.py` ~700 lines + `cli/commands/analyze.py` `--audit/--strict-audit` flags). 6 built-in checks: `FindingIDUniquenessCheck`, `FindingIDNamespaceCheck`, `EconomicsFormulaVersionCheck`, `EconomicsBreakEvenSanityCheck`, `GraphVerificationPassedCheck`, `ReportMetadataPresenceCheck` + `SchemaVersioningCheck` migration hook. Default ships in advisory mode; `--strict-audit` opt-in blocks on critical findings. JSON output gains top-level `audit_report` block. Empirical proof on a synthetically-regressed caveman report: auditor flags 2 critical findings (duplicate `SUM-d37f14-0000` ID + `break_even=2` algebraically unjustified) with `should_block=True`; clean caveman passes with 1 advisory warn (legacy 6-hex finding-ID format from non-`AI-` prefixes). 18 new tests.
+
+### Improved
+
+- **Test suite: 1301 → 1366 (+65 tests, +5.0 %)** with zero regressions; full-suite green at every commit.
+- **Ruff: 0 → 0 errors** maintained after 4 large new modules (~1500 LOC total).
+- **Mypy: 0 NEW errors** from this branch (4 new errors fixed during S02 cleanup; 8 pre-existing errors in `eval/`, `collector/`, `core/config.py` deliberately left as out-of-scope).
+
+### Gap closure (vs `.local/v2.2.0/profile/00_baseline_report.md` §4 inventory; cumulative through v3.2.0)
+
+- ✅ §4.1 graph verification fails on every sample → CLOSED in v3.1.0 (C03)
+- ✅ §4.2 `layer_coverage_pct = 100.0` tautology → CLOSED in v3.1.0 (C03)
+- ✅ §4.5 cross-sample finding-ID collisions → CLOSED in v3.1.0 (C02)
+- ✅ §4.6 `break_even_interactions = 2` constant → CLOSED in v3.1.0 (C09)
+- ✅ §4.7 self-eval hangs ≥ 5 min → BOUNDED runner-level in v3.1.0 (C04 + N2); FULLY GATED in v3.2.0 via C07 advisory mode
+- ✅ §4.8 self-eval is project-blind unless `--src-dir` succeeds → CLOSED for D11/D14/D15 in v3.2.0 (C01 Phase 1); remaining ~9 evaluators ship as Wave 3
+- 🟡 §4.9 D21–D24 dimension surface mismatch → PARTIAL (C01 Phase 1 fixes the migrated dims; full schema work needs C12)
+- ✅ §4.11 no matrix / cost / parallel concerns → BOUNDED in v3.1.0 (C04 + C05)
+- ⏳ §4.3 hard-coded mechanism categories → OPEN (needs C11a/b in Wave 3/4)
+- ⏳ §4.4 KP category mix template-locked → OPEN (needs C11a + C12)
+- ⏳ §4.10 19/20 capability dims saturated at 1.000 → OPEN (needs C08 + C12)
+
+**Net cumulative through v3.2.0:** 6 of 11 gaps fully CLOSED + 1 BOUNDED = **7/11 (64 %)**. Remaining 3 gaps await Wave 3 (C08 + C11a) and Wave 4 (C12 + C11b).
+
+### Deferred (per 'tested-benefit-only' rule)
+
+The 4 remaining v2.2.0 accept-list candidates stay deferred:
+- **C08 weighted `MetricRegistry`** — needs C01 (full migration of all ~12 evaluators) before re-weighting can create cross-project signal that doesn't exist in inputs.
+- **C11a mechanism diversification (rule-based)** — needs C08 for weighting new categories.
+- **C11b LLM-judge fallback** — needs separate security/cost review.
+- **C12 AgentBoard-style breakdown reporter** — needs C01 + C08 + full-C06 (golden harness shipped this minor unblocks this dependency).
+
+### Provenance
+
+- Empirical proofs: `.local/v2.3.0/benchmark/c01_phase1_proof.txt`, `c06_full_proof.txt`, `c07_gate_proof.txt`, `c10_audit_proof.txt`
+- Lint/typecheck baselines: `.local/v2.3.0/release/lint_typecheck_{baseline,final}.txt`
+- Wave 1 audit trail: `.local/v2.2.0/{survey,profile,design,benchmark,validate,release}/`
+- Decision document: `.local/accept_list_v2.2.0.{md,zh.md}`
+
+---
+
 ## v2.2.0 — 2026-04-18 (Paradigm Extension; pyproject v3.1.0)
 
 **Theme:** Self-iteration combined with EvoBench paradigm extension; data-quality + resilience foundations for downstream differentiation. Closes 4 of 11 baseline gaps at the source (§4.1, §4.2, §4.5, §4.6) and bounds 2 more (§4.7, §4.11) at the runner level.
