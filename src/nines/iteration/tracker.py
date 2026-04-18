@@ -3,6 +3,11 @@
 ``IterationTracker`` records the start and completion of each
 iteration round, accumulating reports for trend analysis.
 
+C07 (v3.2.0): the tracker also stores per-version
+:class:`~nines.iteration.gates.GateResult` history so that a
+``QualityGate`` regression can be correlated with the iteration that
+introduced it.
+
 Covers: FR-609.
 """
 
@@ -17,6 +22,7 @@ from typing import TYPE_CHECKING, Any
 from nines.core.errors import OrchestrationError
 
 if TYPE_CHECKING:
+    from nines.iteration.gates import GateResult
     from nines.iteration.self_eval import SelfEvalReport
 
 logger = logging.getLogger(__name__)
@@ -102,6 +108,11 @@ class IterationTracker:
         # ... run iteration ...
         tracker.complete_iteration(report_v1)
         progress = tracker.get_progress()
+
+    C07: each iteration's gate results can be recorded and queried::
+
+        tracker.record_gate_results("v1", [graph_gate_result, econ_gate_result])
+        history = tracker.gate_history("v1")
     """
 
     def __init__(self) -> None:
@@ -109,6 +120,9 @@ class IterationTracker:
         self._iterations: list[IterationRecord] = []
         self._current: IterationRecord | None = None
         self._start_time: float = 0.0
+        # Per-version history of gate verdicts.  ``list`` (not ``dict``)
+        # values preserve append order for chronological replay.
+        self._gate_history: dict[str, list[GateResult]] = {}
 
     def start_iteration(self, version: str) -> None:
         """Begin a new iteration round.
@@ -155,6 +169,54 @@ class IterationTracker:
             self._current.duration,
         )
         self._current = None
+
+    def record_gate_results(
+        self,
+        version: str,
+        results: list[GateResult],
+    ) -> None:
+        """Append C07 gate results to the per-version history.
+
+        Calling this multiple times for the same version *appends*
+        rather than overwrites — useful when gates are re-run after
+        partial-run remediation.  Each call's results are appended in
+        the order provided so :meth:`gate_history` returns them in
+        chronological order.
+
+        Parameters
+        ----------
+        version:
+            Iteration version label (matches
+            :attr:`IterationRecord.version`).
+        results:
+            List of :class:`~nines.iteration.gates.GateResult` to
+            record.  Empty lists are accepted (they create the bucket
+            without adding entries).
+
+        Raises
+        ------
+        ValueError
+            If ``version`` is empty.
+        """
+        if not version:
+            raise ValueError("version must be a non-empty string")
+        bucket = self._gate_history.setdefault(version, [])
+        bucket.extend(results)
+        logger.info(
+            "Recorded %d gate result(s) for iteration '%s' (total now %d)",
+            len(results),
+            version,
+            len(bucket),
+        )
+
+    def gate_history(self, version: str) -> list[GateResult]:
+        """Return the chronological gate results for ``version``.
+
+        Returns an empty list when no gates have been recorded for the
+        requested version (rather than raising) so callers can use the
+        accessor unconditionally.
+        """
+        return list(self._gate_history.get(version, []))
 
     def get_progress(self) -> ProgressReport:
         """Generate a summary of iteration progress.

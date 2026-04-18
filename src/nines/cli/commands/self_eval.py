@@ -23,6 +23,7 @@ from nines.iteration.collection_evaluators import (
     SourceCoverageEvaluator,
     SourceFreshnessEvaluator,
 )
+from nines.iteration.context import EvaluationContext
 from nines.iteration.eval_evaluators import (
     EvalCoverageEvaluator,
     PipelineLatencyEvaluator,
@@ -306,11 +307,30 @@ def self_eval_cmd(
 
     # C04: bound every dimension to ``evaluator_timeout`` seconds so a
     # runaway evaluator can't hang the whole report.
+    # C01 Phase 1: strict_ctx=True so the CLI refuses to silently fall
+    # back to NineS's own src/nines for foreign-repo runs. Operators get
+    # an immediate ConfigError if they forget to wire ``--src-dir``.
     runner = SelfEvalRunner(
         default_budget=TimeBudget(
             soft_seconds=min(20.0, max(1.0, evaluator_timeout / 2)),
             hard_seconds=max(1.0, float(evaluator_timeout)),
         ),
+        strict_ctx=True,
+    )
+
+    # C01 Phase 1: build the EvaluationContext that gets threaded through
+    # the runner so ctx-aware evaluators (D11/D14/D15) bind to *this*
+    # project rather than NineS's own ``src/nines``.  Default ``src/nines``
+    # is the NineS source — warn loudly so operators know foreign-repo
+    # runs need an explicit ``--src-dir``.
+    if src_dir == "src/nines":
+        logger.warning("Using default NineS src_dir; ctx-aware dims will report NineS's own values")
+    eval_ctx = EvaluationContext.from_cli(
+        project_root=project_root,
+        src_dir=src_dir,
+        test_dir=test_dir,
+        samples_dir=samples_dir,
+        golden_dir=golden_dir,
     )
 
     runner.register_dimension(
@@ -379,7 +399,7 @@ def self_eval_cmd(
     if verbose:
         click.echo("Running self-evaluation across all dimensions...")
 
-    report = runner.run_all(version=baseline_version)
+    report = runner.run_all(version=baseline_version, ctx=eval_ctx)
 
     capability_scores = [s for s in report.scores if s.name in _ALL_CAPABILITY_DIMS]
     hygiene_scores = [s for s in report.scores if s.name in set(_HYGIENE_DIMS)]

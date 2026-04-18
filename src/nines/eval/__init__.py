@@ -6,6 +6,7 @@ Re-exports the public API for the eval framework::
 """
 
 from nines.eval.metrics import MetricCollector, ReliabilityCalculator, TaskMetrics
+from nines.eval.mock_executor import DeterministicMockExecutor, MockEvaluator
 from nines.eval.models import EvalResult, ScoringCriterion, TaskDefinition
 from nines.eval.multi_round import MultiRoundReport, MultiRoundRunner, RoundResult
 from nines.eval.runner import EvalRunner
@@ -42,4 +43,7 @@ __all__ = [
     "MetricCollector",
     "ReliabilityCalculator",
     "TaskMetrics",
+    # Mock primitives (C06 — golden test harness)
+    "DeterministicMockExecutor",
+    "MockEvaluator",
 ]

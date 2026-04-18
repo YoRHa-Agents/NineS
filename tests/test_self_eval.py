@@ -553,3 +553,108 @@ def test_runner_records_timeouts_in_report_field() -> None:
     hung_score = report.get_score("hung")
     assert hung_score is not None
     assert hung_score.metadata.get("status") == "timeout"
+
+
+# ---------------------------------------------------------------------------
+# C01 Phase 1 — runner threads ctx, report carries fingerprint, missing src
+# logs a warning
+# ---------------------------------------------------------------------------
+
+
+def test_runner_threads_ctx_to_evaluators(tmp_path: Path) -> None:
+    """SelfEvalRunner.run_all(ctx=...) forwards ctx to ctx-aware evaluators
+    and reports the ctx fingerprint on the resulting :class:`SelfEvalReport`.
+    """
+    from nines.iteration.context import EvaluationContext
+
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    (src_dir / "app.py").write_text("def main(): pass\n", encoding="utf-8")
+
+    captured: dict[str, object] = {}
+
+    class CtxRecorder:
+        requires_context = True
+
+        def evaluate(
+            self,
+            *,
+            ctx=None,  # type: ignore[no-untyped-def]
+        ) -> DimensionScore:
+            captured["ctx"] = ctx
+            return DimensionScore(name="rec", value=1.0)
+
+    ctx = EvaluationContext.from_cli(project_root=str(tmp_path), src_dir="src")
+
+    runner = SelfEvalRunner()
+    runner.register_dimension("recorder", CtxRecorder())
+    report = runner.run_all(version="ctx-thread", ctx=ctx)
+
+    assert captured["ctx"] is ctx, "runner failed to forward ctx into evaluator"
+    rec_score = report.get_score("rec")
+    assert rec_score is not None
+    assert rec_score.value == 1.0
+    assert report.context_fingerprint == ctx.fingerprint()
+
+
+def test_self_eval_report_includes_context_fingerprint(tmp_path: Path) -> None:
+    """The new ``context_fingerprint`` field round-trips through
+    ``to_dict``/``from_dict`` and is populated on ctx-aware runs."""
+    from nines.iteration.context import EvaluationContext
+
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    (src_dir / "lib.py").write_text("", encoding="utf-8")
+
+    ctx = EvaluationContext.from_cli(project_root=str(tmp_path), src_dir="src")
+    expected_fp = ctx.fingerprint()
+
+    runner = SelfEvalRunner()
+    runner.register_dimension("stub_cap", CodeCoverageEvaluator(coverage_pct=70.0))
+    report = runner.run_all(version="fp-test", ctx=ctx)
+
+    assert report.context_fingerprint == expected_fp
+
+    # Round-trip through to_dict/from_dict preserves the field.
+    payload = report.to_dict()
+    assert "context_fingerprint" in payload
+    assert payload["context_fingerprint"] == expected_fp
+
+    rebuilt = SelfEvalReport.from_dict(payload)
+    assert rebuilt.context_fingerprint == expected_fp
+
+    # And a run *without* ctx leaves context_fingerprint as None.
+    runner_no_ctx = SelfEvalRunner()
+    runner_no_ctx.register_dimension("stub_cap", CodeCoverageEvaluator(coverage_pct=70.0))
+    no_ctx_report = runner_no_ctx.run_all(version="legacy")
+    assert no_ctx_report.context_fingerprint is None
+
+
+def test_runner_logs_warning_on_missing_src_dir(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Loose-mode runner.run_all(ctx=None) emits a WARNING when ctx-aware
+    evaluators are registered (so operators notice the silent fallback)."""
+
+    class CtxAware:
+        requires_context = True
+
+        def evaluate(
+            self,
+            *,
+            ctx=None,  # type: ignore[no-untyped-def]
+        ) -> DimensionScore:
+            return DimensionScore(name="ca", value=0.0)
+
+    runner = SelfEvalRunner()  # default strict_ctx=False
+    runner.register_dimension("ca", CtxAware())
+
+    with caplog.at_level("WARNING", logger="nines.iteration.self_eval"):
+        report = runner.run_all()  # ctx=None, loose mode
+
+    assert any("ca" in rec.getMessage() and rec.levelname == "WARNING" for rec in caplog.records), (
+        "expected a WARNING about ctx=None + ctx-aware dim; "
+        f"got: {[r.getMessage() for r in caplog.records]}"
+    )
+    # The run still completes (ctx=None fallback).
+    assert report.get_score("ca") is not None

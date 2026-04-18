@@ -20,16 +20,19 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import UTC
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, cast, runtime_checkable
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from nines.iteration.context import EvaluationContext
 
 from nines.core.budget import (
     EvaluatorBudgetExceeded,
     TimeBudget,
     evaluator_budget,
 )
+from nines.core.errors import ConfigError
 
 
 def _budgeted_subprocess_timeout(
@@ -113,12 +116,37 @@ class DimensionScore:
 class DimensionEvaluator(Protocol):
     """Protocol for evaluating a single dimension.
 
-    Implementations may *optionally* accept a kw-only ``budget`` argument to
-    opt in to the C04 wall-clock budget; ``SelfEvalRunner`` introspects via
-    :func:`inspect.signature` and passes ``budget=`` only when the
-    implementation declares it. The minimal Protocol below describes the
-    common subset; the budget-aware call site uses ``cast`` to the
-    :class:`_BudgetedEvaluator` shape.
+    Implementations may *optionally* accept a kw-only ``budget`` argument
+    to opt in to the C04 wall-clock budget, and/or a kw-only ``ctx``
+    argument (C01 Phase 1) to receive an
+    :class:`~nines.iteration.context.EvaluationContext`. ``SelfEvalRunner``
+    introspects via :func:`inspect.signature` and only passes the kwargs
+    the implementation declares.
+
+    Backward compatibility
+    ----------------------
+    The Protocol's ``evaluate`` declaration keeps the original
+    no-argument shape so legacy evaluators that pre-date C04/C01 still
+    structurally satisfy the runtime_checkable Protocol.  The
+    :class:`LegacyEvaluatorAdapter` wrapper takes care of stripping
+    unwanted kwargs at call time.
+
+    Opt-in marker attribute
+    -----------------------
+    Subclasses that need ctx-aware project binding may set the
+    ``requires_context`` *class attribute* to ``True``::
+
+        class MyEvaluator:
+            requires_context: ClassVar[bool] = True
+
+            def evaluate(self, *, ctx): ...
+
+    The runner inspects the attribute at run time via ``getattr(ev,
+    "requires_context", False)``.  We deliberately do **not** declare
+    the attribute on the Protocol itself because runtime_checkable
+    Protocols verify the existence of every declared member, and
+    forcing legacy evaluators to define the marker would be a breaking
+    change.
     """
 
     def evaluate(self) -> DimensionScore:
@@ -136,8 +164,79 @@ class _BudgetedEvaluator(Protocol):
     ``inspect.signature`` gate.
     """
 
-    def evaluate(self, *, budget: TimeBudget | None = None) -> DimensionScore:
-        ...
+    def evaluate(self, *, budget: TimeBudget | None = None) -> DimensionScore: ...
+
+
+class LegacyEvaluatorAdapter:
+    """Wrap a pre-C01 evaluator so it tolerates the new ``ctx`` kwarg.
+
+    The adapter discards any ``ctx`` keyword argument passed by the
+    runner and forwards everything else (notably ``budget``) to the
+    wrapped evaluator. It exists so existing evaluators that don't yet
+    accept ``ctx`` keep working unchanged for one minor version while
+    the evaluator-set is migrated.
+
+    The adapter never sets ``requires_context = True`` — by definition,
+    an adapted legacy evaluator does not need a context (it ignores
+    one).
+    """
+
+    requires_context: ClassVar[bool] = False
+
+    def __init__(self, wrapped: DimensionEvaluator) -> None:
+        """Initialise the adapter.
+
+        Parameters
+        ----------
+        wrapped:
+            The legacy evaluator instance whose ``evaluate`` does not
+            accept a ``ctx`` parameter.
+        """
+        self._wrapped = wrapped
+        self._accepts_budget = self._detect_budget_kwarg(wrapped)
+
+    @staticmethod
+    def _detect_budget_kwarg(evaluator: DimensionEvaluator) -> bool:
+        """Return True iff ``evaluator.evaluate`` accepts a ``budget`` kwarg."""
+        try:
+            sig = inspect.signature(evaluator.evaluate)
+        except (TypeError, ValueError):
+            return False
+        params = sig.parameters
+        if "budget" in params:
+            return True
+        # ``**kwargs`` swallows any kwarg name, including budget.
+        return any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
+
+    @property
+    def wrapped(self) -> DimensionEvaluator:
+        """Expose the wrapped evaluator (useful for tests/introspection)."""
+        return self._wrapped
+
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+        budget: TimeBudget | None = None,
+    ) -> DimensionScore:
+        """Drop ``ctx``, forward ``budget`` only when the wrapped object wants it.
+
+        Parameters
+        ----------
+        ctx:
+            Ignored. Present so the adapter satisfies the modern
+            ``DimensionEvaluator`` Protocol surface.
+        budget:
+            Forwarded to the wrapped evaluator only when its signature
+            declares it (otherwise the wrapped object's no-arg
+            ``evaluate`` is invoked unchanged).
+        """
+        # ``ctx`` is intentionally discarded — that's the whole point of
+        # the adapter. Logging happens once at registration time, not
+        # per-evaluation, to avoid log spam.
+        if self._accepts_budget:
+            return self._wrapped.evaluate(budget=budget)  # type: ignore[call-arg]
+        return self._wrapped.evaluate()
 
 
 @dataclass
@@ -168,6 +267,10 @@ class SelfEvalReport:
     timestamp: str = ""
     duration: float = 0.0
     timeouts: list[str] = field(default_factory=list)
+    #: C01 Phase 1: 8-char fingerprint of the project binding
+    #: (project_root + src_dir).  ``None`` when the report was generated
+    #: without an :class:`EvaluationContext` (legacy / back-compat path).
+    context_fingerprint: str | None = None
 
     def get_score(self, dimension: str) -> DimensionScore | None:
         """Return score."""
@@ -185,6 +288,7 @@ class SelfEvalReport:
             "timestamp": self.timestamp,
             "duration": self.duration,
             "timeouts": list(self.timeouts),
+            "context_fingerprint": self.context_fingerprint,
         }
 
     @classmethod
@@ -197,6 +301,7 @@ class SelfEvalReport:
             timestamp=data.get("timestamp", ""),
             duration=data.get("duration", 0.0),
             timeouts=list(data.get("timeouts", [])),
+            context_fingerprint=data.get("context_fingerprint"),
         )
 
 
@@ -214,6 +319,8 @@ class SelfEvalRunner:
     def __init__(
         self,
         default_budget: TimeBudget | None = None,
+        *,
+        strict_ctx: bool = False,
     ) -> None:
         """Initialize self eval runner.
 
@@ -224,6 +331,17 @@ class SelfEvalRunner:
             unless overridden by ``register_dimension(..., budget=...)``.
             Defaults to ``TimeBudget(soft_seconds=20, hard_seconds=60)``
             per the C04 design.
+        strict_ctx:
+            C01 Phase 1.  When ``True`` and any registered evaluator
+            declares ``requires_context = True`` while :meth:`run_all`
+            is called with ``ctx=None``, the runner raises
+            :class:`~nines.core.errors.ConfigError`.  When ``False``
+            (the back-compat default used by ``nines iterate``), the
+            runner only logs a warning and lets each evaluator fall
+            back to its constructor-time default.  The new
+            ``nines self-eval`` CLI sets ``strict_ctx=True`` so
+            foreign-repo runs can never silently re-evaluate NineS
+            itself (closes baseline §4.8).
         """
         self._evaluators: dict[str, DimensionEvaluator] = {}
         self._budgets: dict[str, TimeBudget] = {}
@@ -231,6 +349,7 @@ class SelfEvalRunner:
             soft_seconds=20.0,
             hard_seconds=60.0,
         )
+        self._strict_ctx = bool(strict_ctx)
 
     def register_dimension(
         self,
@@ -247,60 +366,160 @@ class SelfEvalRunner:
             Unique dimension identifier.
         evaluator:
             Object implementing the ``DimensionEvaluator`` protocol.
+            If the evaluator's ``evaluate`` method does **not** accept
+            a ``ctx`` keyword argument (legacy / pre-C01 evaluators),
+            it is automatically wrapped in
+            :class:`LegacyEvaluatorAdapter` so the runner can still
+            invoke it uniformly.  An INFO-level log is emitted to aid
+            migration.
         budget:
             Optional per-dimension wall-clock budget overriding the
             runner-wide default.
         """
+        if not self._evaluator_accepts_ctx(evaluator):
+            logger.info(
+                "Wrapping %s in LegacyEvaluatorAdapter (no ctx parameter detected)",
+                name,
+            )
+            evaluator = LegacyEvaluatorAdapter(evaluator)
         self._evaluators[name] = evaluator
         if budget is not None:
             self._budgets[name] = budget
         logger.debug("Registered evaluator for dimension '%s'", name)
 
     @staticmethod
-    def _make_invocation(
-        evaluator: DimensionEvaluator,
-        budget: TimeBudget,
-    ) -> Callable[[], DimensionScore]:
-        """Bind ``budget`` to ``evaluator.evaluate`` if the method accepts it.
+    def _evaluator_accepts_ctx(evaluator: DimensionEvaluator) -> bool:
+        """Return ``True`` iff ``evaluator.evaluate`` declares a ``ctx`` kwarg.
 
-        Returns a zero-arg callable that invokes the evaluator with or
-        without the ``budget`` kwarg, depending on its signature.
-        Backward-compat: third-party evaluators that don't accept
-        ``budget`` keep working (Approach A from the C04 follow-up).
+        Detection rule:
+        * explicit ``ctx`` parameter (any kind)         → ``True``
+        * ``**kwargs`` catch-all that swallows ``ctx``  → ``True``
+        * neither                                       → ``False``
+
+        The adapter wraps everything that returns ``False``.  A C-level
+        callable whose signature can't be introspected also counts as
+        ``False`` (we conservatively wrap rather than risk passing an
+        unknown kwarg into a built-in).
         """
         try:
             sig = inspect.signature(evaluator.evaluate)
-            accepts_budget = "budget" in sig.parameters
+        except (TypeError, ValueError):
+            return False
+        params = sig.parameters
+        if "ctx" in params:
+            return True
+        return any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
+
+    @staticmethod
+    def _make_invocation(
+        evaluator: DimensionEvaluator,
+        budget: TimeBudget,
+        ctx: EvaluationContext | None = None,
+    ) -> Callable[[], DimensionScore]:
+        """Bind ``budget`` and ``ctx`` to ``evaluator.evaluate`` per signature.
+
+        Returns a zero-arg callable that invokes the evaluator with the
+        kwargs its signature declares.  Backward-compat: third-party
+        evaluators that don't accept ``budget`` and/or ``ctx`` keep
+        working (Approach A from the C04 follow-up; extended for C01
+        Phase 1).
+
+        Detection rules:
+
+        * ``budget`` kw → forward when present in the signature.
+        * ``ctx``    kw → forward when present in the signature.
+        * ``**kwargs`` swallows everything → forward both.
+        """
+        accepts_budget = False
+        accepts_ctx = False
+        try:
+            sig = inspect.signature(evaluator.evaluate)
+            params = sig.parameters
+            has_var_keyword = any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
+            accepts_budget = "budget" in params or has_var_keyword
+            accepts_ctx = "ctx" in params or has_var_keyword
         except (TypeError, ValueError):
             # ``signature`` can fail on C-level callables — fall back to
-            # the no-budget call shape.  We never silently swallow:
+            # the no-kwarg call shape.  We never silently swallow:
             # downstream evaluator errors still surface through the
             # ``except Exception`` branch in run_all.
             logger.debug(
-                "inspect.signature failed for evaluator %r; calling without budget",
+                "inspect.signature failed for evaluator %r; calling without budget/ctx",
                 evaluator,
             )
-            accepts_budget = False
 
+        if accepts_budget and accepts_ctx:
+            budgeted = cast("_BudgetedEvaluator", evaluator)
+            return lambda: budgeted.evaluate(budget=budget, ctx=ctx)  # type: ignore[call-arg]
         if accepts_budget:
             budgeted = cast("_BudgetedEvaluator", evaluator)
             return lambda: budgeted.evaluate(budget=budget)
+        if accepts_ctx:
+            return lambda: evaluator.evaluate(ctx=ctx)  # type: ignore[call-arg]
         return evaluator.evaluate
 
-    def run_all(self, version: str = "") -> SelfEvalReport:
+    def run_all(
+        self,
+        version: str = "",
+        *,
+        ctx: EvaluationContext | None = None,
+    ) -> SelfEvalReport:
         """Run all registered evaluators and produce a report.
 
         Parameters
         ----------
         version:
             Optional version tag for the report.
+        ctx:
+            Optional :class:`EvaluationContext`.  When supplied:
+
+            * Threaded into every evaluator that accepts a ``ctx`` kwarg.
+            * Its :meth:`EvaluationContext.fingerprint` is written to
+              :attr:`SelfEvalReport.context_fingerprint`.
+
+            When ``None`` *and* the runner was constructed with
+            ``strict_ctx=True``, evaluators that declare
+            ``requires_context = True`` raise
+            :class:`~nines.core.errors.ConfigError` (fail fast).  When
+            ``strict_ctx=False`` (the back-compat default) the runner
+            only logs a warning and the evaluator's own legacy fallback
+            takes over.
 
         Returns
         -------
         SelfEvalReport
             Aggregate scores from all dimensions.
+
+        Raises
+        ------
+        ConfigError
+            If ``strict_ctx=True`` and any registered evaluator declares
+            ``requires_context = True`` while ``ctx is None``.
         """
         from datetime import datetime
+
+        if ctx is None:
+            offenders = [
+                n for n, ev in self._evaluators.items() if getattr(ev, "requires_context", False)
+            ]
+            if offenders:
+                if self._strict_ctx:
+                    msg = (
+                        "EvaluationContext is required for dim(s) "
+                        f"{sorted(offenders)} but run_all() was called "
+                        "with ctx=None"
+                    )
+                    raise ConfigError(
+                        msg,
+                        details={"dimensions": sorted(offenders)},
+                    )
+                logger.warning(
+                    "run_all() called with ctx=None but %d ctx-aware dim(s) "
+                    "registered (%s); they will fall back to their "
+                    "constructor-time src_dir defaults",
+                    len(offenders),
+                    sorted(offenders),
+                )
 
         start = time.monotonic()
         scores: list[DimensionScore] = []
@@ -311,10 +530,10 @@ class SelfEvalRunner:
             budget = self._budgets.get(name, self._default_budget)
             # N2: thread the budget into evaluators that accept it so
             # internal subprocess.run calls can derive their own
-            # ``timeout=`` from the wall-clock budget.  Detection is
-            # signature-based to keep third-party evaluators that don't
-            # know about ``budget`` working unchanged.
-            invoke = self._make_invocation(evaluator, budget)
+            # ``timeout=`` from the wall-clock budget.  C01 Phase 1
+            # extends the same detection to ``ctx=`` so project-aware
+            # evaluators get the right project binding.
+            invoke = self._make_invocation(evaluator, budget, ctx)
             try:
                 with evaluator_budget(name, budget) as run:
                     score = run(invoke)
@@ -364,6 +583,7 @@ class SelfEvalRunner:
             timestamp=datetime.now(UTC).isoformat(),
             duration=duration,
             timeouts=timeouts,
+            context_fingerprint=ctx.fingerprint() if ctx is not None else None,
         )
 
 
