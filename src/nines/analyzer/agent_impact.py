@@ -10,6 +10,7 @@ Covers: FR-313.
 from __future__ import annotations
 
 import logging
+import math
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -96,7 +97,9 @@ class ContextEconomics:
     overhead_tokens:
         Tokens the tool adds to every Agent interaction.
     estimated_savings_ratio:
-        Estimated ratio of output tokens saved per interaction.
+        Estimated ratio of output tokens saved per interaction.  Derived
+        from ``per_interaction_savings_tokens / max(overhead_tokens, 1)``
+        for backward compatibility with v3.0.0 reports.
     mechanism_count:
         Number of distinct Agent-influence mechanisms detected.
     agent_facing_files:
@@ -105,6 +108,23 @@ class ContextEconomics:
         Aggregate token count across all Agent-facing files.
     break_even_interactions:
         Number of interactions needed for net-positive token economics.
+        Derived as ``ceil(overhead_tokens / max(per_interaction_savings_tokens, 1))``.
+    per_interaction_savings_tokens:
+        Total tokens saved per interaction across all
+        ``context_compression`` mechanisms (C09 — explicit input to the
+        break-even formula instead of an opaque ``savings_ratio``).
+    expected_retention_rate:
+        Fraction of context retained across interactions.  Default 0.85
+        per the C09 design.
+    mechanism_diversity_factor:
+        Reward factor for mechanism breadth:
+        ``1.0 + 0.1 * (distinct_categories - 1)``.
+    economics_score:
+        Composite normalised score in [0, 1] suitable for the eventual
+        weighted MetricRegistry (C08).
+    formula_version:
+        Schema version of the economics derivation.  ``2`` for the C09
+        formula; legacy reports use ``1``.
     """
 
     overhead_tokens: int = 0
@@ -113,6 +133,11 @@ class ContextEconomics:
     agent_facing_files: int = 0
     total_agent_context_tokens: int = 0
     break_even_interactions: int = 0
+    per_interaction_savings_tokens: int = 0
+    expected_retention_rate: float = 0.85
+    mechanism_diversity_factor: float = 1.0
+    economics_score: float = 0.0
+    formula_version: int = 2
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a plain dictionary."""
@@ -123,11 +148,20 @@ class ContextEconomics:
             "agent_facing_files": self.agent_facing_files,
             "total_agent_context_tokens": self.total_agent_context_tokens,
             "break_even_interactions": self.break_even_interactions,
+            "per_interaction_savings_tokens": self.per_interaction_savings_tokens,
+            "expected_retention_rate": self.expected_retention_rate,
+            "mechanism_diversity_factor": self.mechanism_diversity_factor,
+            "economics_score": self.economics_score,
+            "formula_version": self.formula_version,
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ContextEconomics:
-        """Deserialize from a plain dictionary."""
+        """Deserialize from a plain dictionary.
+
+        Backward-compatible with v1 (formula_version=1) reports: any
+        missing fields default to the C09 placeholder values.
+        """
         return cls(
             overhead_tokens=data.get("overhead_tokens", 0),
             estimated_savings_ratio=data.get("estimated_savings_ratio", 0.0),
@@ -135,6 +169,15 @@ class ContextEconomics:
             agent_facing_files=data.get("agent_facing_files", 0),
             total_agent_context_tokens=data.get("total_agent_context_tokens", 0),
             break_even_interactions=data.get("break_even_interactions", 0),
+            per_interaction_savings_tokens=data.get(
+                "per_interaction_savings_tokens", 0,
+            ),
+            expected_retention_rate=data.get("expected_retention_rate", 0.85),
+            mechanism_diversity_factor=data.get(
+                "mechanism_diversity_factor", 1.0,
+            ),
+            economics_score=data.get("economics_score", 0.0),
+            formula_version=data.get("formula_version", 1),
         )
 
 
@@ -301,16 +344,44 @@ class AgentImpactAnalyzer:
         artifacts = self._discover_agent_artifacts(target)
         logger.debug("Discovered %d Agent-facing artifacts", len(artifacts))
 
-        economics = self._estimate_context_economics(target, artifacts)
+        # Detect mechanisms FIRST so the C09 derived economics formula
+        # can consume them directly.
         mechanisms = self._detect_mechanisms(target, artifacts)
 
-        economics.mechanism_count = len(mechanisms)
+        # Sum mechanism token impacts so we know the *total* overhead the
+        # repo imposes on Agent context, not just the artifacts' raw tokens.
         total_mechanism_tokens = sum(
             abs(m.estimated_token_impact) for m in mechanisms
+        )
+
+        # Derive economics with mechanisms in scope (C09 formula).
+        economics = self._estimate_context_economics(
+            target, artifacts, mechanisms,
         )
         if total_mechanism_tokens > 0:
             economics.total_agent_context_tokens += total_mechanism_tokens
             economics.overhead_tokens += total_mechanism_tokens
+            # Re-derive break_even and economics_score after the
+            # overhead bump so the published numbers stay consistent
+            # with the published overhead value.
+            saved = economics.per_interaction_savings_tokens
+            if economics.overhead_tokens > 0:
+                economics.break_even_interactions = math.ceil(
+                    economics.overhead_tokens / max(saved, 1),
+                )
+                if saved > 0:
+                    raw_score = (
+                        saved
+                        * economics.expected_retention_rate
+                        * economics.mechanism_diversity_factor
+                        / economics.overhead_tokens
+                    )
+                    economics.economics_score = round(
+                        max(0.0, min(1.0, raw_score)), 4,
+                    )
+                economics.estimated_savings_ratio = round(
+                    min(0.95, saved / economics.overhead_tokens), 3,
+                )
 
         if economics.overhead_tokens == 0 and artifacts:
             min_estimate = len(artifacts) * 50
@@ -378,12 +449,20 @@ class AgentImpactAnalyzer:
         return sorted(artifacts)
 
     def _estimate_context_economics(
-        self, target: Path, artifacts: list[str],
+        self,
+        target: Path,
+        artifacts: list[str],
+        mechanisms: list[AgentMechanism] | None = None,
+        *,
+        expected_retention_rate: float = 0.85,
     ) -> ContextEconomics:
-        """Estimate the token economics of the repository's Agent-facing content.
+        """Derive token economics for the repository's Agent-facing content.
 
-        Uses a simple word-based approximation (words * 1.3 ~ tokens) for
-        estimation without requiring tiktoken dependency.
+        Per C09: ``break_even_interactions`` is now a real function of
+        the mechanisms detected, not a constant ``2``.  When mechanisms
+        are not yet known (e.g. an early-stage call before mechanism
+        detection runs) the legacy ``len(artifacts) * 0.05`` fallback is
+        used so existing callers behave the same.
 
         Parameters
         ----------
@@ -391,6 +470,12 @@ class AgentImpactAnalyzer:
             Root directory of the repository.
         artifacts:
             Relative paths of Agent-facing files.
+        mechanisms:
+            Optional pre-computed mechanism list.  Required for the C09
+            derived formula; absent → legacy ratio-based fallback.
+        expected_retention_rate:
+            Fraction of context retained across interactions; defaults
+            to the C09 design value of ``0.85``.
 
         Returns
         -------
@@ -403,24 +488,68 @@ class AgentImpactAnalyzer:
             total_tokens += self._estimate_tokens(content)
 
         overhead = total_tokens
-        savings_ratio = min(0.95, len(artifacts) * 0.05) if artifacts else 0.0
+        mechs = list(mechanisms or [])
 
-        if savings_ratio > 0 and overhead > 0:
-            saved_per_interaction = int(overhead * savings_ratio)
-            break_even = (
-                max(1, (overhead + saved_per_interaction - 1) // saved_per_interaction)
-                if saved_per_interaction > 0 else 0
-            )
-        else:
+        # Sum |token_impact| across context_compression mechanisms — the
+        # only category that *saves* tokens per interaction.
+        per_interaction_savings = sum(
+            abs(m.estimated_token_impact)
+            for m in mechs
+            if m.category == "context_compression"
+        )
+
+        # Mechanism diversity reward — wider repos earn slightly higher
+        # economics_score even at the same compression ratio.
+        distinct_categories = len({m.category for m in mechs}) if mechs else 0
+        diversity_factor = 1.0 + 0.1 * max(0, distinct_categories - 1)
+
+        # Backward-compat: when no mechanisms are supplied (early call),
+        # fall back to the v1 ratio so legacy tests keep working.
+        if not mechs and overhead > 0 and artifacts:
+            legacy_ratio = min(0.95, len(artifacts) * 0.05)
+            per_interaction_savings = int(overhead * legacy_ratio)
+
+        # break_even = ceil(overhead / max(saved_per_interaction, 1))
+        if overhead <= 0:
             break_even = 0
+        else:
+            break_even = math.ceil(
+                overhead / max(per_interaction_savings, 1),
+            )
+
+        # economics_score in [0, 1].  Clamp avoids absurd values when
+        # mechanisms over-claim savings relative to overhead.
+        if overhead > 0 and per_interaction_savings > 0:
+            raw_score = (
+                per_interaction_savings
+                * expected_retention_rate
+                * diversity_factor
+                / overhead
+            )
+            economics_score = max(0.0, min(1.0, raw_score))
+        else:
+            economics_score = 0.0
+
+        # Backward-compat ``estimated_savings_ratio`` derives from the
+        # explicit per-interaction savings so v1 consumers keep reading
+        # a sensible number.
+        if overhead > 0:
+            savings_ratio = min(0.95, per_interaction_savings / overhead)
+        else:
+            savings_ratio = 0.0
 
         return ContextEconomics(
             overhead_tokens=overhead,
             estimated_savings_ratio=round(savings_ratio, 3),
-            mechanism_count=0,
+            mechanism_count=len(mechs),
             agent_facing_files=len(artifacts),
             total_agent_context_tokens=total_tokens,
             break_even_interactions=break_even,
+            per_interaction_savings_tokens=per_interaction_savings,
+            expected_retention_rate=expected_retention_rate,
+            mechanism_diversity_factor=round(diversity_factor, 3),
+            economics_score=round(economics_score, 4),
+            formula_version=2,
         )
 
     def _detect_mechanisms(
