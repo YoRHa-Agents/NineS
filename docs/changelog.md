@@ -4,6 +4,46 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v3.2.1 — 2026-04-18 (C01 Full Evaluator Migration)
+
+**Theme:** Complete C01 evaluator migration. Phase 1 (v3.2.0) only made 3/20 capability evaluators project-aware; this patch closes the remaining gap so foreign-repo self-eval no longer silently inflates 8 more dims with NineS's own data.
+
+**Empirical:** 8 newly project-aware dims for caveman (Phase 1 baseline was 3; threshold for verdict CONFIRMED is ≥5). Caveman BEFORE: `scoring_accuracy=1.0` (NineS's 20 golden tasks), `eval_coverage=1.0` (NineS's 3 samples), `pipeline_latency target=src/nines/__init__.py`. Caveman AFTER: `scoring_accuracy=0.0` (caveman has no golden), `eval_coverage=0.0` (caveman has no samples), `pipeline_latency target=/home/agent/reference/caveman/caveman`. Three foreign-repo runs report distinct context fingerprints (`9cfbf3b1` / `5a527c18` / `63c58172`). Proof: `.local/v3.2.1/benchmark/c01_full_proof.txt`.
+
+**Status:** Patch release; aggregated into v3.3.0 minor.
+
+### Migrated to ctx-aware (13 evaluators)
+
+- **Capability (8):** D01 ScoringAccuracyEvaluator → `ctx.golden_dir`; D02 EvalCoverageEvaluator → `ctx.samples_dir`; D03 ReliabilityEvaluator → `ctx.golden_dir`; D05 ScorerAgreementEvaluator → `ctx.golden_dir`; D12 AbstractionQualityEvaluator → `ctx.src_dir`; D13 CodeReviewAccuracyEvaluator → `ctx.src_dir`; D16 PipelineLatencyEvaluator → derives target from `ctx.src_dir`; D20 AgentAnalysisQualityEvaluator → `ctx.project_root` + `ctx.src_dir`.
+- **Hygiene (5):** LiveCodeCoverageEvaluator → `ctx.project_root`; LiveTestCountEvaluator → `ctx.test_dir` + `ctx.project_root`; LiveModuleCountEvaluator → `ctx.src_dir`; DocstringCoverageEvaluator → `ctx.src_dir`; LintCleanlinessEvaluator → `ctx.src_dir`.
+- All 13 declare `requires_context: ClassVar[bool] = True` so the runner enforces strict-ctx mode.
+
+### Documented as intentionally NineS-meta (no migration; inline rationale added)
+
+D04 ReportQualityEvaluator (synthetic data), D06 SourceCoverageEvaluator (NineS collector imports), D07 SourceFreshnessEvaluator (in-memory DataStore), D08 ChangeDetectionEvaluator (in-memory DataStore), D09 DataCompletenessEvaluator (NineS schemas), D10 CollectionThroughputEvaluator (in-memory DataStore), D17 SandboxIsolationEvaluator (NineS sandbox), D18 ConvergenceRateEvaluator (NineS iteration plumbing), D19 CrossVertexSynergyEvaluator (NineS imports). Their docstrings now explicitly explain why they remain project-independent.
+
+### Fixed
+
+- **D16 PipelineLatencyEvaluator no longer falls back to `src/nines/__init__.py`** when `ctx.src_dir` contains zero `*.py` files (e.g. caveman, which is a Markdown-only skill). The fallback now returns `ctx.src_dir` itself so the metadata makes the empty-project answer unambiguous instead of silently re-targeting NineS.
+- **D20 AgentAnalysisQualityEvaluator no longer 60s-times-out** on caveman because it now binds to caveman's tree (which has clear agent-facing artifacts) instead of recursively analyzing NineS itself.
+
+### Improved
+
+- **Test suite: 1366 → 1386 (+20 tests)** with zero regressions; full-suite green.
+- **Ruff: 0 → 0** errors maintained.
+- **§4.8 silent-fallback closure: 3/20 dims (Phase 1, v3.2.0) → 11/20 (now). Remaining 9 dims are intentional NineS-meta — fully documented.**
+
+### Gap closure update
+
+- ✅ §4.8 self-eval is project-blind unless `--src-dir` succeeds → **FULLY CLOSED for all dims that have a real project binding** (was PARTIAL in v3.2.0). Foreign-repo runs against caveman/UA now produce distinct, defensible numbers for 11 dims (3 Phase 1 + 8 newly migrated) plus 5 hygiene dims (also migrated, exercised under non-`--capability-only` runs); the 9 NineS-meta dims correctly stay project-independent by design.
+- 🟡 §4.10 19/20 capability dims saturated at 1.000 → **De-saturation observed empirically**: caveman overall 0.9697 → 0.5250 (capability_mean drops 0.3247). UA overall 0.9697 → 0.7221. NineS overall stays at 0.9766 (its own ctx still sees its own 20-task golden / 3 samples / 92 modules — correct, not a bug). The "always 1.000" inflation that hid genuine foreign-repo gaps is gone.
+
+### Files changed
+
+`src/nines/iteration/v1_evaluators.py` (+86 -7), `src/nines/iteration/eval_evaluators.py` (+136 -23), `src/nines/iteration/capability_evaluators.py` (+143 -39), `src/nines/iteration/self_eval.py` (+168 -45), `src/nines/iteration/collection_evaluators.py` (+28 -0, doc-only), `src/nines/iteration/system_evaluators.py` (+18 -0, doc-only), `tests/test_c01_full_migration.py` (+20 new tests).
+
+---
+
 ## v2.3.0 — 2026-04-18 (Wave 2 Paradigm Extension; pyproject v3.2.0)
 
 **Theme:** Wave 2 of the v2.2.0 paradigm-extension iteration — closes the project-blindness gap (§4.8) and institutionalises Wave 1's data-quality wins via gates and auditors.
