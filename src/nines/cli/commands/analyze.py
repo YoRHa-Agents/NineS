@@ -8,6 +8,7 @@ from pathlib import Path
 
 import click
 
+from nines.analyzer.consistency_auditor import ConsistencyAuditor
 from nines.analyzer.pipeline import AnalysisPipeline
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,11 @@ _VALID_STRATEGIES = ("functional", "concern", "layer", "graph")
 # Documented for operators wiring NineS into CI: code 2 means "graph
 # integrity gate failed" rather than "command crashed".
 STRICT_GRAPH_EXIT_CODE = 2
+
+# Exit code emitted when ``--audit --strict-audit`` (C10) detects any
+# critical cross-artifact-consistency finding.  Distinct from the
+# strict-graph code so CI logs make the failing gate unambiguous.
+STRICT_AUDIT_EXIT_CODE = 3
 
 
 @click.command("analyze")
@@ -69,6 +75,26 @@ STRICT_GRAPH_EXIT_CODE = 2
         "False for the other strategies (which do not produce a graph)."
     ),
 )
+@click.option(
+    "--audit/--no-audit",
+    default=True,
+    show_default=True,
+    help=(
+        "Run the C10 cross-artifact consistency auditor over the report "
+        "(advisory by default).  Use --strict-audit to make critical "
+        "findings block CI."
+    ),
+)
+@click.option(
+    "--strict-audit",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help=(
+        "Exit non-zero (code 3) when --audit produces any critical "
+        "finding.  Off by default — auditor is advisory-only."
+    ),
+)
 @click.pass_context
 def analyze_cmd(
     ctx: click.Context,
@@ -79,6 +105,8 @@ def analyze_cmd(
     keypoints: bool,
     depth: str,
     strict_graph: bool | None,
+    audit: bool,
+    strict_audit: bool,
 ) -> None:
     """Analyze and decompose collected knowledge into structured units."""
     verbose = ctx.obj.get("verbose", False)
@@ -105,6 +133,18 @@ def analyze_cmd(
     metrics = result.metrics
     findings_count = len(result.findings)
 
+    # Build the canonical "downstream-visible" payload once: the same
+    # dict shape (with ``report_metadata``) that JSON consumers see and
+    # that the auditor consumes.  Doing this once guarantees the audit
+    # cannot disagree with the JSON the operator inspected.
+    audit_input = result.to_dict()
+    audit_input["report_metadata"] = AnalysisPipeline.build_report_metadata()
+
+    audit_report_obj = None
+    if audit:
+        auditor = ConsistencyAuditor()
+        audit_report_obj = auditor.audit(audit_input)
+
     if output_format == "json":
         # Top-level ``report_metadata`` carries schema-versioning info so
         # downstream parsers can detect the C02 namespaced finding-ID
@@ -112,8 +152,12 @@ def analyze_cmd(
         # economics formula version without sniffing individual records.
         # Legacy parsers that don't know about ``report_metadata``
         # silently ignore the extra key — non-breaking by design.
-        payload = result.to_dict()
-        payload["report_metadata"] = AnalysisPipeline.build_report_metadata()
+        payload = dict(audit_input)
+        if audit_report_obj is not None:
+            # C10: machine consumers read the audit verdict from a
+            # top-level ``audit_report`` block — same JSON shape as the
+            # advisory text summary printed for humans.
+            payload["audit_report"] = audit_report_obj.to_dict()
         report = json.dumps(payload, indent=2, default=str)
     else:
         has_impact = "agent_impact" in metrics
@@ -169,6 +213,28 @@ def analyze_cmd(
                 f"{ver.get('layer_coverage_pct', 0):.1f}% layer coverage)"
             )
 
+        # C10 advisory-mode summary: one line per critical/warn finding
+        # so operators see the verdict without re-parsing JSON.  Always
+        # appears in text output when ``--audit`` is on (default).
+        if audit_report_obj is not None:
+            s = audit_report_obj.summary
+            lines.append("")
+            lines.append("  Audit:")
+            lines.append(
+                f"    critical={s.get('critical', 0)} "
+                f"warn={s.get('warn', 0)} "
+                f"info={s.get('info', 0)}"
+            )
+            for af in audit_report_obj.findings:
+                if af.severity in ("critical", "warn"):
+                    truncated = af.message
+                    if len(truncated) > 200:
+                        truncated = truncated[:197] + "..."
+                    lines.append(
+                        f"    [{af.severity}/{af.category}] "
+                        f"{af.check_name}: {truncated}"
+                    )
+
         report = "\n".join(lines)
 
     if output_dir:
@@ -202,3 +268,18 @@ def analyze_cmd(
                 err=True,
             )
             ctx.exit(STRICT_GRAPH_EXIT_CODE)
+
+    # ------------------------------------------------------------------
+    # C10 — strict-audit gate.  Same ordering rationale as strict-graph:
+    # operators always get the forensic file/JSON before the gate
+    # short-circuits with a non-zero exit code.
+    # ------------------------------------------------------------------
+    if audit and strict_audit and audit_report_obj is not None:
+        if ConsistencyAuditor.should_block(audit_report_obj):
+            crit = audit_report_obj.summary.get("critical", 0)
+            click.echo(
+                f"Strict audit gate: {crit} critical consistency "
+                "finding(s) detected.",
+                err=True,
+            )
+            ctx.exit(STRICT_AUDIT_EXIT_CODE)
