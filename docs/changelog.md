@@ -4,6 +4,59 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v2.2.0-rc1 — 2026-04-18 (Paradigm Extension Branch)
+
+**Theme:** Self-iteration combined with EvoBench paradigm extension; data-quality + resilience foundations for downstream differentiation. Closes 4 of 11 baseline gaps at the source (§4.1, §4.2, §4.5, §4.6) and bounds 2 more (§4.7, §4.11) at the runner level.
+
+**Status:** Release-candidate on `feat/v2.2.0-paradigm-extension`. 6 POCs landed (C02, C03, C04, C05, C06 executor-only, C09); 6 candidates analytically validated for Wave 2-4 (C01, C07, C08, C10, C11, C12). See [`v2.2.0 paradigm extension findings`](research/v2.2.0_paradigm_extension_findings.md) and the [accept list](https://github.com/.../blob/feat/v2.2.0-paradigm-extension/.local/accept_list_v2.2.0.md) for the full decision matrix.
+
+> Backward-compatible: legacy v3.0.0 reports continue to parse via `formula_version=1` defaults; legacy `AI-NNNN` finding-IDs keep parsing alongside new `AI-{fp}-NNNN`. The first observable schema break (`EvaluationContext` Protocol) is deferred to Wave 2 / v2.3.0-rc1.
+
+### Added (Wave 1 POCs)
+
+- **C02 — Project-scoped finding-ID namespacing** (`src/nines/core/identity.py`, ~225 lines). Exports `project_fingerprint(project_root) -> str` (8-char `blake2s` of resolved path + optional git remote), `format_finding_id(prefix, idx, project_id)`, and a backward-compat `parse_finding_id` that handles both legacy `AI-0007` and namespaced `AI-12345678-0007`. Six `f"AI-{idx:04d}"` sites in `agent_impact.py` now use the namespaced format. Empirical proof: 271 / 271 unique IDs across the §3.1 fixture triplet (was 265 / 271 with 6 collisions); 3 distinct fingerprints (`45961152`, `05645815`, `8c1e11cc`). 23 unit tests including a 2 000-path collision-rate stress test. See [`references/project-identity.md`](https://github.com/.../tree/feat/v2.2.0-paradigm-extension/references/project-identity.md).
+- **C03 — Graph node↔edge ID canonicalizer + verifier-as-gate** (`src/nines/analyzer/graph_canonicalizer.py`, ~185 lines). Exports `canonicalize_id(raw, *, project_root)` that resolves `file:` / `function:` IDs to POSIX-relative form against the project root. `GraphVerifier.verify` now accepts an optional `project_root` from the pipeline and canonicalises both endpoints before set-membership comparison. Empirical proof: `verification.passed = True / True / True` on caveman / DevolaFlow / UA (was F/F/F); critical referential-integrity issues 0 / 0 / 0 (was 49 / 803 / 40); `layer_coverage_pct = 0.0` when `graph.layers == []` (was the 100.0 tautology). 17 tests including 2 verifier-integration cases. See [`references/cross-artifact-audit.md`](https://github.com/.../tree/feat/v2.2.0-paradigm-extension/references/cross-artifact-audit.md).
+- **C04 — Per-evaluator wall-clock budget** (`src/nines/core/budget.py`, ~184 lines, **PARTIAL**). Exports `TimeBudget(soft_seconds, hard_seconds)` and the `evaluator_budget(name, budget)` context manager that runs work on a `threading.Thread(daemon=True)` and raises `EvaluatorBudgetExceeded` after `hard_seconds`. `SelfEvalRunner.run_all` wraps each evaluator; on budget breach it appends a zero-score `DimensionScore` with `metadata["status"] = "timeout"` and records the dim name in `report.timeouts`. CLI gains `--evaluator-timeout SECONDS` (default 60). Empirical proof: caveman `--src-dir … --capability-only --evaluator-timeout 30` completes in **33.3 s** (was killed at >195 s — 5.9× speed-up); 20 / 20 dims populated; `report.timeouts = ['agent_analysis_quality']` (at the dataclass — N1 risk: not yet in CLI JSON). 5 unit tests. See [`references/resilience-budgets.md`](https://github.com/.../tree/feat/v2.2.0-paradigm-extension/references/resilience-budgets.md).
+- **C05 — `with_retry` + `CostBudget`** (`src/nines/core/retry.py` ~153 lines + `src/nines/core/cost_budget.py` ~117 lines). Exports `RetryPolicy(attempts, base_backoff_s, max_backoff_s, retry_on)`, `with_retry(fn, policy)`, `TransientError`, `CostBudget(token_limit, dollar_limit, time_limit_s)`, `CostExceeded`. `EvalRunner.__init__` accepts `retry_policy` and `cost_budget`; `run` catches `CostExceeded`, appends a partial-error entry, and breaks the outer loop. `eval_max_retries` (formerly dead code per gap-analysis §1) now drives the runner. Empirical proof: 5×50-token tasks vs `CostBudget(token_limit=100)` → 2 success + 1 `cost_budget_exceeded` partial-error + 2 not-executed; flaky-then-OK executor recovers in 3 invocations. 12 unit tests. See [`references/resilience-budgets.md`](https://github.com/.../tree/feat/v2.2.0-paradigm-extension/references/resilience-budgets.md).
+- **C06 — `DeterministicMockExecutor` (executor primitive only)** (`src/nines/eval/mock_executor.py`, ~99 lines, **PARTIAL**). Exports `DeterministicMockExecutor` callable with `seed`, `fixed_outputs`, `base_token_count`; `__call__` hashes `(task.id, task.input_data)` via `blake2s(payload, digest_size=16)` and returns a deterministic synthetic `ExecutionResult`. Empirical proof: 5 runs of a 10-task fixture byte-identical at ≈ 0.02 ms / call; 10 distinct task IDs → 10 distinct outputs; seed isolation (`alpha` vs `beta` produce different stable streams). 6 unit tests. **Wave 2 must complete the harness:** `MockEvaluator(DimensionEvaluator)`, `tests/data/golden/self_eval_fixtures/*.json`, `tests/iteration/test_self_eval_golden.py` with hang-detection (joint with C04) + silent-fallback regression detector. Block C08 + C12 on full-C06.
+- **C09 — Derived `context_economics`** (`src/nines/analyzer/agent_impact.py` lines 91-181 + 451-553, ~80 lines of formula rewrite + 30 lines of dataclass fields). Replaces constant `break_even_interactions = 2` with `ceil(overhead_tokens / max(per_interaction_savings_tokens, 1))`; adds `economics_score = clamp(saved × retention × diversity / overhead, 0, 1)`. New fields: `per_interaction_savings_tokens`, `expected_retention_rate` (default 0.85), `mechanism_diversity_factor` (`1.0 + 0.1 × (distinct_categories - 1)`), `economics_score`, `formula_version: int = 2`. Backward-compat parser: `from_dict` defaults `formula_version=1` for legacy reports. Empirical proof: caveman / DevolaFlow / UA `break_even = 6 / 7 / 8` (was constant 2 — matches design's predicted {6, 7, 8} exactly); `economics_score = 0.1992 / 0.1879 / 0.1556` (spread 0.0436 > 0.03 target). 9 unit tests including v1 round-trip. See [`references/derived-metrics.md`](https://github.com/.../tree/feat/v2.2.0-paradigm-extension/references/derived-metrics.md).
+
+### Improved
+
+- **Test suite: 1189 → 1261 (+72 tests, +6.0 %)** with zero regressions; full-suite green at every commit (`f885040` … `5247a1a`).
+- **`eval_max_retries` config knob resurrected.** Was dead code in v3.0.0 (per `01_evobench_gap_analysis.md` §1); now drives `RetryPolicy(attempts=cfg.eval_max_retries)` via the eval CLI.
+- **`SelfEvalReport.timeouts: list[str]`** field added; populated when any evaluator breaches its `TimeBudget`. (CLI JSON exposure pending — N1 risk in Wave 1 follow-up.)
+- **`ContextEconomics`** schema-evolves from `formula_version=1` to `formula_version=2`; legacy parsers see v1 semantics, new parsers see derived `break_even` + `economics_score`.
+- **References folder** grows by 4 new tier-2 reference docs: [`cross-artifact-audit.md`](https://github.com/.../tree/feat/v2.2.0-paradigm-extension/references/cross-artifact-audit.md), [`resilience-budgets.md`](https://github.com/.../tree/feat/v2.2.0-paradigm-extension/references/resilience-budgets.md), [`project-identity.md`](https://github.com/.../tree/feat/v2.2.0-paradigm-extension/references/project-identity.md), [`derived-metrics.md`](https://github.com/.../tree/feat/v2.2.0-paradigm-extension/references/derived-metrics.md). [`references/index.md`](https://github.com/.../tree/feat/v2.2.0-paradigm-extension/references/index.md), [`iteration-protocol.md`](https://github.com/.../tree/feat/v2.2.0-paradigm-extension/references/iteration-protocol.md), and [`evaluation-framework.md`](https://github.com/.../tree/feat/v2.2.0-paradigm-extension/references/evaluation-framework.md) bumped to v1.1.0 with cross-references to the new docs.
+
+### Known Gaps (Wave 1 follow-up — release-blocker for v2.2.0)
+
+- **N1 (Med):** `_build_json_output` in `cli/commands/self_eval.py` (lines 189-217) silently drops `report.timeouts`. Operators running `nines self-eval --format json` cannot detect partial runs. Fix: refactor to forward `report.to_dict()` rather than constructing a parallel payload.
+- **N2 (Low–Med):** `evaluator_budget`'s daemon-thread cancellation cannot kill `subprocess.run` hangs; the four `Live*` evaluators that shell out still have hard-coded subprocess timeouts. Wire `subprocess.run(timeout=min(dim_budget.hard_seconds, current_default))` in Wave 1; full child-process executor deferred to v2.3.
+- **N3 (Med):** C03 patched the verifier consumer but not `graph_decomposer.py` (the producer); future graph consumers can re-introduce §4.1 mismatch. Wave 1 follow-up: builder-side fix + add `_check_id_canonicalisation` regression detector.
+- **N4 (Med-High):** C06 shipped only the executor primitive (~10 % of the design); the golden harness is Wave 2.
+- **N5 (Low):** lint debt grew silently — `ruff check src/nines` 6 → 15 errors (+9 stylistic SIM108 / TC005). Address in a single cleanup commit before v2.2.0 ships; add a pre-commit hook in Wave 2.
+- **N6 (Low–Med):** `make typecheck` not run in S04. Run before v2.2.0 release; treat any new mypy errors as merge blockers.
+
+### Deferred to Wave 2 (v2.2.x or v2.3.0-rc1)
+
+- **C01 — Project-aware `EvaluationContext`.** The foundation gap that closes §4.8 + §4.9. POC plan: 3 evaluators first; full migration of all ~12 evaluators with `src_dir` defaults. Reuses `nines.core.identity.project_fingerprint` (shipped in C02) — see `02_analytical_validation.md` §C01 recommendation.
+- **C06 (full harness).** Build `MockEvaluator(DimensionEvaluator)`, fixtures at `tests/data/golden/self_eval_fixtures/*.json`, `tests/iteration/test_self_eval_golden.py` including the joint hang-detection test and silent-fallback regression detector. Unblocks C08 + C12.
+- **C07 — Quality-gate state machine.** All three deps (C03, C04, C09) now in tree. Reframe as "institutionalise Wave 1 wins so future PRs can't re-introduce the bugs". Ship in `gates_advisory_mode=True` for one minor.
+- **C10 — Cross-artifact consistency auditor.** Revised POC plan (since §4.1 / §4.5 are fixed at the source): inject synthetic regression and assert auditor flags it. Add `audit_schema_versioning` for C09 / future C08 migrations. Soft gate first; hard gate after one minor.
+
+### Deferred to Wave 3 (v2.3.0)
+
+- **C08 — Weighted `MetricRegistry`.** Closes §4.10. Gated on C01 (cross-project signal) + full-C06 (regression pinning) + N1 fix (CLI JSON exposure of new fields).
+- **C11a — Mechanism-detection diversification (rule-based).** Closes §4.3 / §4.4 with 4 new ContextOS-derived categories. Will automatically lift `economics_score` ≈ +0.05 absolute via C09's already-wired `mechanism_diversity_factor` — pre-document.
+
+### Deferred to Wave 4 (v2.4.0+)
+
+- **C12 — AgentBoard-style breakdown reporter.** Closes §4.10 fully via per-dim sub-skill panels. Gated on C01 + C08 + full-C06.
+- **C11b — Opt-in LLM-judge fallback.** `provider="none"` default; `NINES_ALLOW_EXTERNAL_LLM=1` env-var gate; CI-skipped via `@pytest.mark.live_llm`. Separate security/cost review required.
+
+---
+
 ## v3.0.0 — 2026-04-14
 
 **Theme:** Knowledge Graph Analysis Engine — Integrates [Understand-Anything](https://github.com/Lum1104/Understand-Anything) repo decomposition and analysis capabilities into a complete analyze → decompose → verify → summarize pipeline.
