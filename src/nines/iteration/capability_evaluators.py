@@ -13,7 +13,7 @@ from __future__ import annotations
 import ast
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from nines.analyzer.decomposer import Decomposer
 from nines.analyzer.indexer import KnowledgeIndex
@@ -21,6 +21,9 @@ from nines.analyzer.pipeline import AnalysisPipeline
 from nines.analyzer.reviewer import CodeReviewer
 from nines.analyzer.structure import StructureAnalyzer
 from nines.iteration.self_eval import DimensionScore
+
+if TYPE_CHECKING:
+    from nines.iteration.context import EvaluationContext
 
 logger = logging.getLogger(__name__)
 
@@ -91,16 +94,48 @@ class DecompositionCoverageEvaluator:
     Counts total analyzable elements (functions + classes) via AST, then
     runs CodeReviewer followed by Decomposer and computes the ratio
     ``captured_units / total_elements``.
+
+    C01 Phase 1: project-aware. Reads ``ctx.src_dir`` at evaluation
+    time so foreign repos no longer collapse to NineS's own counts
+    (closes baseline §4.8 silent-fallback bug). The constructor still
+    accepts a ``src_dir`` for backward compatibility; the supplied
+    value is used only when ``ctx`` is omitted (legacy path).
     """
 
+    #: C01 Phase 1: declares this evaluator wants a ctx-aware project
+    #: binding. The runner enforces this in strict mode.
+    requires_context: ClassVar[bool] = True
+
     def __init__(self, src_dir: str | Path = "src/nines") -> None:
-        """Initialize decomposition coverage evaluator."""
+        """Initialize decomposition coverage evaluator.
+
+        Parameters
+        ----------
+        src_dir:
+            Legacy default used only when ``ctx`` is omitted. The
+            modern code path supplies a ctx and overrides this value.
+        """
         self._src_dir = Path(src_dir)
 
-    def evaluate(self) -> DimensionScore:
-        """Run decomposition and return coverage ratio."""
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+    ) -> DimensionScore:
+        """Run decomposition against ``ctx.src_dir`` and return coverage ratio.
+
+        Parameters
+        ----------
+        ctx:
+            Project context.  Required for project-aware behaviour
+            (the runner enforces this when ``strict_ctx=True``).
+            When ``None`` (legacy / inner-runner path) the evaluator
+            falls back to the constructor-time ``src_dir`` so existing
+            callers keep working unchanged for one minor version.
+        """
+        src_dir = ctx.src_dir if ctx is not None else self._src_dir
         try:
-            py_files = _collect_python_files(self._src_dir)
+            py_files = _collect_python_files(src_dir)
             total_elements = _count_ast_elements(py_files)
 
             if total_elements == 0:
@@ -108,7 +143,12 @@ class DecompositionCoverageEvaluator:
                     name="decomposition_coverage",
                     value=0.0,
                     max_value=1.0,
-                    metadata={"total_elements": 0, "captured_units": 0},
+                    metadata={
+                        "total_elements": 0,
+                        "captured_units": 0,
+                        "files_analyzed": 0,
+                        "src_dir": str(src_dir),
+                    },
                 )
 
             reviewer = CodeReviewer()
@@ -130,11 +170,13 @@ class DecompositionCoverageEvaluator:
                     "total_elements": total_elements,
                     "captured_units": len(units),
                     "files_analyzed": len(reviews),
+                    "src_dir": str(src_dir),
                 },
             )
         except Exception as exc:
             logger.error(
-                "DecompositionCoverageEvaluator failed: %s",
+                "DecompositionCoverageEvaluator failed for %s: %s",
+                src_dir,
                 exc,
                 exc_info=True,
             )
@@ -142,6 +184,7 @@ class DecompositionCoverageEvaluator:
                 name="decomposition_coverage",
                 value=0.0,
                 max_value=1.0,
+                metadata={"src_dir": str(src_dir), "error": str(exc)},
             )
 
 
@@ -334,17 +377,37 @@ class IndexRecallEvaluator:
     Builds an index from decomposed knowledge units, runs a set of
     benchmark queries, and checks whether relevant results appear in
     the top 10 for each query.
+
+    C01 Phase 1: project-aware. Reads ``ctx.src_dir`` at evaluation
+    time so the indexed corpus follows the supplied project rather
+    than defaulting to NineS's own ``src/nines`` (closes baseline
+    §4.8 silent-fallback bug).
     """
+
+    requires_context: ClassVar[bool] = True
 
     def __init__(self, src_dir: str | Path = "src/nines") -> None:
         """Initialize index recall evaluator."""
         self._src_dir = Path(src_dir)
 
-    def evaluate(self) -> DimensionScore:
-        """Build index, run benchmark queries, and return recall ratio."""
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+    ) -> DimensionScore:
+        """Build index, run benchmark queries, and return recall ratio.
+
+        Parameters
+        ----------
+        ctx:
+            Project context. See
+            :meth:`DecompositionCoverageEvaluator.evaluate` for the
+            ``ctx=None`` legacy fallback contract.
+        """
+        src_dir = ctx.src_dir if ctx is not None else self._src_dir
         try:
             pipeline = AnalysisPipeline()
-            py_files = pipeline.ingest(self._src_dir)
+            py_files = pipeline.ingest(src_dir)
             reviews = pipeline.analyze(py_files)
             units = Decomposer().functional_decompose(reviews)
 
@@ -353,7 +416,11 @@ class IndexRecallEvaluator:
                     name="index_recall",
                     value=0.0,
                     max_value=1.0,
-                    metadata={"indexed_units": 0, "queries_tested": 0},
+                    metadata={
+                        "indexed_units": 0,
+                        "queries_tested": 0,
+                        "src_dir": str(src_dir),
+                    },
                 )
 
             index = KnowledgeIndex()
@@ -382,11 +449,13 @@ class IndexRecallEvaluator:
                     "queries_tested": total_queries,
                     "queries_with_results": hits,
                     "query_details": query_details,
+                    "src_dir": str(src_dir),
                 },
             )
         except Exception as exc:
             logger.error(
-                "IndexRecallEvaluator failed: %s",
+                "IndexRecallEvaluator failed for %s: %s",
+                src_dir,
                 exc,
                 exc_info=True,
             )
@@ -394,6 +463,7 @@ class IndexRecallEvaluator:
                 name="index_recall",
                 value=0.0,
                 max_value=1.0,
+                metadata={"src_dir": str(src_dir), "error": str(exc)},
             )
 
     @staticmethod
@@ -421,25 +491,44 @@ class IndexRecallEvaluator:
 class StructureRecognitionEvaluator:
     """D15: Measures how accurately StructureAnalyzer maps the codebase.
 
-    Runs the analyzer on the target source and verifies: package detection,
-    module count accuracy, file-type identification, dependency edges, and
-    coupling metric computation.
+    Runs the analyzer on the target source and verifies: package
+    detection, module count accuracy, file-type identification,
+    dependency edges, and coupling metric computation.
+
+    C01 Phase 1: project-aware. Reads ``ctx.src_dir`` at evaluation
+    time so foreign repos report their own package/module counts
+    instead of NineS's own (closes baseline §4.8 silent-fallback bug).
     """
+
+    requires_context: ClassVar[bool] = True
 
     def __init__(self, src_dir: str | Path = "src/nines") -> None:
         """Initialize structure recognition evaluator."""
         self._src_dir = Path(src_dir)
 
-    def evaluate(self) -> DimensionScore:
-        """Analyze directory structure and score recognition accuracy."""
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+    ) -> DimensionScore:
+        """Analyze directory structure and score recognition accuracy.
+
+        Parameters
+        ----------
+        ctx:
+            Project context. See
+            :meth:`DecompositionCoverageEvaluator.evaluate` for the
+            ``ctx=None`` legacy fallback contract.
+        """
+        src_dir = ctx.src_dir if ctx is not None else self._src_dir
         try:
-            report = StructureAnalyzer().analyze_directory(self._src_dir)
+            report = StructureAnalyzer().analyze_directory(src_dir)
 
             checks_passed = 0
             total_checks = 0
             check_details: dict[str, bool] = {}
 
-            actual_pkgs = self._find_actual_packages()
+            actual_pkgs = self._find_actual_packages(src_dir)
             if actual_pkgs:
                 total_checks += 1
                 detected_paths = {p.path for p in report.packages}
@@ -449,7 +538,7 @@ class StructureRecognitionEvaluator:
                 if ok:
                     checks_passed += 1
 
-            actual_py_count = len(_collect_python_files(self._src_dir))
+            actual_py_count = len(_collect_python_files(src_dir))
 
             total_checks += 1
             module_ok = (
@@ -494,11 +583,13 @@ class StructureRecognitionEvaluator:
                     "actual_py_files": actual_py_count,
                     "dependency_edges": len(report.dependency_map.edges),
                     "check_details": check_details,
+                    "src_dir": str(src_dir),
                 },
             )
         except Exception as exc:
             logger.error(
-                "StructureRecognitionEvaluator failed: %s",
+                "StructureRecognitionEvaluator failed for %s: %s",
+                src_dir,
                 exc,
                 exc_info=True,
             )
@@ -506,21 +597,28 @@ class StructureRecognitionEvaluator:
                 name="structure_recognition",
                 value=0.0,
                 max_value=1.0,
+                metadata={"src_dir": str(src_dir), "error": str(exc)},
             )
 
-    def _find_actual_packages(self) -> list[Path]:
-        """Discover actual Python packages (directories with __init__.py)."""
+    @staticmethod
+    def _find_actual_packages(src_dir: Path) -> list[Path]:
+        """Discover actual Python packages (directories with ``__init__.py``).
+
+        Pulled out of ``self._src_dir`` and made static so the caller
+        can pass the C01 ``ctx.src_dir`` directly without first
+        mutating the instance.
+        """
         packages: list[Path] = []
-        for dirpath in sorted(self._src_dir.rglob("*")):
+        for dirpath in sorted(src_dir.rglob("*")):
             if not dirpath.is_dir():
                 continue
-            rel_parts = dirpath.relative_to(self._src_dir).parts
+            rel_parts = dirpath.relative_to(src_dir).parts
             if any(p in _SKIP_DIRS or p.startswith(".") for p in rel_parts):
                 continue
             if (dirpath / "__init__.py").is_file():
                 packages.append(dirpath)
-        if (self._src_dir / "__init__.py").is_file():
-            packages.insert(0, self._src_dir)
+        if (src_dir / "__init__.py").is_file():
+            packages.insert(0, src_dir)
         return packages
 
 

@@ -179,3 +179,67 @@ class Reporter(Protocol):
             Destination file path for the generated report.
         """
         ...
+
+
+
+# ---------------------------------------------------------------------------
+# C01 Phase 1 — project-aware DimensionEvaluator (Wave 2)
+# ---------------------------------------------------------------------------
+
+from typing import TYPE_CHECKING  # noqa: E402
+
+if TYPE_CHECKING:
+    from nines.iteration.context import EvaluationContext
+
+
+@runtime_checkable
+class DimensionEvaluator(Protocol):
+    """Project-aware self-eval dimension evaluator (C01 Phase 1).
+
+    Implementations may declare a ``requires_context`` *class attribute*
+    set to ``True`` to assert that a non-``None``
+    :class:`~nines.iteration.context.EvaluationContext` must be supplied
+    at evaluation time. Legacy evaluators that don't accept a ``ctx``
+    keyword argument keep working through
+    :class:`~nines.iteration.self_eval.LegacyEvaluatorAdapter`, which
+    the runner attaches automatically at registration time.
+
+    Notes
+    -----
+    The Protocol is :func:`typing.runtime_checkable` so the runner can
+    quickly verify that registered evaluators expose an ``evaluate``
+    method (signature is verified separately via
+    :func:`inspect.signature`).  We deliberately do **not** declare
+    ``requires_context`` on the Protocol itself, because
+    runtime_checkable Protocols enforce member existence and forcing
+    legacy evaluators to add the marker would be a breaking change;
+    instead the runner uses ``getattr(ev, "requires_context", False)``.
+    """
+
+    def evaluate(self, *, ctx: "EvaluationContext | None" = None) -> Any:
+        """Run evaluation for this dimension.
+
+        Parameters
+        ----------
+        ctx:
+            Optional :class:`EvaluationContext`. Modern evaluators that
+            need project-aware paths (D11/D14/D15 today) require it;
+            legacy ones ignore it via :class:`LegacyEvaluatorAdapter`.
+
+        Returns
+        -------
+        DimensionScore
+            The evaluator's score plus any per-dim metadata.
+        """
+        ...
+
+
+__all__ = [  # type: ignore[misc]
+    "Analyzer",
+    "DimensionEvaluator",
+    "Executor",
+    "Reporter",
+    "Scorer",
+    "SourceCollector",
+    "TaskLoader",
+]
