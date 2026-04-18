@@ -233,7 +233,9 @@ class AnalysisPipeline:
             scan_result, import_graph, reviews,
         )
 
-        verification = self._graph_verifier.verify(graph)
+        verification = self._graph_verifier.verify(
+            graph, project_root=str(target),
+        )
         summary = self._summarizer.summarize(graph, verification)
 
         return {

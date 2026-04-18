@@ -10,6 +10,10 @@ from __future__ import annotations
 
 import logging
 
+from nines.analyzer.graph_canonicalizer import (
+    canonicalize_id,
+    common_project_root,
+)
 from nines.analyzer.graph_models import (
     VALID_EDGE_TYPES,
     VALID_NODE_TYPES,
@@ -24,13 +28,24 @@ logger = logging.getLogger(__name__)
 class GraphVerifier:
     """Validates a :class:`KnowledgeGraph` for structural correctness."""
 
-    def verify(self, graph: KnowledgeGraph) -> VerificationResult:
+    def verify(
+        self,
+        graph: KnowledgeGraph,
+        *,
+        project_root: str | None = None,
+    ) -> VerificationResult:
         """Run all verification checks on *graph*.
 
         Parameters
         ----------
         graph:
             The knowledge graph to verify.
+        project_root:
+            Optional explicit project root.  When provided, used by
+            referential-integrity canonicalisation to align node IDs and
+            edge endpoints regardless of the encoding each producer
+            chose.  When omitted, the verifier falls back to deriving a
+            root from absolute paths found in the graph (less precise).
 
         Returns
         -------
@@ -38,7 +53,7 @@ class GraphVerifier:
             Aggregated result with issues and coverage metrics.
         """
         issues: list[VerificationIssue] = []
-        issues.extend(self._check_referential_integrity(graph))
+        issues.extend(self._check_referential_integrity(graph, project_root=project_root))
         issues.extend(self._check_duplicate_edges(graph))
         issues.extend(self._check_orphan_nodes(graph))
         issues.extend(self._check_layer_coverage(graph))
@@ -51,10 +66,19 @@ class GraphVerifier:
         for layer in graph.layers:
             layered_ids.update(layer.node_ids)
 
-        coverage_pct = (
-            len(layered_ids & node_ids) / len(node_ids) * 100.0
-            if node_ids else 0.0
-        )
+        # C03: when no layers are declared the coverage *must* be 0.0,
+        # not 100.0 — the prior behaviour reported full coverage even on
+        # empty layers because the intersection of two empty sets is
+        # empty (and the divisor is non-zero).  Downstream consumers
+        # treat ``layer_coverage_pct`` as a real coverage signal, so
+        # an empty-layers graph reports 0% coverage explicitly.
+        if not graph.layers:
+            coverage_pct = 0.0
+        else:
+            coverage_pct = (
+                len(layered_ids & node_ids) / len(node_ids) * 100.0
+                if node_ids else 0.0
+            )
 
         edge_endpoints = set()
         for e in graph.edges:
@@ -88,15 +112,57 @@ class GraphVerifier:
     @staticmethod
     def _check_referential_integrity(
         graph: KnowledgeGraph,
+        *,
+        project_root: str | None = None,
     ) -> list[VerificationIssue]:
-        """Verify every edge references existing nodes."""
-        node_ids = {n.id for n in graph.nodes}
+        """Verify every edge references existing nodes.
+
+        Both node IDs and edge endpoints are canonicalised before the
+        set-membership comparison so that producers using different path
+        encodings (relative vs absolute) don't trigger false positives.
+        See C03 baseline §4.1 for the empirical motivation.
+
+        Parameters
+        ----------
+        graph:
+            Graph under verification.
+        project_root:
+            Optional explicit anchor used by the canonicalizer.  When
+            absent, the verifier derives a best-effort root from any
+            absolute path found on a node ``file_path`` or an edge
+            endpoint.
+        """
+        if project_root:
+            root = project_root
+        else:
+            # Auto-derive from absolute paths in nodes + edges.  Less
+            # precise (it picks the longest common prefix) but works
+            # when no explicit root was passed.
+            candidate_paths: list[str] = []
+            for n in graph.nodes:
+                if n.file_path and n.file_path.startswith("/"):
+                    candidate_paths.append(n.file_path)
+            for e in graph.edges:
+                for endpoint in (e.source, e.target):
+                    if not endpoint or ":" not in endpoint:
+                        continue
+                    _, _, remainder = endpoint.partition(":")
+                    path_part = remainder.split("::", 1)[0]
+                    if path_part.startswith("/"):
+                        candidate_paths.append(path_part)
+            root = common_project_root(candidate_paths) if candidate_paths else "."
+
+        canonical_node_ids = {
+            canonicalize_id(n.id, project_root=root) for n in graph.nodes
+        }
         issues: list[VerificationIssue] = []
         for edge in graph.edges:
+            canon_source = canonicalize_id(edge.source, project_root=root)
+            canon_target = canonicalize_id(edge.target, project_root=root)
             missing: list[str] = []
-            if edge.source not in node_ids:
+            if canon_source not in canonical_node_ids:
                 missing.append(edge.source)
-            if edge.target not in node_ids:
+            if canon_target not in canonical_node_ids:
                 missing.append(edge.target)
             if missing:
                 issues.append(VerificationIssue(
