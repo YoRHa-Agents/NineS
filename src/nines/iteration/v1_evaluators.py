@@ -16,10 +16,13 @@ from __future__ import annotations
 import logging
 import tomllib
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from nines.eval.scorers import ExactScorer, FuzzyScorer
 from nines.iteration.self_eval import DimensionScore
+
+if TYPE_CHECKING:
+    from nines.iteration.context import EvaluationContext
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +102,16 @@ class ScoringAccuracyEvaluator:
     then compares the NineS score to the golden ``expected_score``.
 
     Accuracy = count(|nines_score - golden_score| <= tolerance) / total_tasks.
+
+    C01 Phase 2: project-aware via ``ctx.golden_dir``. When the runner supplies
+    an ``EvaluationContext`` whose ``golden_dir`` exists, that directory is
+    used in preference to the constructor-time default — so foreign-repo
+    runs no longer silently load NineS's own golden test set
+    (closes baseline §4.8 silent-fallback bug).
     """
+
+    #: C01 Phase 2 marker — runner enforces in strict mode.
+    requires_context: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -110,15 +122,35 @@ class ScoringAccuracyEvaluator:
         self._golden_dir = Path(golden_dir)
         self._tolerance = tolerance
 
-    def evaluate(self) -> DimensionScore:
-        """Load golden tasks, score each, and return accuracy."""
-        tasks = load_golden_tasks(self._golden_dir)
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+    ) -> DimensionScore:
+        """Load golden tasks, score each, and return accuracy.
+
+        Parameters
+        ----------
+        ctx:
+            Project context. When supplied with a non-None ``golden_dir``,
+            that path overrides the constructor default so foreign-repo
+            runs evaluate the project's own golden test set (or report
+            an empty fixture) instead of NineS's own.
+        """
+        golden_dir = (
+            ctx.golden_dir if ctx is not None and ctx.golden_dir is not None
+            else self._golden_dir
+        )
+        tasks = load_golden_tasks(golden_dir)
         if not tasks:
             return DimensionScore(
                 name="scoring_accuracy",
                 value=0.0,
                 max_value=1.0,
-                metadata={"error": f"no golden tasks found in {self._golden_dir}"},
+                metadata={
+                    "error": f"no golden tasks found in {golden_dir}",
+                    "golden_dir": str(golden_dir),
+                },
             )
 
         accurate = 0
@@ -164,7 +196,12 @@ class ReliabilityEvaluator:
     Loads a subset of golden tasks and runs each through ExactScorer
     multiple times.  Consistency = count(all runs agree on pass/fail)
     / total_tasks, where pass = score > 0.5.
+
+    C01 Phase 2: project-aware via ``ctx.golden_dir`` (see
+    :class:`ScoringAccuracyEvaluator` for the contract).
     """
+
+    requires_context: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -177,15 +214,26 @@ class ReliabilityEvaluator:
         self._runs = max(runs, 2)
         self._max_tasks = max_tasks
 
-    def evaluate(self) -> DimensionScore:
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+    ) -> DimensionScore:
         """Run each golden task multiple times and check consistency."""
-        tasks = load_golden_tasks(self._golden_dir)
+        golden_dir = (
+            ctx.golden_dir if ctx is not None and ctx.golden_dir is not None
+            else self._golden_dir
+        )
+        tasks = load_golden_tasks(golden_dir)
         if not tasks:
             return DimensionScore(
                 name="scoring_reliability",
                 value=0.0,
                 max_value=1.0,
-                metadata={"error": f"no golden tasks found in {self._golden_dir}"},
+                metadata={
+                    "error": f"no golden tasks found in {golden_dir}",
+                    "golden_dir": str(golden_dir),
+                },
             )
 
         subset = [t for t in tasks if t["scorer"] == "exact"][: self._max_tasks]
@@ -235,21 +283,37 @@ class ScorerAgreementEvaluator:
 
     For each golden task, both scorers produce a score. A task "passes"
     if score > 0.5.  Agreement = count(both agree on pass/fail) / total.
+
+    C01 Phase 2: project-aware via ``ctx.golden_dir`` (see
+    :class:`ScoringAccuracyEvaluator` for the contract).
     """
+
+    requires_context: ClassVar[bool] = True
 
     def __init__(self, golden_dir: str | Path = "data/golden_test_set") -> None:
         """Initialize with the golden test set directory."""
         self._golden_dir = Path(golden_dir)
 
-    def evaluate(self) -> DimensionScore:
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+    ) -> DimensionScore:
         """Score all golden tasks with both scorers and measure agreement."""
-        tasks = load_golden_tasks(self._golden_dir)
+        golden_dir = (
+            ctx.golden_dir if ctx is not None and ctx.golden_dir is not None
+            else self._golden_dir
+        )
+        tasks = load_golden_tasks(golden_dir)
         if not tasks:
             return DimensionScore(
                 name="scorer_agreement",
                 value=0.0,
                 max_value=1.0,
-                metadata={"error": f"no golden tasks found in {self._golden_dir}"},
+                metadata={
+                    "error": f"no golden tasks found in {golden_dir}",
+                    "golden_dir": str(golden_dir),
+                },
             )
 
         exact_scorer = ExactScorer()

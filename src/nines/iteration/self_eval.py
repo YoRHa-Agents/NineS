@@ -657,7 +657,15 @@ class LiveCodeCoverageEvaluator:
     Supports three coverage sources (checked in order):
     1. Pre-existing coverage file (coverage.xml or coverage.json)
     2. pytest ``--cov`` subprocess execution
+
+    C01 Phase 3: project-aware. Uses ``ctx.project_root`` as the
+    pytest cwd so coverage is measured against the *target* project
+    rather than the constructor-time default (closes baseline §4.8 —
+    today every foreign-repo run silently re-measures NineS's own
+    coverage).
     """
+
+    requires_context: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -682,11 +690,22 @@ class LiveCodeCoverageEvaluator:
         self._cov_package = cov_package
         self._coverage_file = Path(coverage_file) if coverage_file is not None else None
 
-    def evaluate(self, *, budget: TimeBudget | None = None) -> DimensionScore:
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+        budget: TimeBudget | None = None,
+    ) -> DimensionScore:
         """Evaluate and return live code coverage.
 
         Parameters
         ----------
+        ctx:
+            Project context. When supplied, the cwd for pytest is
+            ``ctx.project_root`` (legacy fallback: constructor arg).
+            ``cov_package`` and ``coverage_file`` remain configured by
+            the constructor since they're not part of the project-path
+            binding.
         budget:
             Optional :class:`TimeBudget` from the runner.  When set, the
             inner ``pytest --cov`` subprocess uses
@@ -694,18 +713,24 @@ class LiveCodeCoverageEvaluator:
             child returns control before the daemon-thread budget fires
             (release follow-up N2).
         """
+        project_root = ctx.project_root if ctx is not None else self._project_root
         coverage_pct = self._try_coverage_file()
         source = "file"
 
         if coverage_pct is None:
             source = "pytest"
-            coverage_pct = self._run_pytest_cov(budget=budget)
+            coverage_pct = self._run_pytest_cov(project_root, budget=budget)
 
         return DimensionScore(
             name="code_coverage",
             value=coverage_pct,
             max_value=100.0,
-            metadata={"unit": "percent", "source": source},
+            metadata={
+                "unit": "percent",
+                "source": source,
+                "project_root": str(project_root),
+                "cov_package": self._cov_package,
+            },
         )
 
     # -- private helpers -----------------------------------------------------
@@ -733,7 +758,12 @@ class LiveCodeCoverageEvaluator:
             )
         return None
 
-    def _run_pytest_cov(self, *, budget: TimeBudget | None = None) -> float:
+    def _run_pytest_cov(
+        self,
+        project_root: Path,
+        *,
+        budget: TimeBudget | None = None,
+    ) -> float:
         """Run pytest --cov and return the coverage percentage.
 
         N2: ``timeout`` defaults to 300s but is shrunk to
@@ -755,7 +785,7 @@ class LiveCodeCoverageEvaluator:
                 capture_output=True,
                 text=True,
                 timeout=timeout_s,
-                cwd=str(self._project_root),
+                cwd=str(project_root),
             )
             return self._parse_coverage(result.stdout)
         except subprocess.TimeoutExpired:
@@ -813,7 +843,14 @@ class LiveTestCountEvaluator:
     parameterized tests, fixture-generated tests, class-based methods,
     etc.).  Falls back to an AST walk when pytest collection is
     unavailable or fails.
+
+    C01 Phase 3: project-aware. When the runner supplies a context,
+    ``ctx.test_dir`` (when set) drives both the pytest argument and
+    the AST-walk fallback; ``ctx.project_root`` becomes the pytest
+    cwd. Closes baseline §4.8 silent-fallback for foreign-repo runs.
     """
+
+    requires_context: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -832,33 +869,58 @@ class LiveTestCountEvaluator:
         self._test_dir = Path(test_dir)
         self._project_root = Path(project_root)
 
-    def evaluate(self, *, budget: TimeBudget | None = None) -> DimensionScore:
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+        budget: TimeBudget | None = None,
+    ) -> DimensionScore:
         """Evaluate and return live test count.
 
         Parameters
         ----------
+        ctx:
+            Project context. When supplied with a non-None ``test_dir``,
+            that path is used in preference to the constructor default;
+            otherwise falls back to constructor ``test_dir``.
+            ``ctx.project_root`` (when ctx supplied) drives the pytest
+            cwd.
         budget:
             Optional runner-supplied :class:`TimeBudget`.  When set, the
             inner ``pytest --collect-only`` subprocess uses
             ``min(120s, budget.hard_seconds * 0.9)`` (release follow-up
             N2).
         """
-        count, method = self._try_pytest_collect(budget=budget)
+        if ctx is not None:
+            test_dir = ctx.test_dir if ctx.test_dir is not None else self._test_dir
+            project_root = ctx.project_root
+        else:
+            test_dir = self._test_dir
+            project_root = self._project_root
+
+        count, method = self._try_pytest_collect(test_dir, project_root, budget=budget)
 
         if count is None:
-            count, method = self._ast_walk(), "ast-walk"
+            count, method = self._ast_walk(test_dir), "ast-walk"
 
         return DimensionScore(
             name="test_count",
             value=float(count),
             max_value=float(max(count, 1)),
-            metadata={"unit": "tests", "method": method},
+            metadata={
+                "unit": "tests",
+                "method": method,
+                "test_dir": str(test_dir),
+                "project_root": str(project_root),
+            },
         )
 
     # -- private helpers -----------------------------------------------------
 
     def _try_pytest_collect(
         self,
+        test_dir: Path,
+        project_root: Path,
         *,
         budget: TimeBudget | None = None,
     ) -> tuple[int | None, str]:
@@ -877,12 +939,12 @@ class LiveTestCountEvaluator:
                     "pytest",
                     "--collect-only",
                     "-q",
-                    str(self._test_dir),
+                    str(test_dir),
                 ],
                 capture_output=True,
                 text=True,
                 timeout=timeout_s,
-                cwd=str(self._project_root),
+                cwd=str(project_root),
             )
             count = self._parse_collect_output(result.stdout)
             if count is not None:
@@ -909,12 +971,13 @@ class LiveTestCountEvaluator:
                 return int(match.group(1))
         return None
 
-    def _ast_walk(self) -> int:
+    @staticmethod
+    def _ast_walk(test_dir: Path) -> int:
         """Count test functions via AST analysis (fallback)."""
         count = 0
         files_scanned = 0
         try:
-            for py_file in self._test_dir.rglob("test_*.py"):
+            for py_file in test_dir.rglob("test_*.py"):
                 files_scanned += 1
                 try:
                     source = py_file.read_text(encoding="utf-8")
@@ -928,52 +991,76 @@ class LiveTestCountEvaluator:
                     ) and node.name.startswith("test_"):
                         count += 1
         except Exception as exc:
-            logger.error("Failed to scan test directory %s: %s", self._test_dir, exc)
+            logger.error("Failed to scan test directory %s: %s", test_dir, exc)
         logger.debug("AST walk: scanned %d files, found %d tests", files_scanned, count)
         return count
 
 
 class LiveModuleCountEvaluator:
-    """Evaluator that counts Python modules in src/nines/."""
+    """Evaluator that counts Python modules in the configured src tree.
+
+    C01 Phase 3: project-aware. Reads ``ctx.src_dir`` so foreign-repo
+    runs report their own module count rather than NineS's 72
+    (closes baseline §4.8 silent-fallback bug).
+    """
+
+    requires_context: ClassVar[bool] = True
 
     def __init__(self, src_dir: str | Path = "src/nines") -> None:
         """Initialize live module count evaluator."""
         self._src_dir = Path(src_dir)
 
-    def evaluate(self) -> DimensionScore:
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+    ) -> DimensionScore:
         """Evaluate and return live module count."""
+        src_dir = ctx.src_dir if ctx is not None else self._src_dir
         count = 0
         try:
-            for py_file in self._src_dir.rglob("*.py"):
+            for py_file in src_dir.rglob("*.py"):
                 if py_file.name == "__init__.py":
                     continue
                 if "__pycache__" in py_file.parts:
                     continue
                 count += 1
         except Exception as exc:
-            logger.error("Failed to scan source directory %s: %s", self._src_dir, exc)
+            logger.error("Failed to scan source directory %s: %s", src_dir, exc)
 
         return DimensionScore(
             name="module_count",
             value=float(count),
             max_value=float(max(count, 1)),
-            metadata={"unit": "modules"},
+            metadata={"unit": "modules", "src_dir": str(src_dir)},
         )
 
 
 class DocstringCoverageEvaluator:
-    """Evaluator that measures docstring coverage of public functions/classes."""
+    """Evaluator that measures docstring coverage of public functions/classes.
+
+    C01 Phase 3: project-aware. Reads ``ctx.src_dir`` so foreign-repo
+    runs report their own docstring density rather than NineS's
+    99.65 (closes baseline §4.8 silent-fallback bug).
+    """
+
+    requires_context: ClassVar[bool] = True
 
     def __init__(self, src_dir: str | Path = "src/nines") -> None:
         """Initialize docstring coverage evaluator."""
         self._src_dir = Path(src_dir)
 
-    def evaluate(self) -> DimensionScore:
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+    ) -> DimensionScore:
         """Evaluate and return docstring coverage."""
+        src_dir = ctx.src_dir if ctx is not None else self._src_dir
         total = 0
         documented = 0
         try:
-            for py_file in self._src_dir.rglob("*.py"):
+            for py_file in src_dir.rglob("*.py"):
                 if "__pycache__" in py_file.parts:
                     continue
                 try:
@@ -990,40 +1077,61 @@ class DocstringCoverageEvaluator:
                         if ast.get_docstring(node):
                             documented += 1
         except Exception as exc:
-            logger.error("Failed to scan source directory %s: %s", self._src_dir, exc)
+            logger.error("Failed to scan source directory %s: %s", src_dir, exc)
 
         pct = (documented / total * 100.0) if total > 0 else 0.0
         return DimensionScore(
             name="docstring_coverage",
             value=pct,
             max_value=100.0,
-            metadata={"unit": "percent", "total": total, "documented": documented},
+            metadata={
+                "unit": "percent",
+                "total": total,
+                "documented": documented,
+                "src_dir": str(src_dir),
+            },
         )
 
 
 class LintCleanlinessEvaluator:
-    """Evaluator that measures lint cleanliness via ruff."""
+    """Evaluator that measures lint cleanliness via ruff.
+
+    C01 Phase 3: project-aware. Reads ``ctx.src_dir`` so foreign-repo
+    runs lint their own sources rather than NineS's (closes baseline
+    §4.8 silent-fallback bug).
+    """
+
+    requires_context: ClassVar[bool] = True
 
     def __init__(self, src_dir: str | Path = "src/nines") -> None:
         """Initialize lint cleanliness evaluator."""
         self._src_dir = Path(src_dir)
 
-    def evaluate(self, *, budget: TimeBudget | None = None) -> DimensionScore:
+    def evaluate(
+        self,
+        *,
+        ctx: EvaluationContext | None = None,
+        budget: TimeBudget | None = None,
+    ) -> DimensionScore:
         """Evaluate and return lint cleanliness score.
 
         Parameters
         ----------
+        ctx:
+            Project context. When supplied, ``ctx.src_dir`` overrides
+            the constructor default.
         budget:
             Optional runner-supplied :class:`TimeBudget`.  When set, the
             inner ``ruff check`` subprocess uses
             ``min(300s, budget.hard_seconds * 0.9)`` (release follow-up
             N2).
         """
+        src_dir = ctx.src_dir if ctx is not None else self._src_dir
         timeout_s = _budgeted_subprocess_timeout(300.0, budget)
         violation_count = 0
         try:
             result = subprocess.run(
-                ["python", "-m", "ruff", "check", str(self._src_dir), "--output-format=json", "-q"],
+                ["python", "-m", "ruff", "check", str(src_dir), "--output-format=json", "-q"],
                 capture_output=True,
                 text=True,
                 timeout=timeout_s,
@@ -1044,5 +1152,9 @@ class LintCleanlinessEvaluator:
             name="lint_cleanliness",
             value=raw_score,
             max_value=100.0,
-            metadata={"unit": "score", "violation_count": violation_count},
+            metadata={
+                "unit": "score",
+                "violation_count": violation_count,
+                "src_dir": str(src_dir),
+            },
         )

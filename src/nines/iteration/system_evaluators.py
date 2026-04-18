@@ -28,6 +28,17 @@ class ConvergenceRateEvaluator:
     Runs a lightweight MAPIM-like loop: self-eval → gap detection → planning,
     and checks that the gap detector and planner produce actionable outputs
     without excessive iterations.  Score = 1 - (iterations_needed / max).
+
+    NineS-meta evaluator (C01 Phase 2 design note)
+    ----------------------------------------------
+    Validates NineS's own iteration plumbing (``GapDetector``,
+    ``ImprovementPlanner``, inner ``SelfEvalRunner``). The result
+    measures NineS's own convergence behaviour and is independent of
+    the project under self-eval. The constructor still accepts
+    ``src_dir`` so the inner ``DecompositionCoverageEvaluator`` has
+    something to scan, but the evaluator itself does **not** declare
+    ``requires_context = True`` because the *measurement* is about
+    NineS, not the target project.
     """
 
     def __init__(self, src_dir: str | Path = "src/nines", max_iterations: int = 5) -> None:
@@ -102,6 +113,13 @@ class CrossVertexSynergyEvaluator:
     Verifies that V1 (eval), V2 (collect), and V3 (analyze) components
     can interoperate: analysis results feed into evaluation, collection
     models are compatible with analysis pipelines, etc.
+
+    NineS-meta evaluator (C01 Phase 2 design note)
+    ----------------------------------------------
+    Checks NineS's own module imports (``nines.eval``, ``nines.collector``,
+    ``nines.analyzer``, ``nines.orchestrator``, ``nines.iteration``). The
+    answer is independent of the target project, so this evaluator
+    deliberately does **not** declare ``requires_context = True``.
     """
 
     def evaluate(self) -> DimensionScore:
