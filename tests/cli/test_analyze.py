@@ -141,3 +141,145 @@ def test_analyze_json_includes_finding_namespace(tmp_path: Path) -> None:
         f"{[f.get('id') for f in findings if isinstance(f, dict)]}"
     )
 
+
+# ---------------------------------------------------------------------------
+# C03 N3c — --strict-graph CLI flag
+# ---------------------------------------------------------------------------
+
+
+from unittest.mock import patch  # noqa: E402
+
+from nines.core.models import AnalysisResult  # noqa: E402
+
+
+def _make_failing_graph_result(target: str) -> AnalysisResult:
+    """Return an :class:`AnalysisResult` that fails the strict-graph gate.
+
+    Mirrors the JSON shape :class:`AnalysisPipeline._run_graph_pipeline`
+    emits, but with ``verification.passed=False`` and a single
+    ``severity="critical"`` issue so the CLI's ``--strict-graph`` gate
+    will fire deterministically without exercising the real pipeline.
+    """
+    return AnalysisResult(
+        target=target,
+        findings=[],
+        metrics={
+            "files_analyzed": 1,
+            "total_lines": 1,
+            "knowledge_graph": {
+                "scan": {"total_files": 1, "languages": ["python"], "frameworks": []},
+                "import_graph": {"edges": 0, "unresolved": 0},
+                "graph": {"nodes": [], "edges": [], "layers": []},
+                "verification": {
+                    "passed": False,
+                    "issues": [
+                        {
+                            "severity": "critical",
+                            "category": "referential_integrity",
+                            "message": "synthetic critical for gate test",
+                            "node_ids": ["file:missing.py"],
+                        },
+                    ],
+                    "node_count": 0,
+                    "edge_count": 0,
+                    "layer_coverage_pct": 0.0,
+                    "orphan_count": 0,
+                },
+                "summary": {},
+            },
+            "strategy": "graph",
+            "depth": "shallow",
+        },
+    )
+
+
+def test_strict_graph_default_aborts_on_critical(tmp_path: Path) -> None:
+    """``--strict-graph`` is on by default for ``--strategy graph``: when
+    the analyzer reports ``verification.passed=False`` with at least one
+    critical issue, the CLI exits with code 2.
+
+    The full report is still written to disk for forensic use; only the
+    exit code communicates the gate.
+    """
+    project = tmp_path / "proj"
+    project.mkdir()
+    (project / "stub.py").write_text("x = 1\n")
+    out_dir = tmp_path / "reports"
+
+    failing_result = _make_failing_graph_result(str(project))
+
+    with patch(
+        "nines.cli.commands.analyze.AnalysisPipeline",
+    ) as pipeline_cls:
+        pipeline_cls.return_value.run.return_value = failing_result
+        # build_report_metadata is a classmethod on the real pipeline;
+        # the mock needs to expose it (not the instance) so the JSON
+        # branch in analyze_cmd doesn't blow up — but since we don't
+        # request --format json here, we keep the patch minimal.
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "analyze",
+                "--target-path",
+                str(project),
+                "--strategy",
+                "graph",
+                "--no-agent-impact",
+                "--output-dir",
+                str(out_dir),
+            ],
+        )
+
+    assert result.exit_code == 2, (
+        f"expected exit code 2 (strict graph gate); got {result.exit_code}. "
+        f"stdout={result.output!r} stderr={getattr(result, 'stderr', '')!r}"
+    )
+    # Forensic artifact must still be on disk so operators can debug.
+    written = out_dir / "analysis_report.txt"
+    assert written.exists(), (
+        "strict-graph gate must not skip the report write; "
+        "operators need the forensic file"
+    )
+
+
+def test_strict_graph_disabled_does_not_abort(tmp_path: Path) -> None:
+    """Passing ``--no-strict-graph`` overrides the default-True gate so
+    even a critical-issue verification result returns exit code 0.
+
+    Ensures the gate is opt-out: operators who want a soft warning can
+    still get the JSON / text report without CI failing the build.
+    """
+    project = tmp_path / "proj"
+    project.mkdir()
+    (project / "stub.py").write_text("x = 1\n")
+    out_dir = tmp_path / "reports"
+
+    failing_result = _make_failing_graph_result(str(project))
+
+    with patch(
+        "nines.cli.commands.analyze.AnalysisPipeline",
+    ) as pipeline_cls:
+        pipeline_cls.return_value.run.return_value = failing_result
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "analyze",
+                "--target-path",
+                str(project),
+                "--strategy",
+                "graph",
+                "--no-strict-graph",
+                "--no-agent-impact",
+                "--output-dir",
+                str(out_dir),
+            ],
+        )
+
+    assert result.exit_code == 0, (
+        f"--no-strict-graph must not abort even with critical issues; "
+        f"got exit_code={result.exit_code}, output={result.output!r}"
+    )
+    # Sanity: the report still wrote to disk.
+    assert (out_dir / "analysis_report.txt").exists()

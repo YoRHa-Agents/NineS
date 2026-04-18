@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 
 _VALID_STRATEGIES = ("functional", "concern", "layer", "graph")
 
+# Exit code emitted when ``--strict-graph`` (default for ``--strategy
+# graph``) detects critical knowledge-graph verification failures.
+# Documented for operators wiring NineS into CI: code 2 means "graph
+# integrity gate failed" rather than "command crashed".
+STRICT_GRAPH_EXIT_CODE = 2
+
 
 @click.command("analyze")
 @click.option(
@@ -54,6 +60,15 @@ _VALID_STRATEGIES = ("functional", "concern", "layer", "graph")
     show_default=True,
     help="Analysis depth.",
 )
+@click.option(
+    "--strict-graph/--no-strict-graph",
+    default=None,
+    help=(
+        "Exit non-zero when the knowledge-graph verification fails with "
+        "any critical issue.  Default: True for --strategy graph, "
+        "False for the other strategies (which do not produce a graph)."
+    ),
+)
 @click.pass_context
 def analyze_cmd(
     ctx: click.Context,
@@ -63,10 +78,17 @@ def analyze_cmd(
     agent_impact: bool,
     keypoints: bool,
     depth: str,
+    strict_graph: bool | None,
 ) -> None:
     """Analyze and decompose collected knowledge into structured units."""
     verbose = ctx.obj.get("verbose", False)
     output_format = ctx.obj.get("format", "text")
+
+    # ``--strict-graph`` defaults to True only for the strategy that
+    # actually emits a knowledge graph; for the other strategies the
+    # gate is moot because ``metrics["knowledge_graph"]`` is absent.
+    if strict_graph is None:
+        strict_graph = strategy == "graph"
 
     if verbose:
         click.echo(f"Analyzing {target_path} with strategy={strategy} depth={depth}")
@@ -167,3 +189,26 @@ def analyze_cmd(
         click.echo(f"Report written to {dest}")
     else:
         click.echo(report)
+
+    # ------------------------------------------------------------------
+    # C03 N3 — strict-graph gate.  Run AFTER the report is rendered /
+    # written so operators always have the forensic artifact, then
+    # emit a non-zero exit code so CI can fail the build.
+    # ------------------------------------------------------------------
+    if strict_graph:
+        kg_metrics = metrics.get("knowledge_graph") or {}
+        verification = kg_metrics.get("verification") or {}
+        passed = bool(verification.get("passed", True))
+        critical_issues = [
+            issue
+            for issue in verification.get("issues", [])
+            if isinstance(issue, dict)
+            and issue.get("severity") == "critical"
+        ]
+        if not passed and critical_issues:
+            click.echo(
+                f"Strict graph gate: verification failed with "
+                f"{len(critical_issues)} critical issue(s).",
+                err=True,
+            )
+            ctx.exit(STRICT_GRAPH_EXIT_CODE)

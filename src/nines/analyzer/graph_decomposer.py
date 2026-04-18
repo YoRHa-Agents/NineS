@@ -5,6 +5,12 @@ and optional AST-based code reviews.  Assigns nodes to architecture
 layers using path heuristics and fan-in/fan-out analysis.
 
 Covers: FR-319.
+
+C03 N3 (builder-side canonicalisation): every node ID and every edge
+endpoint emitted by the builder is funnelled through
+:func:`canonicalize_id` exactly once at construction time.  This makes
+the verifier's referential-integrity check deterministic at the source
+rather than relying on the consumer-side patch shipped with the C03 POC.
 """
 
 from __future__ import annotations
@@ -13,6 +19,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from nines.analyzer.graph_canonicalizer import canonicalize_id
 from nines.analyzer.graph_models import (
     ArchitectureLayer,
     GraphEdge,
@@ -55,7 +62,24 @@ _LAYER_PATH_PATTERNS: dict[str, set[str]] = {
 
 
 class GraphDecomposer:
-    """Builds a :class:`KnowledgeGraph` from scan, import, and review data."""
+    """Builds a :class:`KnowledgeGraph` from scan, import, and review data.
+
+    Parameters
+    ----------
+    project_root:
+        Optional explicit anchor used by :func:`canonicalize_id` for
+        every node and edge ID minted by the builder.  When ``None``,
+        the builder derives the root from ``scan_result.project_root``
+        (which the :class:`ProjectScanner` already resolves to an
+        absolute path).  Passing an explicit root is preferred whenever
+        the caller already knows the analyse target — it avoids any
+        ambiguity if a downstream consumer ever stops resolving paths
+        the same way.
+    """
+
+    def __init__(self, project_root: str | Path | None = None) -> None:
+        """Initialise the builder with an optional canonicalisation anchor."""
+        self._project_root = project_root
 
     def build_graph(
         self,
@@ -78,15 +102,26 @@ class GraphDecomposer:
         -------
         KnowledgeGraph
         """
-        file_nodes = self._create_file_nodes(scan_result)
+        # Resolve the canonicalisation anchor once per build.  Prefer the
+        # explicit constructor argument; fall back to scan_result so the
+        # legacy call sites (no project_root) still produce canonical
+        # output.
+        if self._project_root is not None:
+            effective_root: str | Path = self._project_root
+        else:
+            effective_root = scan_result.project_root
+
+        file_nodes = self._create_file_nodes(scan_result, effective_root)
         code_nodes: list[GraphNode] = []
         containment_edges: list[GraphEdge] = []
 
         if reviews:
-            code_nodes, containment_edges = self._create_code_nodes(reviews)
+            code_nodes, containment_edges = self._create_code_nodes(
+                reviews, effective_root,
+            )
 
         all_nodes = file_nodes + code_nodes
-        import_edges = self._create_import_edges(import_graph)
+        import_edges = self._create_import_edges(import_graph, effective_root)
         all_edges = containment_edges + import_edges
 
         layers = self._detect_layers(all_nodes, all_edges)
@@ -112,7 +147,20 @@ class GraphDecomposer:
             },
         )
 
-    def _create_file_nodes(self, scan_result: ScanResult) -> list[GraphNode]:
+    @staticmethod
+    def _canonical(raw_id: str, root: str | Path) -> str:
+        """Funnel every minted ID through :func:`canonicalize_id`.
+
+        Centralised so any future ID-emitting site automatically picks
+        up canonicalisation.
+        """
+        return canonicalize_id(raw_id, project_root=root)
+
+    def _create_file_nodes(
+        self,
+        scan_result: ScanResult,
+        project_root: str | Path,
+    ) -> list[GraphNode]:
         """Create one :class:`GraphNode` per discovered file."""
         root = Path(scan_result.project_root)
         nodes: list[GraphNode] = []
@@ -122,8 +170,9 @@ class GraphDecomposer:
             except ValueError:
                 rel = fi.path
 
+            raw_id = f"file:{rel}"
             nodes.append(GraphNode(
-                id=f"file:{rel}",
+                id=self._canonical(raw_id, project_root),
                 node_type="file",
                 name=Path(rel).name,
                 file_path=rel,
@@ -138,7 +187,9 @@ class GraphDecomposer:
         return nodes
 
     def _create_code_nodes(
-        self, reviews: list[FileReview],
+        self,
+        reviews: list[FileReview],
+        project_root: str | Path,
     ) -> tuple[list[GraphNode], list[GraphEdge]]:
         """Create function and class nodes from AST reviews.
 
@@ -151,10 +202,13 @@ class GraphDecomposer:
         edges: list[GraphEdge] = []
 
         for review in reviews:
-            file_id = f"file:{review.path}"
+            file_id = self._canonical(f"file:{review.path}", project_root)
 
             for func in review.functions:
-                func_id = f"function:{review.path}::{func.qualified_name}"
+                func_id = self._canonical(
+                    f"function:{review.path}::{func.qualified_name}",
+                    project_root,
+                )
                 nodes.append(GraphNode(
                     id=func_id,
                     node_type="function",
@@ -178,7 +232,10 @@ class GraphDecomposer:
                 ))
 
             for cls in review.classes:
-                cls_id = f"class:{review.path}::{cls.name}"
+                cls_id = self._canonical(
+                    f"class:{review.path}::{cls.name}",
+                    project_root,
+                )
                 nodes.append(GraphNode(
                     id=cls_id,
                     node_type="class",
@@ -201,7 +258,10 @@ class GraphDecomposer:
                 ))
 
                 for method in cls.methods:
-                    method_id = f"function:{review.path}::{cls.name}.{method.name}"
+                    method_id = self._canonical(
+                        f"function:{review.path}::{cls.name}.{method.name}",
+                        project_root,
+                    )
                     nodes.append(GraphNode(
                         id=method_id,
                         node_type="function",
@@ -222,13 +282,17 @@ class GraphDecomposer:
 
         return nodes, edges
 
-    def _create_import_edges(self, import_graph: ImportGraph) -> list[GraphEdge]:
+    def _create_import_edges(
+        self,
+        import_graph: ImportGraph,
+        project_root: str | Path,
+    ) -> list[GraphEdge]:
         """Convert :class:`ImportEdge` instances to :class:`GraphEdge`."""
         edges: list[GraphEdge] = []
         for ie in import_graph.edges:
             edges.append(GraphEdge(
-                source=f"file:{ie.source_file}",
-                target=f"file:{ie.target_file}",
+                source=self._canonical(f"file:{ie.source_file}", project_root),
+                target=self._canonical(f"file:{ie.target_file}", project_root),
                 edge_type="imports",
                 metadata={"import_name": ie.import_name, "line_number": ie.line_number},
             ))

@@ -216,3 +216,235 @@ def test_verifier_layer_coverage_zero_when_no_layers(tmp_path: Path) -> None:
     graph = KnowledgeGraph(project_name="t", nodes=nodes, layers=[])
     result = GraphVerifier().verify(graph)
     assert result.layer_coverage_pct == 0.0
+
+
+# ---------------------------------------------------------------------------
+# C03 N3 — builder-side canonicalisation + verifier regression detector
+# ---------------------------------------------------------------------------
+
+
+def _build_tiny_review(file_path: str) -> "FileReview":
+    """Return a minimal :class:`FileReview` covering one function and one class.
+
+    The function/class IDs minted by :class:`GraphDecomposer` use
+    ``review.path`` verbatim, so passing an absolute path here is the
+    motivating regression scenario that N3 closes.
+    """
+    from nines.analyzer.reviewer import (  # noqa: PLC0415 — local import
+        ClassInfo,
+        FileReview,
+        FunctionInfo,
+    )
+
+    func = FunctionInfo(
+        name="main",
+        qualified_name="main",
+        lineno=1,
+        end_lineno=2,
+        args=[],
+        decorators=[],
+        docstring="",
+        is_async=False,
+        complexity=1,
+    )
+    cls = ClassInfo(
+        name="Widget",
+        qualified_name="Widget",
+        lineno=4,
+        end_lineno=10,
+        bases=[],
+        methods=[],
+        docstring="",
+    )
+    return FileReview(
+        path=file_path,
+        total_lines=10,
+        function_count=1,
+        class_count=1,
+        import_count=0,
+        functions=[func],
+        classes=[cls],
+        imports=[],
+        avg_complexity=1.0,
+        max_complexity=1,
+        findings=[],
+    )
+
+
+def test_builder_emits_canonical_ids(tmp_path: Path) -> None:
+    """C03 N3a: every node ID and edge endpoint emitted by
+    :class:`GraphDecomposer` is already canonical — i.e. running it
+    through :func:`canonicalize_id` again is a no-op."""
+    from nines.analyzer.graph_decomposer import GraphDecomposer
+    from nines.analyzer.import_graph import ImportEdge, ImportGraph
+    from nines.analyzer.scanner import FileInfo, ScanResult
+
+    # Tiny on-disk fixture so the canonicalizer can resolve real paths.
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    main_py = src_dir / "main.py"
+    main_py.write_text("def main():\n    return 1\n")
+    utils_py = src_dir / "utils.py"
+    utils_py.write_text("def helper():\n    return 2\n")
+
+    files = [
+        FileInfo(path=str(main_py), language="python", category="code"),
+        FileInfo(path=str(utils_py), language="python", category="code"),
+    ]
+    scan = ScanResult(
+        project_root=str(tmp_path),
+        project_name="t",
+        files=files,
+        total_files=2,
+    )
+
+    # Reviews intentionally use absolute paths — that was the §4.1
+    # mismatch the verifier reported as critical issues.
+    reviews = [
+        _build_tiny_review(str(main_py)),
+        _build_tiny_review(str(utils_py)),
+    ]
+    import_graph = ImportGraph(edges=[
+        ImportEdge(
+            source_file="src/main.py",
+            target_file="src/utils.py",
+            import_name="utils",
+            is_relative=False,
+            line_number=1,
+        ),
+    ])
+
+    decomposer = GraphDecomposer(project_root=tmp_path)
+    graph = decomposer.build_graph(scan, import_graph, reviews)
+
+    # Every node id must already be canonical.
+    for node in graph.nodes:
+        assert node.id == canonicalize_id(node.id, project_root=tmp_path), (
+            f"node id {node.id!r} is not canonical"
+        )
+    # Every edge endpoint must already be canonical.
+    for edge in graph.edges:
+        assert edge.source == canonicalize_id(edge.source, project_root=tmp_path), (
+            f"edge source {edge.source!r} is not canonical"
+        )
+        assert edge.target == canonicalize_id(edge.target, project_root=tmp_path), (
+            f"edge target {edge.target!r} is not canonical"
+        )
+
+    # Spot-check: containment edges from file → function/class now
+    # match the relative file node IDs (no ``file:/abs/...`` mismatch).
+    file_ids = {n.id for n in graph.nodes if n.node_type == "file"}
+    containment_sources = {
+        e.source for e in graph.edges if e.edge_type == "contains"
+    }
+    assert containment_sources, "expected containment edges from reviews"
+    assert containment_sources <= file_ids, (
+        f"containment edges reference unknown file IDs: "
+        f"{containment_sources - file_ids}"
+    )
+
+
+def test_check_id_canonicalisation_detects_violation(tmp_path: Path) -> None:
+    """C03 N3b: the regression detector flags at least one warning-severity
+    issue with category ``id_canonicalisation`` when a node ID is not
+    canonical."""
+    from nines.analyzer.graph_models import (  # noqa: PLC0415
+        ArchitectureLayer,
+        GraphEdge,
+        GraphNode,
+        KnowledgeGraph,
+    )
+    from nines.analyzer.graph_verifier import GraphVerifier
+
+    (tmp_path / "a.py").write_text("")
+    (tmp_path / "b.py").write_text("")
+
+    # Mix one canonical node with one deliberately non-canonical node.
+    nodes = [
+        GraphNode(id="file:a.py", node_type="file", name="a.py"),
+        GraphNode(
+            id=f"file:{tmp_path}/b.py",  # absolute → not canonical under tmp_path
+            node_type="file",
+            name="b.py",
+        ),
+    ]
+    # Edge endpoints are canonical so we can isolate the node-side violation.
+    edges = [
+        GraphEdge(
+            source="file:a.py",
+            target=f"file:{tmp_path}/b.py",
+            edge_type="imports",
+        ),
+    ]
+    graph = KnowledgeGraph(
+        project_name="t",
+        nodes=nodes,
+        edges=edges,
+        layers=[
+            ArchitectureLayer(
+                id="L",
+                name="L",
+                node_ids=["file:a.py", f"file:{tmp_path}/b.py"],
+            ),
+        ],
+    )
+
+    result = GraphVerifier().verify(graph, project_root=str(tmp_path))
+    canonicalisation_issues = [
+        i for i in result.issues if i.category == "id_canonicalisation"
+    ]
+    assert len(canonicalisation_issues) >= 1, (
+        f"expected at least one id_canonicalisation issue; got "
+        f"{[(i.category, i.severity) for i in result.issues]}"
+    )
+    assert all(i.severity == "warning" for i in canonicalisation_issues), (
+        "id_canonicalisation issues must be warnings, not critical, so the "
+        "consumer-side patch in _check_referential_integrity remains the "
+        "primary safety net while the regression is fixed in code review"
+    )
+    # The non-canonical node and the absolute edge endpoint should both
+    # be surfaced in the issue payload (capped at 20 entries each).
+    surfaced_ids: set[str] = set()
+    for issue in canonicalisation_issues:
+        surfaced_ids.update(issue.node_ids)
+    assert f"file:{tmp_path}/b.py" in surfaced_ids
+
+
+def test_check_id_canonicalisation_passes_clean_graph(tmp_path: Path) -> None:
+    """C03 N3b: a graph whose every ID is already canonical produces zero
+    ``id_canonicalisation`` issues."""
+    from nines.analyzer.graph_models import (  # noqa: PLC0415
+        ArchitectureLayer,
+        GraphEdge,
+        GraphNode,
+        KnowledgeGraph,
+    )
+    from nines.analyzer.graph_verifier import GraphVerifier
+
+    (tmp_path / "a.py").write_text("")
+    (tmp_path / "b.py").write_text("")
+    nodes = [
+        GraphNode(id="file:a.py", node_type="file", name="a.py"),
+        GraphNode(id="file:b.py", node_type="file", name="b.py"),
+    ]
+    edges = [
+        GraphEdge(source="file:a.py", target="file:b.py", edge_type="imports"),
+    ]
+    layers = [
+        ArchitectureLayer(
+            id="L", name="L", node_ids=["file:a.py", "file:b.py"],
+        ),
+    ]
+    graph = KnowledgeGraph(
+        project_name="t", nodes=nodes, edges=edges, layers=layers,
+    )
+
+    result = GraphVerifier().verify(graph, project_root=str(tmp_path))
+    canonicalisation_issues = [
+        i for i in result.issues if i.category == "id_canonicalisation"
+    ]
+    assert canonicalisation_issues == [], (
+        f"expected zero id_canonicalisation issues on a clean graph; got "
+        f"{canonicalisation_issues}"
+    )
+    assert result.passed is True
