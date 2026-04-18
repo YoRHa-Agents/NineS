@@ -4,9 +4,11 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
-## v2.2.0 — 2026-04-18 (Paradigm Extension)
+## v2.2.0 — 2026-04-18 (Paradigm Extension; pyproject v3.1.0)
 
 **Theme:** Self-iteration combined with EvoBench paradigm extension; data-quality + resilience foundations for downstream differentiation. Closes 4 of 11 baseline gaps at the source (§4.1, §4.2, §4.5, §4.6) and bounds 2 more (§4.7, §4.11) at the runner level.
+
+**Semver:** Released as `v3.1.0` (additive backward-compatible features); codename `v2.2.0 Paradigm Extension` preserved for continuity with the design / accept-list documents.
 
 **Status:** Released as v2.2.0 from `feat/v2.2.0-paradigm-extension` after merging the 6 empirically-validated POCs (C02, C03, C04, C05, C06 executor primitive, C09) plus their release follow-ups (N1 CLI JSON exposure, N2 subprocess timeout audit, N3 graph builder canonicalization, C05 collector refactor, C02 metadata, lint+typecheck cleanup). The 6 analytically-validated candidates (C01 EvaluationContext, C07 quality-gate FSM, C08 weighted MetricRegistry, C10 consistency auditor, C11 mechanism diversification, C12 breakdown reporter) remain on the accept list for Wave 2-4 release pending empirical proof — per the user's strict 'tested-benefit-only' rollout rule.
 
