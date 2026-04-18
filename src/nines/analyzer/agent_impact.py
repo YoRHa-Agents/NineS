@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from nines.core.identity import format_finding_id, project_fingerprint
 from nines.core.models import Finding, KnowledgeUnit
 
 logger = logging.getLogger(__name__)
@@ -251,12 +252,20 @@ class AgentImpactAnalyzer:
 
     _TOKENS_PER_WORD = 1.3
 
-    def __init__(self) -> None:
-        """Initialize agent impact analyzer."""
+    def __init__(self, project_id: str | None = None) -> None:
+        """Initialize agent impact analyzer.
+
+        Parameters
+        ----------
+        project_id:
+            Optional pre-computed project fingerprint.  When ``None``,
+            :meth:`analyze` computes one from the target path.
+        """
         self._agent_patterns = [
             re.compile(p, re.IGNORECASE)
             for p in self.AGENT_ARTIFACT_PATTERNS
         ]
+        self._project_id: str | None = project_id
 
     def analyze(self, path: str | Path) -> AgentImpactReport:
         """Run full Agent impact analysis on a repository.
@@ -274,6 +283,20 @@ class AgentImpactAnalyzer:
         """
         target = Path(path)
         logger.info("Starting Agent impact analysis on %s", target)
+
+        # Compute / cache the project fingerprint so all findings emitted by
+        # this analyze() call share the same namespace.  See C02.
+        active_project_id = self._project_id
+        if active_project_id is None:
+            try:
+                active_project_id = project_fingerprint(target)
+            except (OSError, ValueError) as exc:
+                logger.warning(
+                    "Could not compute project fingerprint for %s: %s; "
+                    "emitting legacy unscoped IDs",
+                    target, exc,
+                )
+                active_project_id = None
 
         artifacts = self._discover_agent_artifacts(target)
         logger.debug("Discovered %d Agent-facing artifacts", len(artifacts))
@@ -296,7 +319,9 @@ class AgentImpactAnalyzer:
                 economics.total_agent_context_tokens, min_estimate,
             )
 
-        findings = self._generate_findings(mechanisms, economics, artifacts)
+        findings = self._generate_findings(
+            mechanisms, economics, artifacts, project_id=active_project_id,
+        )
         units = self._create_knowledge_units(mechanisms, artifacts)
 
         logger.info(
@@ -537,6 +562,7 @@ class AgentImpactAnalyzer:
         mechanisms: list[AgentMechanism],
         economics: ContextEconomics,
         artifacts: list[str],
+        project_id: str | None = None,
     ) -> list[Finding]:
         """Generate findings about Agent impact characteristics.
 
@@ -561,7 +587,7 @@ class AgentImpactAnalyzer:
         idx = 0
 
         findings.append(Finding(
-            id=f"AI-{idx:04d}",
+            id=format_finding_id("AI", idx, project_id),
             severity="info",
             category="agent_impact",
             message=(
@@ -574,7 +600,7 @@ class AgentImpactAnalyzer:
 
         if economics.total_agent_context_tokens > 0:
             findings.append(Finding(
-                id=f"AI-{idx:04d}",
+                id=format_finding_id("AI", idx, project_id),
                 severity="info",
                 category="context_economics",
                 message=(
@@ -588,7 +614,7 @@ class AgentImpactAnalyzer:
 
         if economics.overhead_tokens > 5000:
             findings.append(Finding(
-                id=f"AI-{idx:04d}",
+                id=format_finding_id("AI", idx, project_id),
                 severity="warning",
                 category="context_economics",
                 message=(
@@ -611,7 +637,7 @@ class AgentImpactAnalyzer:
         missing = all_categories - categories_present
         if missing and artifacts:
             findings.append(Finding(
-                id=f"AI-{idx:04d}",
+                id=format_finding_id("AI", idx, project_id),
                 severity="info",
                 category="coverage_gap",
                 message=(
@@ -628,7 +654,7 @@ class AgentImpactAnalyzer:
 
         if not artifacts:
             findings.append(Finding(
-                id=f"AI-{idx:04d}",
+                id=format_finding_id("AI", idx, project_id),
                 severity="info",
                 category="agent_impact",
                 message=(
@@ -642,7 +668,7 @@ class AgentImpactAnalyzer:
         for mech in mechanisms:
             if mech.confidence < 0.3:
                 findings.append(Finding(
-                    id=f"AI-{idx:04d}",
+                    id=format_finding_id("AI", idx, project_id),
                     severity="info",
                     category="low_confidence",
                     message=(
