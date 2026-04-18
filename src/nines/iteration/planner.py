@@ -3,6 +3,14 @@
 ``ImprovementPlanner`` maps gaps from ``GapAnalysis`` to concrete
 improvement suggestions with priority levels and estimated effort.
 
+C07 (v3.2.0): :class:`ImprovementPlan` now carries an optional
+``gate_results`` channel for :class:`~nines.iteration.gates.GateResult`
+objects produced alongside the plan.  Gate verdicts are a *parallel*
+signal — they do not influence the existing severity-based suggestion
+ordering, and the planner exposes them via :meth:`ImprovementPlan.to_dict`
+so downstream consumers can audit a plan together with the gates that
+were observed when it was generated.
+
 Covers: FR-608.
 """
 
@@ -14,6 +22,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from nines.iteration.gap_detector import GapAnalysis
+    from nines.iteration.gates import GateResult
 
 logger = logging.getLogger(__name__)
 
@@ -63,16 +72,23 @@ class ImprovementPlan:
         Suggestions sorted by priority (highest first).
     total_gaps:
         Number of gaps that triggered planning.
+    gate_results:
+        C07 gate verdicts captured alongside the plan.  Optional —
+        callers that don't run gates leave it empty.  Gate results do
+        *not* influence ``suggestions`` ordering; they are a parallel
+        signal channel for downstream auditors.
     """
 
     suggestions: list[Suggestion] = field(default_factory=list)
     total_gaps: int = 0
+    gate_results: list["GateResult"] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to dictionary."""
+        """Serialize to dictionary, including gate results when present."""
         return {
             "suggestions": [s.to_dict() for s in self.suggestions],
             "total_gaps": self.total_gaps,
+            "gate_results": [g.to_dict() for g in self.gate_results],
         }
 
 
@@ -138,6 +154,47 @@ class ImprovementPlanner:
             len(suggestions),
             plan.total_gaps,
         )
+        return plan
+
+    def create_plan(
+        self,
+        gap_analysis: GapAnalysis | None = None,
+        *,
+        gate_results: list["GateResult"] | None = None,
+    ) -> ImprovementPlan:
+        """Build an :class:`ImprovementPlan` with optional gate verdicts.
+
+        Convenience wrapper around :meth:`plan` that lets callers
+        attach a list of :class:`~nines.iteration.gates.GateResult`
+        objects directly to the produced plan.  When ``gap_analysis``
+        is ``None`` an empty plan is returned (useful when gates are
+        the only signal available).
+
+        Parameters
+        ----------
+        gap_analysis:
+            Optional output from :meth:`GapDetector.detect`.
+        gate_results:
+            Optional list of gate verdicts to attach to the plan.
+
+        Returns
+        -------
+        ImprovementPlan
+            A plan with both severity-ordered suggestions and any
+            attached gate verdicts.
+        """
+        if gap_analysis is not None:
+            plan = self.plan(gap_analysis)
+        else:
+            plan = ImprovementPlan()
+
+        if gate_results:
+            plan.gate_results = list(gate_results)
+            logger.info(
+                "Attached %d gate result(s) to ImprovementPlan",
+                len(plan.gate_results),
+            )
+
         return plan
 
     @staticmethod

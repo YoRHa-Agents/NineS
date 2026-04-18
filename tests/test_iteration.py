@@ -313,3 +313,219 @@ def test_iteration_tracker_regression() -> None:
     progress = tracker.get_progress()
     assert progress.improving is False
     assert progress.best_score == 0.8
+
+
+# ---------------------------------------------------------------------------
+# C07 — ImprovementPlan.gate_results integration (Step 4 / planner)
+# ---------------------------------------------------------------------------
+
+
+def test_improvement_plan_records_gate_results() -> None:
+    """ImprovementPlan.gate_results round-trips through to_dict."""
+    from nines.iteration.gates import GateResult, GateStatus
+
+    g1 = GateResult(
+        gate_name="self_eval_coverage",
+        status=GateStatus.PASSED,
+        metric_name="overall",
+        metric_value=0.92,
+        threshold=0.85,
+        verdict="overall=0.92 >= threshold=0.85",
+        severity="info",
+        metadata={"dim_count": 5},
+    )
+    g2 = GateResult(
+        gate_name="regression",
+        status=GateStatus.FAILED,
+        metric_name="overall_regression_delta",
+        metric_value=0.10,
+        threshold=0.05,
+        verdict="overall=0.80 dropped by 0.10 vs trailing mean 0.90",
+        severity="warn",
+        metadata={"history_size": 3},
+    )
+
+    plan = ImprovementPlan(
+        suggestions=[],
+        total_gaps=0,
+        gate_results=[g1, g2],
+    )
+
+    assert len(plan.gate_results) == 2
+    assert plan.gate_results[0].gate_name == "self_eval_coverage"
+    assert plan.gate_results[1].status == GateStatus.FAILED
+
+    serialised = plan.to_dict()
+    assert "gate_results" in serialised
+    assert len(serialised["gate_results"]) == 2
+    assert serialised["gate_results"][1]["status"] == "failed"
+    assert serialised["gate_results"][1]["severity"] == "warn"
+
+
+def test_planner_create_plan_accepts_gate_results() -> None:
+    """ImprovementPlanner.create_plan attaches gate_results to the plan."""
+    from nines.iteration.gates import GateResult, GateStatus
+
+    analysis = GapAnalysis(
+        regressed=[
+            Gap(
+                dimension="coverage",
+                current=0.3,
+                baseline=0.8,
+                delta=-0.5,
+                severity=0.5,
+            ),
+        ],
+        priority_gaps=[
+            Gap(
+                dimension="coverage",
+                current=0.3,
+                baseline=0.8,
+                delta=-0.5,
+                severity=0.5,
+            ),
+        ],
+    )
+
+    g_pass = GateResult(
+        gate_name="self_eval_coverage",
+        status=GateStatus.PASSED,
+        metric_name="overall",
+        metric_value=0.90,
+        threshold=0.85,
+        verdict="overall=0.90 >= threshold=0.85",
+        severity="info",
+        metadata={},
+    )
+
+    planner = ImprovementPlanner()
+    plan = planner.create_plan(analysis, gate_results=[g_pass])
+
+    # Suggestion logic is unchanged - gate_results is a parallel channel.
+    assert len(plan.suggestions) == 1
+    assert plan.suggestions[0].dimension == "coverage"
+    # Gate channel populated.
+    assert len(plan.gate_results) == 1
+    assert plan.gate_results[0].gate_name == "self_eval_coverage"
+
+    # ``create_plan`` accepts a None analysis and still records gates.
+    empty_with_gate = planner.create_plan(gate_results=[g_pass])
+    assert empty_with_gate.suggestions == []
+    assert empty_with_gate.total_gaps == 0
+    assert len(empty_with_gate.gate_results) == 1
+
+
+# ---------------------------------------------------------------------------
+# C07 — IterationTracker.gate history (Step 4 / tracker)
+# ---------------------------------------------------------------------------
+
+
+def test_tracker_records_gate_results_per_version() -> None:
+    """IterationTracker.record_gate_results stores results per version."""
+    from nines.iteration.gates import GateResult, GateStatus
+
+    tracker = IterationTracker()
+
+    g_v1 = GateResult(
+        gate_name="self_eval_coverage",
+        status=GateStatus.PASSED,
+        metric_name="overall",
+        metric_value=0.92,
+        threshold=0.85,
+        verdict="ok",
+        severity="info",
+        metadata={},
+    )
+    g_v2 = GateResult(
+        gate_name="self_eval_coverage",
+        status=GateStatus.FAILED,
+        metric_name="overall",
+        metric_value=0.50,
+        threshold=0.85,
+        verdict="below",
+        severity="warn",
+        metadata={},
+    )
+
+    tracker.record_gate_results("v1", [g_v1])
+    tracker.record_gate_results("v2", [g_v2])
+
+    v1_history = tracker.gate_history("v1")
+    v2_history = tracker.gate_history("v2")
+    missing_history = tracker.gate_history("v9")
+
+    assert len(v1_history) == 1
+    assert v1_history[0].gate_name == "self_eval_coverage"
+    assert v1_history[0].status == GateStatus.PASSED
+
+    assert len(v2_history) == 1
+    assert v2_history[0].status == GateStatus.FAILED
+
+    # Unknown versions produce empty list (not KeyError).
+    assert missing_history == []
+
+    # Empty version label is rejected.
+    with pytest.raises(ValueError, match="non-empty"):
+        tracker.record_gate_results("", [g_v1])
+
+
+def test_tracker_gate_history_returns_chronological() -> None:
+    """Multiple record calls for the same version preserve append order."""
+    from nines.iteration.gates import GateResult, GateStatus
+
+    tracker = IterationTracker()
+
+    first_batch = [
+        GateResult(
+            gate_name=f"gate_{i}",
+            status=GateStatus.PASSED,
+            metric_name="metric",
+            metric_value=float(i),
+            threshold=0.0,
+            verdict=f"first batch #{i}",
+            severity="info",
+            metadata={"order": i},
+        )
+        for i in range(3)
+    ]
+    second_batch = [
+        GateResult(
+            gate_name=f"gate_{i}",
+            status=GateStatus.FAILED,
+            metric_name="metric",
+            metric_value=float(i + 100),
+            threshold=0.0,
+            verdict=f"second batch #{i}",
+            severity="warn",
+            metadata={"order": i + 100},
+        )
+        for i in range(2)
+    ]
+
+    tracker.record_gate_results("v1", first_batch)
+    tracker.record_gate_results("v1", second_batch)
+
+    history = tracker.gate_history("v1")
+    assert len(history) == 5
+    # First batch precedes second batch.
+    assert history[0].metadata["order"] == 0
+    assert history[1].metadata["order"] == 1
+    assert history[2].metadata["order"] == 2
+    assert history[3].metadata["order"] == 100
+    assert history[4].metadata["order"] == 101
+
+    # Re-querying must return a fresh list (mutating it should not
+    # corrupt the tracker state).
+    history.append(
+        GateResult(
+            gate_name="poison",
+            status=GateStatus.PASSED,
+            metric_name="x",
+            metric_value=0.0,
+            threshold=0.0,
+            verdict="external mutation attempt",
+            severity="info",
+            metadata={},
+        )
+    )
+    assert len(tracker.gate_history("v1")) == 5

@@ -31,6 +31,12 @@ from nines.iteration.eval_evaluators import (
     SandboxIsolationEvaluator,
 )
 from nines.iteration.gap_detector import GapDetector
+from nines.iteration.gates import (
+    GateRunner,
+    RegressionGate,
+    SelfEvalCoverageGate,
+    Snapshot,
+)
 from nines.iteration.graph_evaluators import (
     GraphDecompositionCoverageEvaluator,
     GraphVerificationPassRateEvaluator,
@@ -46,6 +52,7 @@ from nines.iteration.self_eval import (
     LiveModuleCountEvaluator,
     LiveTestCountEvaluator,
     ModuleCountEvaluator,
+    SelfEvalReport,
     SelfEvalRunner,
     TestCountEvaluator,
 )
@@ -173,6 +180,55 @@ def _build_stub_evaluators() -> SelfEvalRunner:
     return runner
 
 
+def _build_iteration_gates(history: list[float]) -> list:
+    """Construct the C07 gate set used by ``nines iterate``.
+
+    The gate set is intentionally minimal: a coverage gate plus a
+    regression gate seeded with the in-process history.  Graph and
+    economics gates are owned by ``nines analyze`` and not duplicated
+    here.
+    """
+    snapshots = [
+        Snapshot(version=f"round-{i}", overall=value)
+        for i, value in enumerate(history)
+    ]
+    return [
+        SelfEvalCoverageGate(min_overall=0.85),
+        RegressionGate(history=snapshots, regression_threshold=0.05),
+    ]
+
+
+def _emit_gate_summary(
+    runner: GateRunner,
+    report: SelfEvalReport,
+    output_format: str,
+) -> tuple[dict, bool]:
+    """Run gates and emit a click-friendly summary.
+
+    Returns ``(summary_dict, should_abort)``.  When the runner is in
+    advisory mode ``should_abort`` is always ``False``.
+    """
+    results = runner.evaluate_all(report)
+    summary = runner.summary(results)
+
+    if output_format == "json":
+        # Caller is responsible for merging into the JSON envelope.
+        return summary, runner.should_abort(results)
+
+    mode_label = "advisory" if runner.advisory_mode else "strict"
+    click.echo("--- Quality gates ({}) ---".format(mode_label))
+    click.echo(
+        "passed={passed} failed={failed} bypassed={bypassed} "
+        "warned={warned} blocked={blocked}".format(**summary)
+    )
+    for entry in summary["results"]:
+        click.echo(
+            "  [{severity}] {gate_name}: {status} - {verdict}".format(**entry)
+        )
+
+    return summary, runner.should_abort(results)
+
+
 @click.command("iterate")
 @click.option(
     "--max-rounds",
@@ -218,6 +274,26 @@ def _build_stub_evaluators() -> SelfEvalRunner:
     default="data/golden_test_set",
     help="Golden test set directory for V1 scoring evaluators.",
 )
+@click.option(
+    "--gates/--no-gates",
+    "gates_enabled",
+    default=True,
+    show_default=True,
+    help=(
+        "Run C07 quality gates against the final iteration report. "
+        "Gates are advisory unless --strict-gates is passed."
+    ),
+)
+@click.option(
+    "--strict-gates",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help=(
+        "Promote gate failures from advisory warnings to blocking errors. "
+        "Implies --gates; exits non-zero when any gate blocks."
+    ),
+)
 @click.pass_context
 def iterate_cmd(
     ctx: click.Context,
@@ -228,6 +304,8 @@ def iterate_cmd(
     test_dir: str | None,
     samples_dir: str,
     golden_dir: str,
+    gates_enabled: bool,
+    strict_gates: bool,
 ) -> None:
     """Execute a self-improvement iteration cycle."""
     verbose = ctx.obj.get("verbose", False)
@@ -250,17 +328,20 @@ def iterate_cmd(
     planner = ImprovementPlanner()
     convergence = ConvergenceChecker(min_rounds=2)
     history: list[float] = []
+    last_report: SelfEvalReport | None = None
 
     if verbose:
         click.echo(f"Starting iteration (max_rounds={max_rounds}, threshold={threshold})")
 
     baseline_report = runner.run_all(version="baseline")
     history.append(baseline_report.overall)
+    last_report = baseline_report
 
     conv_result = None
     for round_num in range(1, max_rounds + 1):
         current_report = runner.run_all(version=f"round-{round_num}")
         history.append(current_report.overall)
+        last_report = current_report
 
         gap_analysis = detector.detect(current_report, baseline_report)
         plan = planner.plan(gap_analysis)
@@ -282,6 +363,22 @@ def iterate_cmd(
         click.echo(f"Did not converge after {max_rounds} round(s).")
 
     final = history[-1] if history else 0.0
+
+    # --- C07 quality gates -------------------------------------------------
+    advisory_mode = not strict_gates
+    gate_summary: dict | None = None
+    should_abort = False
+    if (gates_enabled or strict_gates) and last_report is not None:
+        # When --strict-gates is given, force gates on regardless of the
+        # paired --no-gates default to honour the explicit opt-in.
+        gate_set = _build_iteration_gates(history[:-1])
+        gate_runner = GateRunner(gates=gate_set, advisory_mode=advisory_mode)
+        gate_summary, should_abort = _emit_gate_summary(
+            gate_runner,
+            last_report,
+            output_format,
+        )
+
     if output_format == "json":
         summary = {
             "rounds": len(history) - 1,
@@ -289,6 +386,12 @@ def iterate_cmd(
             "final_score": final,
             "history": history,
         }
+        if gate_summary is not None:
+            summary["gates"] = gate_summary
         click.echo(json.dumps(summary, indent=2))
     else:
         click.echo(f"Final score: {final:.4f} after {len(history) - 1} round(s).")
+
+    if should_abort:
+        # Strict mode: surface the non-zero exit.
+        ctx.exit(2)
