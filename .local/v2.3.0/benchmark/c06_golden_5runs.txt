@@ -1,0 +1,80 @@
+=== RUN 1 ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.8, pytest-9.0.3, pluggy-1.6.0 -- /home/agent/workspace/NineS/.venv/bin/python3
+rootdir: /home/agent/workspace/NineS
+configfile: pyproject.toml
+plugins: anyio-4.13.0, cov-7.1.0
+collecting ... collected 6 items
+
+tests/test_self_eval_golden.py::test_self_eval_against_nines_matches_golden PASSED [ 16%]
+tests/test_self_eval_golden.py::test_self_eval_against_foreign_repo_diverges_from_nines PASSED [ 33%]
+tests/test_self_eval_golden.py::test_silent_fallback_detection_regression_assertion PASSED [ 50%]
+tests/test_self_eval_hang_detection.py::test_evaluator_budget_aborts_runaway_mock_evaluator PASSED [ 66%]
+tests/test_self_eval_hang_detection.py::test_well_behaved_mock_evaluator_completes_under_budget PASSED [ 83%]
+tests/test_self_eval_hang_detection.py::test_evaluator_exception_propagates_via_partial_score PASSED [100%]
+
+============================== 6 passed in 2.05s ===============================
+=== RUN 2 ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.8, pytest-9.0.3, pluggy-1.6.0 -- /home/agent/workspace/NineS/.venv/bin/python3
+rootdir: /home/agent/workspace/NineS
+configfile: pyproject.toml
+plugins: anyio-4.13.0, cov-7.1.0
+collecting ... collected 6 items
+
+tests/test_self_eval_golden.py::test_self_eval_against_nines_matches_golden PASSED [ 16%]
+tests/test_self_eval_golden.py::test_self_eval_against_foreign_repo_diverges_from_nines PASSED [ 33%]
+tests/test_self_eval_golden.py::test_silent_fallback_detection_regression_assertion PASSED [ 50%]
+tests/test_self_eval_hang_detection.py::test_evaluator_budget_aborts_runaway_mock_evaluator PASSED [ 66%]
+tests/test_self_eval_hang_detection.py::test_well_behaved_mock_evaluator_completes_under_budget PASSED [ 83%]
+tests/test_self_eval_hang_detection.py::test_evaluator_exception_propagates_via_partial_score PASSED [100%]
+
+============================== 6 passed in 2.05s ===============================
+=== RUN 3 ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.8, pytest-9.0.3, pluggy-1.6.0 -- /home/agent/workspace/NineS/.venv/bin/python3
+rootdir: /home/agent/workspace/NineS
+configfile: pyproject.toml
+plugins: anyio-4.13.0, cov-7.1.0
+collecting ... collected 6 items
+
+tests/test_self_eval_golden.py::test_self_eval_against_nines_matches_golden PASSED [ 16%]
+tests/test_self_eval_golden.py::test_self_eval_against_foreign_repo_diverges_from_nines PASSED [ 33%]
+tests/test_self_eval_golden.py::test_silent_fallback_detection_regression_assertion PASSED [ 50%]
+tests/test_self_eval_hang_detection.py::test_evaluator_budget_aborts_runaway_mock_evaluator PASSED [ 66%]
+tests/test_self_eval_hang_detection.py::test_well_behaved_mock_evaluator_completes_under_budget PASSED [ 83%]
+tests/test_self_eval_hang_detection.py::test_evaluator_exception_propagates_via_partial_score PASSED [100%]
+
+============================== 6 passed in 2.05s ===============================
+=== RUN 4 ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.8, pytest-9.0.3, pluggy-1.6.0 -- /home/agent/workspace/NineS/.venv/bin/python3
+rootdir: /home/agent/workspace/NineS
+configfile: pyproject.toml
+plugins: anyio-4.13.0, cov-7.1.0
+collecting ... collected 6 items
+
+tests/test_self_eval_golden.py::test_self_eval_against_nines_matches_golden PASSED [ 16%]
+tests/test_self_eval_golden.py::test_self_eval_against_foreign_repo_diverges_from_nines PASSED [ 33%]
+tests/test_self_eval_golden.py::test_silent_fallback_detection_regression_assertion PASSED [ 50%]
+tests/test_self_eval_hang_detection.py::test_evaluator_budget_aborts_runaway_mock_evaluator PASSED [ 66%]
+tests/test_self_eval_hang_detection.py::test_well_behaved_mock_evaluator_completes_under_budget PASSED [ 83%]
+tests/test_self_eval_hang_detection.py::test_evaluator_exception_propagates_via_partial_score PASSED [100%]
+
+============================== 6 passed in 2.05s ===============================
+=== RUN 5 ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.8, pytest-9.0.3, pluggy-1.6.0 -- /home/agent/workspace/NineS/.venv/bin/python3
+rootdir: /home/agent/workspace/NineS
+configfile: pyproject.toml
+plugins: anyio-4.13.0, cov-7.1.0
+collecting ... collected 6 items
+
+tests/test_self_eval_golden.py::test_self_eval_against_nines_matches_golden PASSED [ 16%]
+tests/test_self_eval_golden.py::test_self_eval_against_foreign_repo_diverges_from_nines PASSED [ 33%]
+tests/test_self_eval_golden.py::test_silent_fallback_detection_regression_assertion PASSED [ 50%]
+tests/test_self_eval_hang_detection.py::test_evaluator_budget_aborts_runaway_mock_evaluator PASSED [ 66%]
+tests/test_self_eval_hang_detection.py::test_well_behaved_mock_evaluator_completes_under_budget PASSED [ 83%]
+tests/test_self_eval_hang_detection.py::test_evaluator_exception_propagates_via_partial_score PASSED [100%]
+
+============================== 6 passed in 2.05s ===============================

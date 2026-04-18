@@ -1,0 +1,126 @@
+{
+  "version": "v3.1.0",
+  "overall": 0.975,
+  "weights": {
+    "capability": 1.0,
+    "hygiene": 0.0
+  },
+  "timeouts": [],
+  "scores": [
+    {
+      "name": "scoring_accuracy",
+      "normalized": 1.0,
+      "metadata": {}
+    },
+    {
+      "name": "eval_coverage",
+      "normalized": 1.0,
+      "metadata": {}
+    },
+    {
+      "name": "scoring_reliability",
+      "normalized": 1.0,
+      "metadata": {}
+    },
+    {
+      "name": "report_quality",
+      "normalized": 1.0,
+      "metadata": {}
+    },
+    {
+      "name": "scorer_agreement",
+      "normalized": 1.0,
+      "metadata": {}
+    },
+    {
+      "name": "source_coverage",
+      "normalized": 1.0,
+      "metadata": {}
+    },
+    {
+      "name": "source_freshness",
+      "normalized": 0.5,
+      "metadata": {}
+    },
+    {
+      "name": "change_detection",
+      "normalized": 1.0,
+      "metadata": {}
+    },
+    {
+      "name": "data_completeness",
+      "normalized": 1.0,
+      "metadata": {}
+    },
+    {
+      "name": "collection_throughput",
+      "normalized": 1.0,
+      "metadata": {}
+    },
+    {
+      "name": "decomposition_coverage",
+      "normalized": 1.0,
+      "metadata": {
+        "total_elements": 881,
+        "captured_units": 881
+      }
+    },
+    {
+      "name": "abstraction_quality",
+      "normalized": 1.0,
+      "metadata": {
+        "total_units": 881,
+        "well_classified": 881
+      }
+    },
+    {
+      "name": "code_review_accuracy",
+      "normalized": 1.0,
+      "metadata": {
+        "complexity_checks": 675,
+        "reasonable_complexities": 675
+      }
+    },
+    {
+      "name": "index_recall",
+      "normalized": 1.0,
+      "metadata": {
+        "indexed_units": 881,
+        "queries_tested": 5
+      }
+    },
+    {
+      "name": "structure_recognition",
+      "normalized": 1.0,
+      "metadata": {
+        "detected_packages": 11,
+        "detected_modules": 89
+      }
+    },
+    {
+      "name": "pipeline_latency",
+      "normalized": 1.0,
+      "metadata": {}
+    },
+    {
+      "name": "sandbox_isolation",
+      "normalized": 1.0,
+      "metadata": {}
+    },
+    {
+      "name": "convergence_rate",
+      "normalized": 1.0,
+      "metadata": {}
+    },
+    {
+      "name": "cross_vertex_synergy",
+      "normalized": 1.0,
+      "metadata": {}
+    },
+    {
+      "name": "agent_analysis_quality",
+      "normalized": 1.0,
+      "metadata": {}
+    }
+  ]
+}

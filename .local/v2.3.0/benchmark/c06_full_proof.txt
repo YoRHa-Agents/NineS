@@ -1,0 +1,95 @@
+C06 — Full harness empirical proof (v3.2.0)
+============================================
+
+Owned files / scope: tests/test_self_eval_golden.py,
+tests/test_self_eval_hang_detection.py,
+tests/eval/test_mock_executor.py (extension only),
+tests/data/golden/self_eval_fixtures/, src/nines/eval/mock_executor.py
+(MockEvaluator class added).
+
+§1. 5-run determinism of new test suite
+----------------------------------------
+runs captured:                5
+pass count per run:           [6, 6, 6, 6, 6]  (target: [6,6,6,6,6])
+distinct normalized outputs:  1     (target: 1)
+sha256 of normalized output:  7fdba204e8af87b6c88433e1360c064d4e1fb26d4ff43a5f02d97ee6481a650f
+
+DETERMINISM: PASS — all 5 runs byte-identical (excl. wallclock)
+
+§2. Hang-detection wall time (joint C04 × C06 falsifier)
+---------------------------------------------------------
+test:                         test_evaluator_budget_aborts_runaway_mock_evaluator
+mock evaluator wants:         10.0s sleep
+TimeBudget configured:        soft=1.0s, hard=2.0s
+pytest internal wall:         2.03s
+total bash-time wall:         2.245s
+target threshold:             < 5.0s
+
+HANG-DETECTION: PASS — C04 budget aborted the runaway evaluator
+
+§3. Test inventory (delivered)
+------------------------------
+* MockEvaluator unit tests (tests/eval/test_mock_executor.py extension):     10 new
+  - protocol conformance, deterministic output, metadata isolation,
+    sleep behaviour, raise behaviour, validation, runner integration.
+* Golden tests (tests/test_self_eval_golden.py):                              3 new
+  - test_self_eval_against_nines_matches_golden
+  - test_self_eval_against_foreign_repo_diverges_from_nines
+  - test_silent_fallback_detection_regression_assertion
+* Hang-detection tests (tests/test_self_eval_hang_detection.py):              3 new
+  - test_evaluator_budget_aborts_runaway_mock_evaluator
+  - test_well_behaved_mock_evaluator_completes_under_budget
+  - test_evaluator_exception_propagates_via_partial_score
+TOTAL NEW TESTS:                                                             16
+
+§4. Silent-fallback regression detector
+---------------------------------------
+NineS golden    decomposition_coverage.total_elements = 881
+Foreign golden  decomposition_coverage.total_elements = 42
+Divergent dims (NineS vs foreign metadata): 5
+  decomposition_coverage, abstraction_quality, code_review_accuracy,
+  index_recall, structure_recognition.
+
+REGRESSION-DETECTOR: PASS — assertion fires if a foreign-repo run
+leaks NineS's structural counts (covers §4.8 silent-fallback bug
+class).
+
+§5. EMPIRICAL VERDICT: CONFIRMED
+---------------------------------------------
+All four design predictions for C06 are now empirically realized in CI:
+  (a) CI wall ≤ 5 s for full mock golden set        -> 2.05 s observed
+  (b) Falsifiable hang detector aborts in ≤ 5 s     -> 2.245 s observed
+  (c) MockEvaluator is the documented test primitive -> 16 tests
+  (d) Silent-fallback regression test catches §4.8  -> divergence pinned
+
+
+§6. Full test-suite totals (post-C06)
+-------------------------------------
+collected:                    1329 tests
+passed:                       1329
+failed:                       0
+new tests added by C06:       16  (10 MockEvaluator + 3 golden + 3 hang)
+suite total target:           >= 1311  (1301 + 10)
+DELIVERED TARGET:             1329 - 1311 = +18 over target
+
+Files ignored at collection time: tests/cli/test_analyze_audit.py and
+tests/analyzer/test_consistency_auditor.py — both untracked stub
+files from parallel C10 work that import yet-to-be-added symbols
+from src/nines/cli/commands/analyze.py.  These are owned by the
+parallel C10 task, NOT by C06; they fail at import collection only
+and are deselected from the v3.2.0 baseline measurement.
+
+§7. Caveats / scope notes
+-------------------------
+* `SelfEvalReport` does not carry a `weights` field on the runner
+  side (weights are computed in the CLI).  The golden fixture pins a
+  per-mode `weights` constant that the trim helper layers onto the
+  projection — this matches the CLI's emit shape without modifying
+  the runner.
+* The `overall` value in each golden fixture is recomputed from the
+  rounded-to-3dp normalized scores so MockEvaluator-driven
+  reproductions match byte-for-byte.  Floating-point tolerance on
+  `overall` and per-score normalized stays at <= 1e-6.
+* `requires_context: ClassVar[bool] = False` was added to MockEvaluator
+  to satisfy the C01 Phase 1 Protocol requirement (the runtime-checkable
+  Protocol now demands this class attribute).

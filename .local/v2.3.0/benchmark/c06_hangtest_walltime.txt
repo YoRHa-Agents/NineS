@@ -1,0 +1,11 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.8, pytest-9.0.3, pluggy-1.6.0 -- /home/agent/workspace/NineS/.venv/bin/python3
+rootdir: /home/agent/workspace/NineS
+configfile: pyproject.toml
+plugins: anyio-4.13.0, cov-7.1.0
+collecting ... collected 1 item
+
+tests/test_self_eval_hang_detection.py::test_evaluator_budget_aborts_runaway_mock_evaluator PASSED [100%]
+
+============================== 1 passed in 2.03s ===============================
+2.245
