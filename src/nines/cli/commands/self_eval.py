@@ -266,6 +266,17 @@ def _build_json_output(
     default="data/golden_test_set",
     help="Golden test set directory for V1 scoring evaluators (D01/D03/D05).",
 )
+@click.option(
+    "--evaluator-timeout",
+    type=float,
+    default=60.0,
+    show_default=True,
+    help=(
+        "Per-evaluator wall-clock budget in seconds (C04).  Evaluators "
+        "that exceed this budget are recorded with status='timeout' "
+        "in the report and the run continues."
+    ),
+)
 @click.pass_context
 def self_eval_cmd(
     ctx: click.Context,
@@ -277,12 +288,21 @@ def self_eval_cmd(
     capability_only: bool,
     samples_dir: str,
     golden_dir: str,
+    evaluator_timeout: float,
 ) -> None:
     """Run self-evaluation across all capability dimensions."""
     verbose = ctx.obj.get("verbose", False)
     output_format = ctx.obj.get("format", "text")
 
-    runner = SelfEvalRunner()
+    from nines.core.budget import TimeBudget
+    # C04: bound every dimension to ``evaluator_timeout`` seconds so a
+    # runaway evaluator can't hang the whole report.
+    runner = SelfEvalRunner(
+        default_budget=TimeBudget(
+            soft_seconds=min(20.0, max(1.0, evaluator_timeout / 2)),
+            hard_seconds=max(1.0, float(evaluator_timeout)),
+        ),
+    )
 
     runner.register_dimension(
         "scoring_accuracy", ScoringAccuracyEvaluator(golden_dir),

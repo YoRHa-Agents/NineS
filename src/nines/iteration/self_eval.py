@@ -21,6 +21,12 @@ from datetime import UTC
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
+from nines.core.budget import (
+    EvaluatorBudgetExceeded,
+    TimeBudget,
+    evaluator_budget,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -98,6 +104,10 @@ class SelfEvalReport:
         ISO-8601 timestamp of when the report was generated.
     duration:
         Total evaluation time in seconds.
+    timeouts:
+        Names of dimensions whose evaluators exceeded the configured
+        hard wall-clock budget (C04).  Empty when all evaluators
+        completed within budget.
     """
 
     scores: list[DimensionScore] = field(default_factory=list)
@@ -105,6 +115,7 @@ class SelfEvalReport:
     version: str = ""
     timestamp: str = ""
     duration: float = 0.0
+    timeouts: list[str] = field(default_factory=list)
 
     def get_score(self, dimension: str) -> DimensionScore | None:
         """Return score."""
@@ -121,6 +132,7 @@ class SelfEvalReport:
             "version": self.version,
             "timestamp": self.timestamp,
             "duration": self.duration,
+            "timeouts": list(self.timeouts),
         }
 
     @classmethod
@@ -132,6 +144,7 @@ class SelfEvalReport:
             version=data.get("version", ""),
             timestamp=data.get("timestamp", ""),
             duration=data.get("duration", 0.0),
+            timeouts=list(data.get("timeouts", [])),
         )
 
 
@@ -146,11 +159,33 @@ class SelfEvalRunner:
         report = runner.run_all()
     """
 
-    def __init__(self) -> None:
-        """Initialize self eval runner."""
-        self._evaluators: dict[str, DimensionEvaluator] = {}
+    def __init__(
+        self,
+        default_budget: TimeBudget | None = None,
+    ) -> None:
+        """Initialize self eval runner.
 
-    def register_dimension(self, name: str, evaluator: DimensionEvaluator) -> None:
+        Parameters
+        ----------
+        default_budget:
+            Per-evaluator wall-clock budget applied to every dimension
+            unless overridden by ``register_dimension(..., budget=...)``.
+            Defaults to ``TimeBudget(soft_seconds=20, hard_seconds=60)``
+            per the C04 design.
+        """
+        self._evaluators: dict[str, DimensionEvaluator] = {}
+        self._budgets: dict[str, TimeBudget] = {}
+        self._default_budget = default_budget or TimeBudget(
+            soft_seconds=20.0, hard_seconds=60.0,
+        )
+
+    def register_dimension(
+        self,
+        name: str,
+        evaluator: DimensionEvaluator,
+        *,
+        budget: TimeBudget | None = None,
+    ) -> None:
         """Register an evaluator for a named dimension.
 
         Parameters
@@ -159,8 +194,13 @@ class SelfEvalRunner:
             Unique dimension identifier.
         evaluator:
             Object implementing the ``DimensionEvaluator`` protocol.
+        budget:
+            Optional per-dimension wall-clock budget overriding the
+            runner-wide default.
         """
         self._evaluators[name] = evaluator
+        if budget is not None:
+            self._budgets[name] = budget
         logger.debug("Registered evaluator for dimension '%s'", name)
 
     def run_all(self, version: str = "") -> SelfEvalReport:
@@ -180,16 +220,37 @@ class SelfEvalRunner:
 
         start = time.monotonic()
         scores: list[DimensionScore] = []
+        timeouts: list[str] = []
 
         for name, evaluator in self._evaluators.items():
             logger.info("Evaluating dimension '%s'", name)
+            budget = self._budgets.get(name, self._default_budget)
             try:
-                score = evaluator.evaluate()
+                with evaluator_budget(name, budget) as run:
+                    score = run(evaluator.evaluate)
                 scores.append(score)
                 logger.info(
                     "Dimension '%s': %.3f / %.3f (%.1f%%)",
                     name, score.value, score.max_value, score.normalized * 100,
                 )
+            except EvaluatorBudgetExceeded as exc:
+                # C04: append a placeholder score with status='timeout'
+                # so the report records exactly which dim breached.
+                logger.warning(
+                    "Evaluator '%s' timed out after %.1fs: %s",
+                    name, exc.elapsed_s, exc,
+                )
+                scores.append(DimensionScore(
+                    name=name,
+                    value=0.0,
+                    max_value=1.0,
+                    metadata={
+                        "status": "timeout",
+                        "hard_seconds": exc.hard_seconds,
+                        "elapsed_s": exc.elapsed_s,
+                    },
+                ))
+                timeouts.append(name)
             except Exception as exc:
                 logger.error("Evaluator for '%s' failed: %s", name, exc, exc_info=True)
                 scores.append(DimensionScore(name=name, value=0.0, max_value=1.0))
@@ -205,6 +266,7 @@ class SelfEvalRunner:
             version=version,
             timestamp=datetime.now(UTC).isoformat(),
             duration=duration,
+            timeouts=timeouts,
         )
 
 
