@@ -24,9 +24,7 @@ class Bookmark:
 
     source: str
     entity_id: str
-    tracked_at: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    tracked_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     last_seen: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -94,29 +92,35 @@ class ChangeTracker:
         events: list[ChangeEvent] = []
 
         for eid in sorted(new_ids - old_ids):
-            events.append(ChangeEvent(
-                entity_id=eid,
-                change_type="addition",
-                old_value=None,
-                new_value=new_by_id[eid],
-            ))
+            events.append(
+                ChangeEvent(
+                    entity_id=eid,
+                    change_type="addition",
+                    old_value=None,
+                    new_value=new_by_id[eid],
+                )
+            )
 
         for eid in sorted(old_ids - new_ids):
-            events.append(ChangeEvent(
-                entity_id=eid,
-                change_type="deletion",
-                old_value=old_by_id[eid],
-                new_value=None,
-            ))
+            events.append(
+                ChangeEvent(
+                    entity_id=eid,
+                    change_type="deletion",
+                    old_value=old_by_id[eid],
+                    new_value=None,
+                )
+            )
 
         for eid in sorted(old_ids & new_ids):
             if old_by_id[eid] != new_by_id[eid]:
-                events.append(ChangeEvent(
-                    entity_id=eid,
-                    change_type="modification",
-                    old_value=old_by_id[eid],
-                    new_value=new_by_id[eid],
-                ))
+                events.append(
+                    ChangeEvent(
+                        entity_id=eid,
+                        change_type="modification",
+                        old_value=old_by_id[eid],
+                        new_value=new_by_id[eid],
+                    )
+                )
 
         return events
 

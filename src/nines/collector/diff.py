@@ -135,9 +135,9 @@ class DiffAnalyzer:
                 self.REPO_COMPARE_FIELDS,
             )
             if diffs:
-                modified.append(EntityDiff(
-                    entity_id=key, change_type="modified", field_diffs=diffs
-                ))
+                modified.append(
+                    EntityDiff(entity_id=key, change_type="modified", field_diffs=diffs)
+                )
 
         return RepoChanges(added=added, removed=removed, modified=modified)
 
@@ -160,9 +160,9 @@ class DiffAnalyzer:
                 self.PAPER_COMPARE_FIELDS,
             )
             if diffs:
-                modified.append(EntityDiff(
-                    entity_id=pid, change_type="modified", field_diffs=diffs
-                ))
+                modified.append(
+                    EntityDiff(entity_id=pid, change_type="modified", field_diffs=diffs)
+                )
 
         return PaperChanges(added=added, removed=removed, modified=modified)
 

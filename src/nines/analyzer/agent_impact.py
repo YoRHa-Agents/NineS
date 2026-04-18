@@ -10,21 +10,35 @@ Covers: FR-313.
 from __future__ import annotations
 
 import logging
+import math
 import re
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from nines.core.identity import format_finding_id, project_fingerprint
 from nines.core.models import Finding, KnowledgeUnit
 
 logger = logging.getLogger(__name__)
 
-_SKIP_DIRS = frozenset({
-    ".git", "node_modules", "__pycache__", ".venv", "venv",
-    ".tox", ".mypy_cache", ".pytest_cache", ".ruff_cache",
-    "dist", "build", ".eggs", "*.egg-info",
-})
+_SKIP_DIRS = frozenset(
+    {
+        ".git",
+        "node_modules",
+        "__pycache__",
+        ".venv",
+        "venv",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        "dist",
+        "build",
+        ".eggs",
+        "*.egg-info",
+    }
+)
 
 
 @dataclass
@@ -95,7 +109,9 @@ class ContextEconomics:
     overhead_tokens:
         Tokens the tool adds to every Agent interaction.
     estimated_savings_ratio:
-        Estimated ratio of output tokens saved per interaction.
+        Estimated ratio of output tokens saved per interaction.  Derived
+        from ``per_interaction_savings_tokens / max(overhead_tokens, 1)``
+        for backward compatibility with v3.0.0 reports.
     mechanism_count:
         Number of distinct Agent-influence mechanisms detected.
     agent_facing_files:
@@ -104,6 +120,23 @@ class ContextEconomics:
         Aggregate token count across all Agent-facing files.
     break_even_interactions:
         Number of interactions needed for net-positive token economics.
+        Derived as ``ceil(overhead_tokens / max(per_interaction_savings_tokens, 1))``.
+    per_interaction_savings_tokens:
+        Total tokens saved per interaction across all
+        ``context_compression`` mechanisms (C09 — explicit input to the
+        break-even formula instead of an opaque ``savings_ratio``).
+    expected_retention_rate:
+        Fraction of context retained across interactions.  Default 0.85
+        per the C09 design.
+    mechanism_diversity_factor:
+        Reward factor for mechanism breadth:
+        ``1.0 + 0.1 * (distinct_categories - 1)``.
+    economics_score:
+        Composite normalised score in [0, 1] suitable for the eventual
+        weighted MetricRegistry (C08).
+    formula_version:
+        Schema version of the economics derivation.  ``2`` for the C09
+        formula; legacy reports use ``1``.
     """
 
     overhead_tokens: int = 0
@@ -112,6 +145,11 @@ class ContextEconomics:
     agent_facing_files: int = 0
     total_agent_context_tokens: int = 0
     break_even_interactions: int = 0
+    per_interaction_savings_tokens: int = 0
+    expected_retention_rate: float = 0.85
+    mechanism_diversity_factor: float = 1.0
+    economics_score: float = 0.0
+    formula_version: int = 2
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a plain dictionary."""
@@ -122,11 +160,20 @@ class ContextEconomics:
             "agent_facing_files": self.agent_facing_files,
             "total_agent_context_tokens": self.total_agent_context_tokens,
             "break_even_interactions": self.break_even_interactions,
+            "per_interaction_savings_tokens": self.per_interaction_savings_tokens,
+            "expected_retention_rate": self.expected_retention_rate,
+            "mechanism_diversity_factor": self.mechanism_diversity_factor,
+            "economics_score": self.economics_score,
+            "formula_version": self.formula_version,
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ContextEconomics:
-        """Deserialize from a plain dictionary."""
+        """Deserialize from a plain dictionary.
+
+        Backward-compatible with v1 (formula_version=1) reports: any
+        missing fields default to the C09 placeholder values.
+        """
         return cls(
             overhead_tokens=data.get("overhead_tokens", 0),
             estimated_savings_ratio=data.get("estimated_savings_ratio", 0.0),
@@ -134,6 +181,17 @@ class ContextEconomics:
             agent_facing_files=data.get("agent_facing_files", 0),
             total_agent_context_tokens=data.get("total_agent_context_tokens", 0),
             break_even_interactions=data.get("break_even_interactions", 0),
+            per_interaction_savings_tokens=data.get(
+                "per_interaction_savings_tokens",
+                0,
+            ),
+            expected_retention_rate=data.get("expected_retention_rate", 0.85),
+            mechanism_diversity_factor=data.get(
+                "mechanism_diversity_factor",
+                1.0,
+            ),
+            economics_score=data.get("economics_score", 0.0),
+            formula_version=data.get("formula_version", 1),
         )
 
 
@@ -180,21 +238,11 @@ class AgentImpactReport:
         """Deserialize from a plain dictionary."""
         return cls(
             target=data["target"],
-            mechanisms=[
-                AgentMechanism.from_dict(m)
-                for m in data.get("mechanisms", [])
-            ],
+            mechanisms=[AgentMechanism.from_dict(m) for m in data.get("mechanisms", [])],
             economics=ContextEconomics.from_dict(data.get("economics", {})),
-            agent_facing_artifacts=list(
-                data.get("agent_facing_artifacts", [])
-            ),
-            findings=[
-                Finding.from_dict(f) for f in data.get("findings", [])
-            ],
-            knowledge_units=[
-                KnowledgeUnit.from_dict(ku)
-                for ku in data.get("knowledge_units", [])
-            ],
+            agent_facing_artifacts=list(data.get("agent_facing_artifacts", [])),
+            findings=[Finding.from_dict(f) for f in data.get("findings", [])],
+            knowledge_units=[KnowledgeUnit.from_dict(ku) for ku in data.get("knowledge_units", [])],
         )
 
 
@@ -211,13 +259,20 @@ class AgentImpactAnalyzer:
     """
 
     AGENT_ARTIFACT_PATTERNS = [
-        r"CLAUDE\.md$", r"\.claude/", r"SKILL\.md$", r"\.skill$",
-        r"\.cursor/rules/", r"\.cursorrules$",
+        r"CLAUDE\.md$",
+        r"\.claude/",
+        r"SKILL\.md$",
+        r"\.skill$",
+        r"\.cursor/rules/",
+        r"\.cursorrules$",
         r"\.windsurf/rules/",
         r"\.clinerules/",
-        r"copilot-instructions\.md$", r"AGENTS\.md$",
-        r"\.codex/", r"codex-plugin/",
-        r"CONTEXT\.md$", r"SYSTEM_PROMPT",
+        r"copilot-instructions\.md$",
+        r"AGENTS\.md$",
+        r"\.codex/",
+        r"codex-plugin/",
+        r"CONTEXT\.md$",
+        r"SYSTEM_PROMPT",
         r"pyproject\.toml$",
         r"\.github/copilot/",
         r"\.aider",
@@ -225,38 +280,80 @@ class AgentImpactAnalyzer:
     ]
 
     COMPRESSION_INDICATORS = [
-        "compress", "token", "shorten", "strip", "minif", "compact",
-        "terse", "concise", "abbreviat", "reduc",
+        "compress",
+        "token",
+        "shorten",
+        "strip",
+        "minif",
+        "compact",
+        "terse",
+        "concise",
+        "abbreviat",
+        "reduc",
     ]
 
     SAFETY_INDICATORS = [
-        "safety", "security", "irreversible", "danger", "warning",
-        "auto-clarity", "fallback", "restore", "backup",
+        "safety",
+        "security",
+        "irreversible",
+        "danger",
+        "warning",
+        "auto-clarity",
+        "fallback",
+        "restore",
+        "backup",
     ]
 
     BEHAVIORAL_INDICATORS = [
-        "instruction", "rule", "prompt", "convention", "must", "always",
-        "never", "should", "style", "guideline",
+        "instruction",
+        "rule",
+        "prompt",
+        "convention",
+        "must",
+        "always",
+        "never",
+        "should",
+        "style",
+        "guideline",
     ]
 
     DISTRIBUTION_INDICATORS = [
-        "sync", "deploy", "publish", "ci", "workflow", "multi-agent",
-        "distribute", "platform", "cross-ide",
+        "sync",
+        "deploy",
+        "publish",
+        "ci",
+        "workflow",
+        "multi-agent",
+        "distribute",
+        "platform",
+        "cross-ide",
     ]
 
     PERSISTENCE_INDICATORS = [
-        "drift", "enforce", "persist", "mode", "lock", "guard",
-        "invariant", "constraint", "assert",
+        "drift",
+        "enforce",
+        "persist",
+        "mode",
+        "lock",
+        "guard",
+        "invariant",
+        "constraint",
+        "assert",
     ]
 
     _TOKENS_PER_WORD = 1.3
 
-    def __init__(self) -> None:
-        """Initialize agent impact analyzer."""
-        self._agent_patterns = [
-            re.compile(p, re.IGNORECASE)
-            for p in self.AGENT_ARTIFACT_PATTERNS
-        ]
+    def __init__(self, project_id: str | None = None) -> None:
+        """Initialize agent impact analyzer.
+
+        Parameters
+        ----------
+        project_id:
+            Optional pre-computed project fingerprint.  When ``None``,
+            :meth:`analyze` computes one from the target path.
+        """
+        self._agent_patterns = [re.compile(p, re.IGNORECASE) for p in self.AGENT_ARTIFACT_PATTERNS]
+        self._project_id: str | None = project_id
 
     def analyze(self, path: str | Path) -> AgentImpactReport:
         """Run full Agent impact analysis on a repository.
@@ -275,34 +372,86 @@ class AgentImpactAnalyzer:
         target = Path(path)
         logger.info("Starting Agent impact analysis on %s", target)
 
+        # Compute / cache the project fingerprint so all findings emitted by
+        # this analyze() call share the same namespace.  See C02.
+        active_project_id = self._project_id
+        if active_project_id is None:
+            try:
+                active_project_id = project_fingerprint(target)
+            except (OSError, ValueError) as exc:
+                logger.warning(
+                    "Could not compute project fingerprint for %s: %s; "
+                    "emitting legacy unscoped IDs",
+                    target,
+                    exc,
+                )
+                active_project_id = None
+
         artifacts = self._discover_agent_artifacts(target)
         logger.debug("Discovered %d Agent-facing artifacts", len(artifacts))
 
-        economics = self._estimate_context_economics(target, artifacts)
+        # Detect mechanisms FIRST so the C09 derived economics formula
+        # can consume them directly.
         mechanisms = self._detect_mechanisms(target, artifacts)
 
-        economics.mechanism_count = len(mechanisms)
-        total_mechanism_tokens = sum(
-            abs(m.estimated_token_impact) for m in mechanisms
+        # Sum mechanism token impacts so we know the *total* overhead the
+        # repo imposes on Agent context, not just the artifacts' raw tokens.
+        total_mechanism_tokens = sum(abs(m.estimated_token_impact) for m in mechanisms)
+
+        # Derive economics with mechanisms in scope (C09 formula).
+        economics = self._estimate_context_economics(
+            target,
+            artifacts,
+            mechanisms,
         )
         if total_mechanism_tokens > 0:
             economics.total_agent_context_tokens += total_mechanism_tokens
             economics.overhead_tokens += total_mechanism_tokens
+            # Re-derive break_even and economics_score after the
+            # overhead bump so the published numbers stay consistent
+            # with the published overhead value.
+            saved = economics.per_interaction_savings_tokens
+            if economics.overhead_tokens > 0:
+                economics.break_even_interactions = math.ceil(
+                    economics.overhead_tokens / max(saved, 1),
+                )
+                if saved > 0:
+                    raw_score = (
+                        saved
+                        * economics.expected_retention_rate
+                        * economics.mechanism_diversity_factor
+                        / economics.overhead_tokens
+                    )
+                    economics.economics_score = round(
+                        max(0.0, min(1.0, raw_score)),
+                        4,
+                    )
+                economics.estimated_savings_ratio = round(
+                    min(0.95, saved / economics.overhead_tokens),
+                    3,
+                )
 
         if economics.overhead_tokens == 0 and artifacts:
             min_estimate = len(artifacts) * 50
             economics.overhead_tokens = min_estimate
             economics.total_agent_context_tokens = max(
-                economics.total_agent_context_tokens, min_estimate,
+                economics.total_agent_context_tokens,
+                min_estimate,
             )
 
-        findings = self._generate_findings(mechanisms, economics, artifacts)
+        findings = self._generate_findings(
+            mechanisms,
+            economics,
+            artifacts,
+            project_id=active_project_id,
+        )
         units = self._create_knowledge_units(mechanisms, artifacts)
 
         logger.info(
-            "Agent impact analysis complete: %d mechanisms, %d artifacts, "
-            "%d findings",
-            len(mechanisms), len(artifacts), len(findings),
+            "Agent impact analysis complete: %d mechanisms, %d artifacts, %d findings",
+            len(mechanisms),
+            len(artifacts),
+            len(findings),
         )
 
         return AgentImpactReport(
@@ -353,12 +502,20 @@ class AgentImpactAnalyzer:
         return sorted(artifacts)
 
     def _estimate_context_economics(
-        self, target: Path, artifacts: list[str],
+        self,
+        target: Path,
+        artifacts: list[str],
+        mechanisms: list[AgentMechanism] | None = None,
+        *,
+        expected_retention_rate: float = 0.85,
     ) -> ContextEconomics:
-        """Estimate the token economics of the repository's Agent-facing content.
+        """Derive token economics for the repository's Agent-facing content.
 
-        Uses a simple word-based approximation (words * 1.3 ~ tokens) for
-        estimation without requiring tiktoken dependency.
+        Per C09: ``break_even_interactions`` is now a real function of
+        the mechanisms detected, not a constant ``2``.  When mechanisms
+        are not yet known (e.g. an early-stage call before mechanism
+        detection runs) the legacy ``len(artifacts) * 0.05`` fallback is
+        used so existing callers behave the same.
 
         Parameters
         ----------
@@ -366,6 +523,12 @@ class AgentImpactAnalyzer:
             Root directory of the repository.
         artifacts:
             Relative paths of Agent-facing files.
+        mechanisms:
+            Optional pre-computed mechanism list.  Required for the C09
+            derived formula; absent → legacy ratio-based fallback.
+        expected_retention_rate:
+            Fraction of context retained across interactions; defaults
+            to the C09 design value of ``0.85``.
 
         Returns
         -------
@@ -378,28 +541,61 @@ class AgentImpactAnalyzer:
             total_tokens += self._estimate_tokens(content)
 
         overhead = total_tokens
-        savings_ratio = min(0.95, len(artifacts) * 0.05) if artifacts else 0.0
+        mechs = list(mechanisms or [])
 
-        if savings_ratio > 0 and overhead > 0:
-            saved_per_interaction = int(overhead * savings_ratio)
-            break_even = (
-                max(1, (overhead + saved_per_interaction - 1) // saved_per_interaction)
-                if saved_per_interaction > 0 else 0
+        # Sum |token_impact| across context_compression mechanisms — the
+        # only category that *saves* tokens per interaction.
+        per_interaction_savings = sum(
+            abs(m.estimated_token_impact) for m in mechs if m.category == "context_compression"
+        )
+
+        # Mechanism diversity reward — wider repos earn slightly higher
+        # economics_score even at the same compression ratio.
+        distinct_categories = len({m.category for m in mechs}) if mechs else 0
+        diversity_factor = 1.0 + 0.1 * max(0, distinct_categories - 1)
+
+        # Backward-compat: when no mechanisms are supplied (early call),
+        # fall back to the v1 ratio so legacy tests keep working.
+        if not mechs and overhead > 0 and artifacts:
+            legacy_ratio = min(0.95, len(artifacts) * 0.05)
+            per_interaction_savings = int(overhead * legacy_ratio)
+
+        # break_even = ceil(overhead / max(saved_per_interaction, 1))
+        break_even = 0 if overhead <= 0 else math.ceil(overhead / max(per_interaction_savings, 1))
+
+        # economics_score in [0, 1].  Clamp avoids absurd values when
+        # mechanisms over-claim savings relative to overhead.
+        if overhead > 0 and per_interaction_savings > 0:
+            raw_score = (
+                per_interaction_savings * expected_retention_rate * diversity_factor / overhead
             )
+            economics_score = max(0.0, min(1.0, raw_score))
         else:
-            break_even = 0
+            economics_score = 0.0
+
+        # Backward-compat ``estimated_savings_ratio`` derives from the
+        # explicit per-interaction savings so v1 consumers keep reading
+        # a sensible number.
+        savings_ratio = min(0.95, per_interaction_savings / overhead) if overhead > 0 else 0.0
 
         return ContextEconomics(
             overhead_tokens=overhead,
             estimated_savings_ratio=round(savings_ratio, 3),
-            mechanism_count=0,
+            mechanism_count=len(mechs),
             agent_facing_files=len(artifacts),
             total_agent_context_tokens=total_tokens,
             break_even_interactions=break_even,
+            per_interaction_savings_tokens=per_interaction_savings,
+            expected_retention_rate=expected_retention_rate,
+            mechanism_diversity_factor=round(diversity_factor, 3),
+            economics_score=round(economics_score, 4),
+            formula_version=2,
         )
 
     def _detect_mechanisms(
-        self, target: Path, artifacts: list[str],
+        self,
+        target: Path,
+        artifacts: list[str],
     ) -> list[AgentMechanism]:
         """Identify discrete mechanisms that influence Agent behavior.
 
@@ -428,7 +624,9 @@ class AgentImpactAnalyzer:
                 continue
 
             self._collect_mechanism_evidence(
-                rel_path, content, category_evidence,
+                rel_path,
+                content,
+                category_evidence,
             )
 
         for category, sub_mechs in sorted(category_evidence.items()):
@@ -441,15 +639,17 @@ class AgentImpactAnalyzer:
                     token_impact = -token_impact
 
                 confidence = min(1.0, len(files) * 0.3 + 0.1)
-                mechanisms.append(AgentMechanism(
-                    id=f"mech-{uuid.uuid4().hex[:8]}",
-                    name=name,
-                    category=category,
-                    description=self._describe_mechanism(category, name, files),
-                    evidence_files=sorted(files),
-                    estimated_token_impact=token_impact,
-                    confidence=round(confidence, 2),
-                ))
+                mechanisms.append(
+                    AgentMechanism(
+                        id=f"mech-{uuid.uuid4().hex[:8]}",
+                        name=name,
+                        category=category,
+                        description=self._describe_mechanism(category, name, files),
+                        evidence_files=sorted(files),
+                        estimated_token_impact=token_impact,
+                        confidence=round(confidence, 2),
+                    )
+                )
 
         return mechanisms
 
@@ -489,7 +689,10 @@ class AgentImpactAnalyzer:
                     bucket[mech_name].append(rel_path)
 
     def _describe_mechanism(
-        self, category: str, name: str, files: list[str],
+        self,
+        category: str,
+        name: str,
+        files: list[str],
     ) -> str:
         """Generate a human-readable description for a mechanism.
 
@@ -537,6 +740,7 @@ class AgentImpactAnalyzer:
         mechanisms: list[AgentMechanism],
         economics: ContextEconomics,
         artifacts: list[str],
+        project_id: str | None = None,
     ) -> list[Finding]:
         """Generate findings about Agent impact characteristics.
 
@@ -560,98 +764,113 @@ class AgentImpactAnalyzer:
         findings: list[Finding] = []
         idx = 0
 
-        findings.append(Finding(
-            id=f"AI-{idx:04d}",
-            severity="info",
-            category="agent_impact",
-            message=(
-                f"Repository contains {len(artifacts)} Agent-facing "
-                f"artifact(s) across {len(mechanisms)} mechanism(s)"
-            ),
-            location=economics.agent_facing_files and artifacts[0] or "",
-        ))
+        findings.append(
+            Finding(
+                id=format_finding_id("AI", idx, project_id),
+                severity="info",
+                category="agent_impact",
+                message=(
+                    f"Repository contains {len(artifacts)} Agent-facing "
+                    f"artifact(s) across {len(mechanisms)} mechanism(s)"
+                ),
+                location=economics.agent_facing_files and artifacts[0] or "",
+            )
+        )
         idx += 1
 
         if economics.total_agent_context_tokens > 0:
-            findings.append(Finding(
-                id=f"AI-{idx:04d}",
-                severity="info",
-                category="context_economics",
-                message=(
-                    f"Total Agent context: ~{economics.total_agent_context_tokens} tokens, "
-                    f"overhead: ~{economics.overhead_tokens} tokens, "
-                    f"estimated savings ratio: {economics.estimated_savings_ratio:.1%}"
-                ),
-                location="",
-            ))
+            findings.append(
+                Finding(
+                    id=format_finding_id("AI", idx, project_id),
+                    severity="info",
+                    category="context_economics",
+                    message=(
+                        f"Total Agent context: ~{economics.total_agent_context_tokens} tokens, "
+                        f"overhead: ~{economics.overhead_tokens} tokens, "
+                        f"estimated savings ratio: {economics.estimated_savings_ratio:.1%}"
+                    ),
+                    location="",
+                )
+            )
             idx += 1
 
         if economics.overhead_tokens > 5000:
-            findings.append(Finding(
-                id=f"AI-{idx:04d}",
-                severity="warning",
-                category="context_economics",
-                message=(
-                    f"Agent context overhead is high ({economics.overhead_tokens} tokens). "
-                    f"Consider compressing or splitting Agent-facing files."
-                ),
-                location="",
-                suggestion=(
-                    "Split large instruction files into role-specific segments "
-                    "or apply token-compression techniques."
-                ),
-            ))
+            findings.append(
+                Finding(
+                    id=format_finding_id("AI", idx, project_id),
+                    severity="warning",
+                    category="context_economics",
+                    message=(
+                        f"Agent context overhead is high ({economics.overhead_tokens} tokens). "
+                        f"Consider compressing or splitting Agent-facing files."
+                    ),
+                    location="",
+                    suggestion=(
+                        "Split large instruction files into role-specific segments "
+                        "or apply token-compression techniques."
+                    ),
+                )
+            )
             idx += 1
 
         categories_present = {m.category for m in mechanisms}
         all_categories = {
-            "behavioral_instruction", "context_compression",
-            "safety", "distribution", "persistence",
+            "behavioral_instruction",
+            "context_compression",
+            "safety",
+            "distribution",
+            "persistence",
         }
         missing = all_categories - categories_present
         if missing and artifacts:
-            findings.append(Finding(
-                id=f"AI-{idx:04d}",
-                severity="info",
-                category="coverage_gap",
-                message=(
-                    f"No mechanisms detected for: {', '.join(sorted(missing))}. "
-                    f"Consider adding support for these areas."
-                ),
-                location="",
-                suggestion=(
-                    "Review whether the repository would benefit from "
-                    "mechanisms in the missing categories."
-                ),
-            ))
+            findings.append(
+                Finding(
+                    id=format_finding_id("AI", idx, project_id),
+                    severity="info",
+                    category="coverage_gap",
+                    message=(
+                        f"No mechanisms detected for: {', '.join(sorted(missing))}. "
+                        f"Consider adding support for these areas."
+                    ),
+                    location="",
+                    suggestion=(
+                        "Review whether the repository would benefit from "
+                        "mechanisms in the missing categories."
+                    ),
+                )
+            )
             idx += 1
 
         if not artifacts:
-            findings.append(Finding(
-                id=f"AI-{idx:04d}",
-                severity="info",
-                category="agent_impact",
-                message=(
-                    "No Agent-facing artifacts detected. This repository "
-                    "does not appear to target AI Agent integration."
-                ),
-                location="",
-            ))
+            findings.append(
+                Finding(
+                    id=format_finding_id("AI", idx, project_id),
+                    severity="info",
+                    category="agent_impact",
+                    message=(
+                        "No Agent-facing artifacts detected. This repository "
+                        "does not appear to target AI Agent integration."
+                    ),
+                    location="",
+                )
+            )
             idx += 1
 
         for mech in mechanisms:
             if mech.confidence < 0.3:
-                findings.append(Finding(
-                    id=f"AI-{idx:04d}",
-                    severity="info",
-                    category="low_confidence",
-                    message=(
-                        f"Mechanism '{mech.name}' ({mech.category}) has low "
-                        f"confidence ({mech.confidence:.0%}). Evidence may be "
-                        f"circumstantial."
-                    ),
-                    location=mech.evidence_files[0] if mech.evidence_files else "",
-                ))
+                findings.append(
+                    Finding(
+                        id=format_finding_id("AI", idx, project_id),
+                        severity="info",
+                        category="low_confidence",
+                        message=(
+                            f"Mechanism '{mech.name}' ({mech.category}) has low "
+                            f"confidence ({mech.confidence:.0%}). Evidence may be "
+                            f"circumstantial."
+                        ),
+                        location=mech.evidence_files[0] if mech.evidence_files else "",
+                    )
+                )
                 idx += 1
 
         return findings
@@ -681,40 +900,44 @@ class AgentImpactAnalyzer:
         units: list[KnowledgeUnit] = []
 
         for mech in mechanisms:
-            units.append(KnowledgeUnit(
-                id=f"agent_mech::{mech.id}",
-                source=mech.evidence_files[0] if mech.evidence_files else "",
-                content=f"{mech.name}: {mech.description}",
-                unit_type="agent_mechanism",
-                relationships={
-                    "evidence_files": mech.evidence_files,
-                    "category": mech.category,
-                },
-                metadata={
-                    "category": mech.category,
-                    "confidence": str(mech.confidence),
-                    "token_impact": str(mech.estimated_token_impact),
-                },
-            ))
+            units.append(
+                KnowledgeUnit(
+                    id=f"agent_mech::{mech.id}",
+                    source=mech.evidence_files[0] if mech.evidence_files else "",
+                    content=f"{mech.name}: {mech.description}",
+                    unit_type="agent_mechanism",
+                    relationships={
+                        "evidence_files": mech.evidence_files,
+                        "category": mech.category,
+                    },
+                    metadata={
+                        "category": mech.category,
+                        "confidence": str(mech.confidence),
+                        "token_impact": str(mech.estimated_token_impact),
+                    },
+                )
+            )
 
         if mechanisms or artifacts:
-            units.append(KnowledgeUnit(
-                id="agent_impact::summary",
-                source="",
-                content=(
-                    f"Agent impact profile: {len(mechanisms)} mechanism(s), "
-                    f"{len(artifacts)} artifact(s)"
-                ),
-                unit_type="agent_impact_summary",
-                relationships={
-                    "mechanisms": [f"agent_mech::{m.id}" for m in mechanisms],
-                    "artifacts": artifacts,
-                },
-                metadata={
-                    "mechanism_count": str(len(mechanisms)),
-                    "artifact_count": str(len(artifacts)),
-                },
-            ))
+            units.append(
+                KnowledgeUnit(
+                    id="agent_impact::summary",
+                    source="",
+                    content=(
+                        f"Agent impact profile: {len(mechanisms)} mechanism(s), "
+                        f"{len(artifacts)} artifact(s)"
+                    ),
+                    unit_type="agent_impact_summary",
+                    relationships={
+                        "mechanisms": [f"agent_mech::{m.id}" for m in mechanisms],
+                        "artifacts": artifacts,
+                    },
+                    metadata={
+                        "mechanism_count": str(len(mechanisms)),
+                        "artifact_count": str(len(artifacts)),
+                    },
+                )
+            )
 
         return units
 

@@ -1,22 +1,28 @@
 ---
 id: "nines/references/evaluation-framework"
-version: "1.0.0"
+version: "1.1.0"
 purpose: >
   Documents the evaluation and benchmarking system: task definitions, the
   eval runner pipeline, scorer implementations, benchmark generation from
-  key points, and self-evaluation dimensions. Load this reference when
-  working on eval tasks, scorers, benchmark suites, or self-eval.
+  key points, and self-evaluation dimensions. v1.1.0 adds the v2.2.0
+  resilience-budget integration (`with_retry`, `CostBudget`,
+  `evaluator_budget`). Load this reference when working on eval tasks,
+  scorers, benchmark suites, self-eval, or any evaluator that needs
+  bounded execution.
 triggers:
   - "eval"
   - "benchmark"
   - "self-eval"
   - "scoring"
+  - "retry"
+  - "budget"
 tier: 2
-token_estimate: 1800
+token_estimate: 2000
 dependencies:
   - "nines/SKILL.md"
   - "nines/references/key-point-extraction"
-last_updated: "2026-04-14"
+  - "nines/references/resilience-budgets"
+last_updated: "2026-04-18"
 ---
 
 # Evaluation Framework Reference
@@ -244,18 +250,125 @@ class SelfEvalReport:
 1. `pytest --collect-only -q` (accurate, handles parameterized tests)
 2. AST walk fallback (counts `test_*` functions in `test_*.py` files)
 
-## 6. Source Files
+## 6. Resilience: `with_retry`, `CostBudget`, `evaluator_budget` (v2.2.0)
 
-| File              | Role                          | FRs              |
-|-------------------|-------------------------------|------------------|
-| `runner.py`       | Eval pipeline orchestration   | FR-114           |
-| `models.py`       | TaskDefinition, EvalResult    | FR-101, 102      |
-| `scorers.py`      | Scorer implementations        | FR-103, 104, 105, 106 |
-| `benchmark_gen.py`| Benchmark suite generation    | FR-115           |
-| `metrics.py`      | Metric collection             | (internal)       |
-| `analysis.py`     | Result analysis utilities     | (internal)       |
-| `matrix.py`       | Evaluation matrix             | (internal)       |
-| `mapping.py`      | Mapping utilities             | (internal)       |
-| `multi_round.py`  | Multi-round evaluation        | (internal)       |
-| `reporters.py`    | Report formatting             | (internal)       |
-| `self_eval.py`    | Self-evaluation runner        | FR-601, 602      |
+The v2.2.0 paradigm-extension work added three composable primitives so
+evaluators and the eval runner can opt into bounded execution. **These
+shipped in Wave 1** (POCs C04, C05) and are used at the call site —
+not auto-applied — so v3.0.0 callers keep working unchanged. For the
+full pattern documentation, design history, and worked example, see
+`references/resilience-budgets.md`.
+
+### 6.1 `EvalRunner` retry + cost budget (C05)
+
+```python
+from nines.core.retry import RetryPolicy, with_retry, TransientError
+from nines.core.cost_budget import CostBudget, CostExceeded
+from nines.eval.runner import EvalRunner
+
+runner = EvalRunner(
+    executor=my_executor,
+    scorer=my_scorer,
+    retry_policy=RetryPolicy(attempts=cfg.eval_max_retries, base_backoff_s=0.5),
+    cost_budget=CostBudget(token_limit=10_000, dollar_limit=1.00),
+)
+results = runner.run(tasks)  # break-on-CostExceeded; partial-results report
+```
+
+- `RetryPolicy` re-raises non-retry-eligible exceptions immediately
+  (no silent swallow per workspace rule). `retry_on` defaults to
+  `(TransientError,)`; subclass `TransientError` for your own
+  retry-eligible failures.
+- `EvalRunner.run` catches `CostExceeded`, appends a partial-error
+  entry (`{"task_id": ..., "error": "cost_budget_exceeded: ..."}`),
+  and breaks the outer loop. Tasks not yet executed are *not* in the
+  result list — operators can detect partial completion via the error
+  entry.
+- `eval_max_retries` (in `NinesConfig`, formerly dead code per
+  `01_evobench_gap_analysis.md` §1) now drives the runner's retry
+  attempts when wired through the eval CLI.
+
+Tests: `tests/core/test_retry.py` (7 cases), `tests/core/test_cost_budget.py`
+(3 cases), `tests/eval/test_runner_retry.py` (2 integration cases).
+
+### 6.2 `SelfEvalRunner` per-evaluator wall budget (C04)
+
+```python
+from nines.core.budget import TimeBudget, evaluator_budget
+from nines.iteration.self_eval import SelfEvalRunner
+
+runner = SelfEvalRunner(default_budget=TimeBudget(soft_seconds=20, hard_seconds=60))
+runner.register_dimension(
+    "live_test_count",
+    LiveTestCountEvaluator(),
+    budget=TimeBudget(soft_seconds=60, hard_seconds=180),  # per-dim override
+)
+report = runner.run_all(version="v2.2.0")
+# report.timeouts == ['agent_analysis_quality']  # populated when budgets breach
+```
+
+- Each evaluator runs on a daemon thread (`threading.Thread(daemon=
+  True)`); after `hard_seconds` the runner raises
+  `EvaluatorBudgetExceeded`, sets the cooperative `cancel_flag`, and
+  appends a `DimensionScore(value=0.0, metadata={"status": "timeout",
+  "hard_seconds": ..., "elapsed_s": ...})`. The dim name is recorded
+  in `report.timeouts`.
+- Evaluators that shell out (`Live*`) should also wire
+  `subprocess.run(..., timeout=min(self._budget.hard_seconds,
+  current_default))` — the daemon-thread cancellation alone cannot
+  kill subprocess hangs (N2 risk; planned for Wave 1 follow-up).
+- CLI exposes `--evaluator-timeout SECONDS` (default 60); wired via
+  `TimeBudget(soft=min(20, max(1, t/2)), hard=max(1, t))`.
+
+**N1 risk reminder:** `_build_json_output` in
+`src/nines/cli/commands/self_eval.py` (lines 189-217) currently does
+**not** include `report.timeouts` despite `SelfEvalReport.to_dict()`
+exposing it. Wave 1 follow-up wires CLI JSON exposure of `timeouts`
+and (post-C01) `context_fingerprint` so operators running
+`nines self-eval --format json` can detect partial runs.
+
+### 6.3 Worked example — caveman self-eval
+
+Before C04: `nines self-eval --project-root /home/agent/reference/caveman
+--src-dir caveman/scripts` hangs ≥ 195 s, killed by external `coreutils
+timeout` (exit 137). After C04 with `--evaluator-timeout 30`:
+
+```
+wall = 33.3s, exit=0, capability-only complete
+20 / 20 dims populated; report.timeouts = ['agent_analysis_quality']
+```
+
+A 5.9× speed-up on the failure case while emitting a usable partial
+report. See `.local/v2.2.0/benchmark/c04_budget_proof.txt` for the
+raw output and `references/resilience-budgets.md` §5 for the
+design rationale.
+
+### 6.4 When to opt in
+
+| Evaluator type                                         | `TimeBudget` (default) | Use `with_retry`?     | Use `CostBudget`?  |
+|--------------------------------------------------------|------------------------|-----------------------|---------------------|
+| In-memory data reads (e.g. `ScoringAccuracyEvaluator`) | `TimeBudget(5, 15)`    | No                    | No                  |
+| Subprocess shellout (e.g. `LiveTestCountEvaluator`)    | `TimeBudget(20, 60)`   | If subprocess flaky   | No                  |
+| `pytest --collect-only` against foreign repos           | `TimeBudget(60, 180)`  | No (deterministic)    | No                  |
+| LLM-judge calls (planned C11b)                          | `TimeBudget(15, 45)`   | **Yes**               | **Yes** (token + $) |
+| GitHub / arxiv collectors                               | n/a                    | **Yes** (Wave 1 follow-up) | No             |
+
+## 7. Source Files
+
+| File              | Role                          | FRs / Notes              |
+|-------------------|-------------------------------|--------------------------|
+| `runner.py`       | Eval pipeline orchestration   | FR-114; v2.2.0 accepts `retry_policy` + `cost_budget` |
+| `models.py`       | TaskDefinition, EvalResult    | FR-101, 102              |
+| `scorers.py`      | Scorer implementations        | FR-103, 104, 105, 106    |
+| `benchmark_gen.py`| Benchmark suite generation    | FR-115                   |
+| `metrics.py`      | Metric collection             | (internal)               |
+| `analysis.py`     | Result analysis utilities     | (internal)               |
+| `matrix.py`       | Evaluation matrix             | (internal)               |
+| `mapping.py`      | Mapping utilities             | (internal)               |
+| `multi_round.py`  | Multi-round evaluation        | (internal)               |
+| `reporters.py`    | Report formatting             | (internal)               |
+| `mock_executor.py` | Deterministic mock executor   | v2.2.0 (C06 POC); golden harness pending Wave 2 |
+| `self_eval.py`    | Self-evaluation runner        | FR-601, 602; v2.2.0 wraps each evaluator in `evaluator_budget` |
+| `core/budget.py`  | `TimeBudget`, `evaluator_budget` | v2.2.0 (C04)         |
+| `core/retry.py`   | `RetryPolicy`, `with_retry`   | v2.2.0 (C05)             |
+| `core/cost_budget.py` | `CostBudget`, `CostExceeded` | v2.2.0 (C05)         |

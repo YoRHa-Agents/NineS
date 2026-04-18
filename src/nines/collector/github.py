@@ -4,6 +4,11 @@ Implements the ``SourceCollector`` protocol for GitHub repositories.
 Uses ``httpx.Client`` for HTTP so callers can inject a mock transport
 for testing.
 
+Transient HTTP failures (transport errors, 429 rate-limit responses,
+5xx server errors) are handled by the shared :func:`with_retry`
+helper from ``nines.core.retry``; the previous hand-rolled retry loop
+has been retired (C05 polish).
+
 Covers: FR-201, FR-202, FR-206.
 """
 
@@ -18,11 +23,22 @@ import httpx
 
 from nines.collector.models import Repository
 from nines.core.errors import CollectorError
+from nines.core.retry import RetryPolicy, TransientHTTPStatus, with_retry
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_BASE_URL = "https://api.github.com"
 _RATE_LIMIT_SLEEP = 1.0
+
+# Retry-eligible exceptions: httpx transport errors + the shared marker.
+_RETRYABLE_EXCEPTIONS: tuple[type[BaseException], ...] = (
+    TransientHTTPStatus,
+    httpx.TimeoutException,
+    httpx.ConnectError,
+    httpx.ReadError,
+    httpx.NetworkError,
+    httpx.RemoteProtocolError,
+)
 
 
 @dataclass(frozen=True)
@@ -41,14 +57,6 @@ class GitHubCollector:
 
     All HTTP requests are routed through the injected ``httpx.Client``,
     making the collector fully mock-friendly for tests.
-
-    Parameters
-    ----------
-    config:
-        Collector configuration (token, base URL, etc.).
-    client:
-        Optional ``httpx.Client`` instance.  When *None* a default
-        client is created with the configured timeout and auth headers.
     """
 
     def __init__(
@@ -83,46 +91,40 @@ class GitHubCollector:
         self._last_request_time = time.monotonic()
 
     def _request(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
-        """Request."""
+        """Issue an HTTP request, retrying transient failures via ``with_retry``."""
         self._rate_limit_wait()
-        last_exc: Exception | None = None
-        for attempt in range(1, self._config.max_retries + 1):
-            try:
-                resp = self._client.request(method, url, **kwargs)
-                if resp.status_code == 429:
-                    retry_after = float(resp.headers.get("retry-after", 2 ** attempt))
-                    logger.warning("Rate limited (429), sleeping %.1fs", retry_after)
-                    time.sleep(retry_after)
-                    continue
-                if resp.status_code >= 500:
-                    logger.warning(
-                        "Server error %d on attempt %d/%d",
-                        resp.status_code,
-                        attempt,
-                        self._config.max_retries,
-                    )
-                    time.sleep(2 ** attempt)
-                    continue
-                resp.raise_for_status()
-                return resp
-            except httpx.HTTPStatusError as exc:
-                last_exc = exc
+
+        def _attempt() -> httpx.Response:
+            resp = self._client.request(method, url, **kwargs)
+            if resp.status_code == 429 or resp.status_code >= 500:
+                logger.warning(
+                    "GitHub transient %d for %s (will retry)",
+                    resp.status_code,
+                    url,
+                )
+                raise TransientHTTPStatus(resp.status_code)
+            if resp.status_code >= 400:
                 raise CollectorError(
-                    f"GitHub API error: {exc.response.status_code}",
-                    details={"url": url, "status": exc.response.status_code},
-                    cause=exc,
-                ) from exc
-            except httpx.HTTPError as exc:
-                last_exc = exc
-                if attempt == self._config.max_retries:
-                    break
-                logger.warning("HTTP error on attempt %d: %s", attempt, exc)
-                time.sleep(2 ** attempt)
-        raise CollectorError(
-            f"GitHub request failed after {self._config.max_retries} attempts",
-            details={"url": url},
-            cause=last_exc,
+                    f"GitHub API error: {resp.status_code}",
+                    details={"url": url, "status": resp.status_code},
+                )
+            return resp
+
+        policy = RetryPolicy(
+            attempts=self._config.max_retries,
+            retry_on=_RETRYABLE_EXCEPTIONS,
         )
+        try:
+            return with_retry(_attempt, policy)
+        except (TransientHTTPStatus, httpx.RequestError) as exc:
+            details: dict[str, Any] = {"url": url}
+            if isinstance(exc, TransientHTTPStatus):
+                details["status"] = exc.status_code
+            raise CollectorError(
+                f"GitHub request failed after {self._config.max_retries} attempts",
+                details=details,
+                cause=exc,
+            ) from exc
 
     # ------------------------------------------------------------------
     # Public API
@@ -156,9 +158,7 @@ class GitHubCollector:
         resp = self._request("GET", f"/repos/{owner}/{name}")
         return self._parse_repo(resp.json())
 
-    def get_commits(
-        self, owner: str, name: str, since: str | None = None
-    ) -> list[dict[str, Any]]:
+    def get_commits(self, owner: str, name: str, since: str | None = None) -> list[dict[str, Any]]:
         """Fetch recent commits for a repository.
 
         Parameters
@@ -174,9 +174,7 @@ class GitHubCollector:
 
     def get_releases(self, owner: str, name: str) -> list[dict[str, Any]]:
         """Fetch releases for a repository."""
-        resp = self._request(
-            "GET", f"/repos/{owner}/{name}/releases", params={"per_page": 10}
-        )
+        resp = self._request("GET", f"/repos/{owner}/{name}/releases", params={"per_page": 10})
         return resp.json()
 
     # ------------------------------------------------------------------

@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
-
 from nines.analyzer.scanner import (
     FileInfo,
     ProjectScanner,
@@ -16,8 +12,11 @@ from nines.analyzer.scanner import (
 class TestFileInfo:
     def test_round_trip(self):
         fi = FileInfo(
-            path="/tmp/a.py", language="python",
-            category="code", line_count=50, size_bytes=1200,
+            path="/tmp/a.py",
+            language="python",
+            category="code",
+            line_count=50,
+            size_bytes=1200,
         )
         d = fi.to_dict()
         restored = FileInfo.from_dict(d)
@@ -136,8 +135,7 @@ class TestProjectScanner:
 
     def test_project_info_extraction(self, tmp_path):
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "cool-project"\n'
-            'description = "A cool project"\n'
+            '[project]\nname = "cool-project"\ndescription = "A cool project"\n'
         )
         scanner = ProjectScanner()
         result = scanner.scan(tmp_path)
@@ -173,8 +171,7 @@ class TestProjectScanner:
 
     def test_package_json_detection(self, tmp_path):
         (tmp_path / "package.json").write_text(
-            '{"name": "my-app", "description": "Web app", '
-            '"dependencies": {"react": "^18.0.0"}}'
+            '{"name": "my-app", "description": "Web app", "dependencies": {"react": "^18.0.0"}}'
         )
         scanner = ProjectScanner()
         result = scanner.scan(tmp_path)

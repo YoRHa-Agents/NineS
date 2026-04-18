@@ -52,9 +52,7 @@ class AxisAnalyzer:
         """Initialize axis analyzer."""
         self._pass_threshold = pass_threshold
 
-    def group_by_dimension(
-        self, results: list[EvalResult]
-    ) -> dict[str, list[EvalResult]]:
+    def group_by_dimension(self, results: list[EvalResult]) -> dict[str, list[EvalResult]]:
         """Group results by dimension using task_id prefix as a heuristic.
 
         Prefer :meth:`group_by` with an explicit ``dimension_map`` for

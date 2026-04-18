@@ -9,7 +9,9 @@ from typing import TYPE_CHECKING
 
 import click
 
+from nines.core import config as nines_config
 from nines.core.models import ExecutionResult
+from nines.core.retry import RetryPolicy
 from nines.eval.reporters import JSONReporter, MarkdownReporter
 from nines.eval.runner import EvalRunner
 from nines.eval.scorers import ScorerRegistry
@@ -67,7 +69,21 @@ def eval_cmd(
     verbose = ctx.obj.get("verbose", False)
     output_format = ctx.obj.get("format", "text")
 
-    runner = EvalRunner()
+    # C05: thread NinesConfig.eval_max_retries into the runner so the
+    # previously-dead config knob actually controls behaviour.
+    try:
+        cfg = nines_config.load()
+        max_retries = int(cfg.eval_max_retries)
+    except Exception as exc:
+        # Fail-loud: log + fall back to a safe default rather than
+        # silently disabling retries.
+        logger.warning(
+            "Could not load NinesConfig (%s); falling back to default retry attempts=3",
+            exc,
+        )
+        max_retries = 3
+    retry_policy = RetryPolicy(attempts=max(1, max_retries))
+    runner = EvalRunner(retry_policy=retry_policy)
 
     tasks = runner.load_tasks(tasks_path)
     if not tasks:

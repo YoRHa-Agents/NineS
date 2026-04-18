@@ -6,11 +6,14 @@ import logging
 import shutil
 import subprocess
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 import httpx
 from packaging.version import InvalidVersion, Version
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from nines import __version__
 
@@ -111,9 +114,7 @@ def _refresh_skills(target: str, project_dir: Path) -> list[str]:
 )
 @click.option(
     "--target",
-    type=click.Choice(
-        ["cursor", "claude", "codex", "copilot", "all"], case_sensitive=False
-    ),
+    type=click.Choice(["cursor", "claude", "codex", "copilot", "all"], case_sensitive=False),
     default="all",
     help="Which skill targets to refresh (default: all).",
 )

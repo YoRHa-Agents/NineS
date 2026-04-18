@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
 import json
 import textwrap
-from pathlib import Path
 
 from click.testing import CliRunner
 
@@ -71,9 +75,7 @@ class TestInstallCommand:
 
     def test_install_without_global_uses_cwd(self, tmp_path: Path) -> None:
         runner = CliRunner()
-        result = runner.invoke(
-            cli, ["install", "--target", "cursor"], catch_exceptions=False
-        )
+        result = runner.invoke(cli, ["install", "--target", "cursor"], catch_exceptions=False)
         assert result.exit_code == 0
         assert "global" not in result.output
 

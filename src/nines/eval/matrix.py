@@ -103,9 +103,7 @@ class MatrixEvaluator:
         for cell in cells:
             exclusion_reason = self._is_excluded(cell)
             if exclusion_reason:
-                results.append(MatrixResult(
-                    cell=cell, skipped=True, skip_reason=exclusion_reason
-                ))
+                results.append(MatrixResult(cell=cell, skipped=True, skip_reason=exclusion_reason))
                 continue
 
             try:
@@ -113,14 +111,16 @@ class MatrixEvaluator:
                 results.append(MatrixResult(cell=cell, eval_result=eval_result))
             except Exception as exc:
                 logger.error("Evaluation failed for cell %s: %s", cell.key, exc)
-                results.append(MatrixResult(
-                    cell=cell,
-                    eval_result=EvalResult(
-                        task_id=cell.key,
-                        success=False,
-                        error=str(exc),
-                    ),
-                ))
+                results.append(
+                    MatrixResult(
+                        cell=cell,
+                        eval_result=EvalResult(
+                            task_id=cell.key,
+                            success=False,
+                            error=str(exc),
+                        ),
+                    )
+                )
 
         return results
 

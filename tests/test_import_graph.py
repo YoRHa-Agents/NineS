@@ -15,8 +15,12 @@ Covers:
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+from typing import Any
 
 import pytest
 
@@ -26,13 +30,10 @@ from nines.analyzer.import_graph import (
     ImportGraphBuilder,
 )
 
-if TYPE_CHECKING:
-    pass
-
-
 # ------------------------------------------------------------------ #
 # Fixtures                                                            #
 # ------------------------------------------------------------------ #
+
 
 @pytest.fixture
 def builder() -> ImportGraphBuilder:
@@ -51,6 +52,7 @@ class _FakeFileInfo:
 # ------------------------------------------------------------------ #
 # ImportEdge serialization                                            #
 # ------------------------------------------------------------------ #
+
 
 class TestImportEdge:
     """ImportEdge to_dict / from_dict round-trip."""
@@ -81,6 +83,7 @@ class TestImportEdge:
 # ------------------------------------------------------------------ #
 # ImportGraph serialization & query methods                           #
 # ------------------------------------------------------------------ #
+
 
 class TestImportGraph:
     """ImportGraph serialization and query helpers."""
@@ -133,6 +136,7 @@ class TestImportGraph:
 # Python import extraction                                            #
 # ------------------------------------------------------------------ #
 
+
 class TestPythonImports:
     """AST-based Python import extraction."""
 
@@ -161,7 +165,9 @@ class TestPythonImports:
         assert results[1][1] is True
 
     def test_syntax_error_returns_empty(
-        self, tmp_path: Path, builder: ImportGraphBuilder,
+        self,
+        tmp_path: Path,
+        builder: ImportGraphBuilder,
     ) -> None:
         py = tmp_path / "bad.py"
         py.write_text("def broken(\n")
@@ -172,6 +178,7 @@ class TestPythonImports:
 # ------------------------------------------------------------------ #
 # JS / TS import extraction                                           #
 # ------------------------------------------------------------------ #
+
 
 class TestJsTsImports:
     """Regex-based JS/TS import extraction."""
@@ -200,7 +207,9 @@ class TestJsTsImports:
         assert results[0][1] is True
 
     def test_absolute_import_not_relative(
-        self, tmp_path: Path, builder: ImportGraphBuilder,
+        self,
+        tmp_path: Path,
+        builder: ImportGraphBuilder,
     ) -> None:
         ts = tmp_path / "app.ts"
         ts.write_text("import React from 'react';\n")
@@ -212,6 +221,7 @@ class TestJsTsImports:
 # ------------------------------------------------------------------ #
 # Go import extraction                                                #
 # ------------------------------------------------------------------ #
+
 
 class TestGoImports:
     """Regex-based Go import extraction."""
@@ -235,6 +245,7 @@ class TestGoImports:
 # ------------------------------------------------------------------ #
 # Rust import extraction                                              #
 # ------------------------------------------------------------------ #
+
 
 class TestRustImports:
     """Regex-based Rust import extraction."""
@@ -265,6 +276,7 @@ class TestRustImports:
 # ------------------------------------------------------------------ #
 # File index construction                                             #
 # ------------------------------------------------------------------ #
+
 
 class TestBuildFileIndex:
     """File index maps importable names to relative paths."""
@@ -318,6 +330,7 @@ class TestBuildFileIndex:
 # End-to-end build                                                    #
 # ------------------------------------------------------------------ #
 
+
 class TestBuildEndToEnd:
     """End-to-end graph build on a synthetic Python project."""
 
@@ -341,7 +354,9 @@ class TestBuildEndToEnd:
         assert edge.import_name == "mypkg.helpers"
 
     def test_unresolved_external(
-        self, tmp_path: Path, builder: ImportGraphBuilder,
+        self,
+        tmp_path: Path,
+        builder: ImportGraphBuilder,
     ) -> None:
         (tmp_path / "app.py").write_text("import requests\n")
         files = [_FakeFileInfo(str(tmp_path / "app.py"), "python")]
@@ -371,7 +386,9 @@ class TestBuildEndToEnd:
         assert graph.edges[0].target_file == "src/utils.ts"
 
     def test_unsupported_language_skipped(
-        self, tmp_path: Path, builder: ImportGraphBuilder,
+        self,
+        tmp_path: Path,
+        builder: ImportGraphBuilder,
     ) -> None:
         (tmp_path / "data.csv").write_text("a,b,c\n")
         files = [_FakeFileInfo(str(tmp_path / "data.csv"), "csv")]

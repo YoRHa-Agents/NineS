@@ -6,13 +6,18 @@ Covers the full evaluation lifecycle without external dependencies.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
 import json
-from pathlib import Path
 
 import pytest
 
-from nines.core.models import ExecutionResult, Score
-from nines.eval.models import EvalResult, ScoringCriterion, TaskDefinition
+from nines.core.models import ExecutionResult
+from nines.eval.metrics import MetricCollector
+from nines.eval.models import ScoringCriterion, TaskDefinition
 from nines.eval.reporters import JSONReporter, MarkdownReporter
 from nines.eval.runner import EvalRunner
 from nines.eval.scorers import (
@@ -21,9 +26,7 @@ from nines.eval.scorers import (
     FuzzyScorer,
     RubricItem,
     RubricScorer,
-    ScorerRegistry,
 )
-from nines.eval.metrics import MetricCollector
 
 
 def _echo_executor(task: TaskDefinition) -> ExecutionResult:
@@ -37,7 +40,7 @@ def _echo_executor(task: TaskDefinition) -> ExecutionResult:
 
 
 def _partial_executor(task: TaskDefinition) -> ExecutionResult:
-    output = str(task.expected)[:len(str(task.expected)) // 2] if task.expected else ""
+    output = str(task.expected)[: len(str(task.expected)) // 2] if task.expected else ""
     return ExecutionResult(
         task_id=task.id,
         output=output,
@@ -152,8 +155,7 @@ class TestEvalWithReporting:
 
     def test_markdown_report_generation(self, tmp_path: Path) -> None:
         tasks = [
-            TaskDefinition(id=f"md-{i}", name=f"md-task-{i}", expected=f"out-{i}")
-            for i in range(3)
+            TaskDefinition(id=f"md-{i}", name=f"md-task-{i}", expected=f"out-{i}") for i in range(3)
         ]
         for i, t in enumerate(tasks):
             (tmp_path / f"task_{i}.toml").write_text(t.to_toml(), encoding="utf-8")
@@ -170,10 +172,14 @@ class TestEvalWithReporting:
 
     def test_mixed_success_failure_report(self, tmp_path: Path) -> None:
         task_pass = TaskDefinition(
-            id="pass-1", name="passing-task", expected="hello",
+            id="pass-1",
+            name="passing-task",
+            expected="hello",
         )
         task_fail = TaskDefinition(
-            id="fail-1", name="failing-task", expected="world",
+            id="fail-1",
+            name="failing-task",
+            expected="world",
         )
         (tmp_path / "pass.toml").write_text(task_pass.to_toml(), encoding="utf-8")
         (tmp_path / "fail.toml").write_text(task_fail.to_toml(), encoding="utf-8")
@@ -206,7 +212,9 @@ class TestEvalWithMetrics:
 
         for i in range(3):
             task = TaskDefinition(
-                id=f"metrics-{i}", name=f"m-task-{i}", expected=f"out-{i}",
+                id=f"metrics-{i}",
+                name=f"m-task-{i}",
+                expected=f"out-{i}",
             )
             (tmp_path / f"task_{i}.toml").write_text(task.to_toml(), encoding="utf-8")
 
@@ -224,12 +232,12 @@ class TestEvalWithCompositeScorer:
 
     def test_composite_weighted_scoring(self) -> None:
         task = TaskDefinition(
-            id="comp-1", name="composite-test", expected="hello world",
+            id="comp-1",
+            name="composite-test",
+            expected="hello world",
         )
         runner = EvalRunner()
-        composite = CompositeScorer(
-            scorers=[(ExactScorer(), 0.6), (FuzzyScorer(), 0.4)]
-        )
+        composite = CompositeScorer(scorers=[(ExactScorer(), 0.6), (FuzzyScorer(), 0.4)])
         results = runner.run([task], _echo_executor, [composite])
 
         assert results[0].success is True
@@ -239,20 +247,28 @@ class TestEvalWithCompositeScorer:
 
     def test_rubric_scorer_integration(self) -> None:
         task = TaskDefinition(
-            id="rubric-1", name="rubric-test", expected=None,
+            id="rubric-1",
+            name="rubric-test",
+            expected=None,
         )
 
         def rubric_executor(t: TaskDefinition) -> ExecutionResult:
             return ExecutionResult(
-                task_id=t.id, output="hello world from nines",
-                metrics={"token_count": 5}, success=True,
+                task_id=t.id,
+                output="hello world from nines",
+                metrics={"token_count": 5},
+                success=True,
             )
 
-        rubric = RubricScorer(criteria=[
-            RubricItem(name="has_hello", weight=2.0, check_fn="contains", check_value="hello"),
-            RubricItem(name="has_nines", weight=1.0, check_fn="contains", check_value="nines"),
-            RubricItem(name="has_missing", weight=1.0, check_fn="contains", check_value="missing"),
-        ])
+        rubric = RubricScorer(
+            criteria=[
+                RubricItem(name="has_hello", weight=2.0, check_fn="contains", check_value="hello"),
+                RubricItem(name="has_nines", weight=1.0, check_fn="contains", check_value="nines"),
+                RubricItem(
+                    name="has_missing", weight=1.0, check_fn="contains", check_value="missing"
+                ),
+            ]
+        )
 
         runner = EvalRunner()
         results = runner.run([task], rubric_executor, [rubric])

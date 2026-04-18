@@ -277,9 +277,7 @@ class DataStore:
                 cause=exc,
             ) from exc
 
-    def get_snapshots(
-        self, source: str | None = None, limit: int = 20
-    ) -> list[CollectionSnapshot]:
+    def get_snapshots(self, source: str | None = None, limit: int = 20) -> list[CollectionSnapshot]:
         """Retrieve snapshots, most recent first."""
         if source:
             rows = self._connection.execute(
@@ -323,6 +321,7 @@ class DataStore:
     @staticmethod
     def _row_to_paper(row: sqlite3.Row) -> Paper:
         """Row to paper."""
+
         def _json_list(raw: Any, field_name: str = "") -> list[str]:
             """Json list."""
             if not raw:
@@ -332,7 +331,9 @@ class DataStore:
             except (json.JSONDecodeError, TypeError):
                 logger.warning(
                     "Malformed JSON in paper id=%s field=%s: %r",
-                    row["id"], field_name, raw,
+                    row["id"],
+                    field_name,
+                    raw,
                 )
                 return []
 
@@ -356,7 +357,8 @@ class DataStore:
         except (json.JSONDecodeError, TypeError):
             logger.warning(
                 "Malformed items JSON for snapshot id=%s: %r",
-                row["snapshot_id"], items_raw,
+                row["snapshot_id"],
+                items_raw,
             )
             items = []
         return CollectionSnapshot(

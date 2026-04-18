@@ -64,6 +64,7 @@ class ClaudeAdapter(_BaseClaudeAdapter):
 
         logger.info(
             "Generated Claude commands directory at %s (%d files)",
-            install_dir, len(written),
+            install_dir,
+            len(written),
         )
         return written

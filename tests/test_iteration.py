@@ -24,7 +24,6 @@ from nines.iteration.planner import ImprovementPlan, ImprovementPlanner
 from nines.iteration.self_eval import DimensionScore, SelfEvalReport
 from nines.iteration.tracker import IterationTracker, ProgressReport
 
-
 # ---------------------------------------------------------------------------
 # test_gap_detection
 # ---------------------------------------------------------------------------
@@ -245,9 +244,7 @@ def test_convergence_window_smaller_than_history() -> None:
 
 def test_convergence_result_to_dict() -> None:
     """ConvergenceResult.to_dict serializes correctly."""
-    result = ConvergenceResult(
-        converged=True, variance=0.001, rounds_checked=5, mean=0.8
-    )
+    result = ConvergenceResult(converged=True, variance=0.001, rounds_checked=5, mean=0.8)
     d = result.to_dict()
     assert d["converged"] is True
     assert d["variance"] == 0.001

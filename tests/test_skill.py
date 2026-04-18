@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 import tomllib
 
@@ -160,7 +163,7 @@ class TestInstallerCreatesFiles:
 
     def test_installer_all_target(self, tmp_path: Path) -> None:
         installer = SkillInstaller()
-        created = installer.install("all", project_dir=tmp_path)
+        installer.install("all", project_dir=tmp_path)
 
         cursor_skill = tmp_path / ".cursor" / "skills" / "nines" / "SKILL.md"
         claude_eval = tmp_path / ".claude" / "commands" / "nines" / "eval.md"

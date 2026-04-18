@@ -15,7 +15,6 @@ from nines.core.protocols import (
     TaskLoader,
 )
 
-
 # ---------------------------------------------------------------------------
 # Conforming stub implementations
 # ---------------------------------------------------------------------------
@@ -146,9 +145,7 @@ class TestAllProtocolsHaveTypeHints:
             method = getattr(protocol_cls, name)
             if callable(method):
                 hints = getattr(method, "__annotations__", {})
-                assert hints, (
-                    f"{protocol_cls.__name__}.{name} has no type annotations"
-                )
+                assert hints, f"{protocol_cls.__name__}.{name} has no type annotations"
 
 
 # ---------------------------------------------------------------------------
@@ -213,8 +210,14 @@ class TestProtocolComposability:
     def test_runtime_checkable_all_protocols(self) -> None:
         protocols = [TaskLoader, Executor, Scorer, SourceCollector, Analyzer, Reporter]
         for proto in protocols:
-            assert hasattr(proto, "__protocol_attrs__") or hasattr(proto, "__abstractmethods__") or True
-            assert getattr(proto, "__runtime_checkable__", False) or hasattr(proto, "__protocol_attrs__")
+            assert (
+                hasattr(proto, "__protocol_attrs__")
+                or hasattr(proto, "__abstractmethods__")
+                or True
+            )
+            assert getattr(proto, "__runtime_checkable__", False) or hasattr(
+                proto, "__protocol_attrs__"
+            )
 
 
 class TestNonConformingEdgeCases:
@@ -224,6 +227,7 @@ class TestNonConformingEdgeCases:
         class WrongSigScorer:
             def score(self, x: int) -> int:
                 return x
+
         assert isinstance(WrongSigScorer(), Scorer)
 
     def test_extra_methods_still_conform(self) -> None:

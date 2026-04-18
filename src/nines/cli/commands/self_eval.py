@@ -36,6 +36,7 @@ from nines.iteration.self_eval import (
     LiveCodeCoverageEvaluator,
     LiveModuleCountEvaluator,
     LiveTestCountEvaluator,
+    SelfEvalReport,
     SelfEvalRunner,
 )
 from nines.iteration.system_evaluators import (
@@ -107,9 +108,7 @@ _DIMENSION_LABELS: dict[str, str] = {
     "agent_analysis_quality": "agent_analysis_quality (D20)",
 }
 
-_ALL_CAPABILITY_DIMS = {
-    name for names in _CAPABILITY_GROUPS.values() for name in names
-}
+_ALL_CAPABILITY_DIMS = {name for names in _CAPABILITY_GROUPS.values() for name in names}
 
 _HYGIENE_DIMS = [
     "code_coverage",
@@ -127,21 +126,19 @@ def _mean_normalized(scores: list[DimensionScore]) -> float:
 
 
 def _format_text_report(
-    report_data: dict,
+    report: SelfEvalReport,
     capability_scores: list[DimensionScore],
     hygiene_scores: list[DimensionScore],
 ) -> str:
     cap_mean = _mean_normalized(capability_scores)
     hyg_mean = _mean_normalized(hygiene_scores)
     overall = (
-        CAPABILITY_WEIGHT * cap_mean + HYGIENE_WEIGHT * hyg_mean
-        if hygiene_scores
-        else cap_mean
+        CAPABILITY_WEIGHT * cap_mean + HYGIENE_WEIGHT * hyg_mean if hygiene_scores else cap_mean
     )
 
     lines = [
-        f"Self-Evaluation Report (version={report_data['version'] or 'untagged'})",
-        f"  Timestamp: {report_data['timestamp']}",
+        f"Self-Evaluation Report (version={report.version or 'untagged'})",
+        f"  Timestamp: {report.timestamp}",
     ]
     if hygiene_scores:
         lines.append(
@@ -151,7 +148,9 @@ def _format_text_report(
         )
     else:
         lines.append(f"  Overall: {overall:.4f} (capability only)")
-    lines.append(f"  Duration: {report_data['duration']:.3f}s")
+    lines.append(f"  Duration: {report.duration:.3f}s")
+    if report.timeouts:
+        lines.append("  Timeouts (C04): " + ", ".join(report.timeouts))
 
     score_map = {s.name: s for s in capability_scores + hygiene_scores}
 
@@ -166,8 +165,7 @@ def _format_text_report(
                 continue
             label = _DIMENSION_LABELS.get(dim_name, dim_name)
             lines.append(
-                f"    {label}: {score.value:.3f} / {score.max_value:.3f} "
-                f"({score.normalized:.1%})"
+                f"    {label}: {score.value:.3f} / {score.max_value:.3f} ({score.normalized:.1%})"
             )
 
     if hygiene_scores:
@@ -187,33 +185,43 @@ def _format_text_report(
 
 
 def _build_json_output(
-    report_data: dict,
+    report: SelfEvalReport,
     capability_scores: list[DimensionScore],
     hygiene_scores: list[DimensionScore],
 ) -> str:
+    """Emit JSON for ``nines self-eval --format json``.
+
+    Forwards every field from :py:meth:`SelfEvalReport.to_dict` so any
+    new attribute on the report (``timeouts`` from C04, future
+    ``context_fingerprint`` from C01, ...) automatically propagates to
+    operators without a per-field CLI patch (release follow-up N1).
+
+    The CLI overlays its own weighted ``overall`` plus the capability/
+    hygiene split since the runner emits an unweighted mean.
+    """
     cap_mean = _mean_normalized(capability_scores)
     hyg_mean = _mean_normalized(hygiene_scores)
     overall = (
-        CAPABILITY_WEIGHT * cap_mean + HYGIENE_WEIGHT * hyg_mean
-        if hygiene_scores
-        else cap_mean
+        CAPABILITY_WEIGHT * cap_mean + HYGIENE_WEIGHT * hyg_mean if hygiene_scores else cap_mean
     )
 
-    payload = {
-        "version": report_data["version"],
-        "timestamp": report_data["timestamp"],
-        "duration": report_data["duration"],
-        "overall": overall,
-        "capability_mean": cap_mean,
-        "hygiene_mean": hyg_mean,
-        "weights": {
-            "capability": CAPABILITY_WEIGHT,
-            "hygiene": HYGIENE_WEIGHT,
-        },
-        "capability_scores": [s.to_dict() for s in capability_scores],
-        "hygiene_scores": [s.to_dict() for s in hygiene_scores],
-        "scores": [s.to_dict() for s in capability_scores + hygiene_scores],
+    # Forward every report field, then layer on CLI-specific computed
+    # values.  ``report.to_dict()`` includes ``timeouts`` (C04) and any
+    # future fields added to ``SelfEvalReport``.
+    payload = report.to_dict()
+    payload["overall"] = overall
+    payload["capability_mean"] = cap_mean
+    payload["hygiene_mean"] = hyg_mean
+    payload["weights"] = {
+        "capability": CAPABILITY_WEIGHT,
+        "hygiene": HYGIENE_WEIGHT,
     }
+    payload["capability_scores"] = [s.to_dict() for s in capability_scores]
+    payload["hygiene_scores"] = [s.to_dict() for s in hygiene_scores]
+    # Preserve the legacy flat ``scores`` list (existing callers may
+    # depend on it); the report-derived payload already provides
+    # ``scores`` but we re-set it to the cap+hyg ordering used above.
+    payload["scores"] = [s.to_dict() for s in capability_scores + hygiene_scores]
     return json.dumps(payload, indent=2, default=str)
 
 
@@ -266,6 +274,17 @@ def _build_json_output(
     default="data/golden_test_set",
     help="Golden test set directory for V1 scoring evaluators (D01/D03/D05).",
 )
+@click.option(
+    "--evaluator-timeout",
+    type=float,
+    default=60.0,
+    show_default=True,
+    help=(
+        "Per-evaluator wall-clock budget in seconds (C04).  Evaluators "
+        "that exceed this budget are recorded with status='timeout' "
+        "in the report and the run continues."
+    ),
+)
 @click.pass_context
 def self_eval_cmd(
     ctx: click.Context,
@@ -277,23 +296,36 @@ def self_eval_cmd(
     capability_only: bool,
     samples_dir: str,
     golden_dir: str,
+    evaluator_timeout: float,
 ) -> None:
     """Run self-evaluation across all capability dimensions."""
     verbose = ctx.obj.get("verbose", False)
     output_format = ctx.obj.get("format", "text")
 
-    runner = SelfEvalRunner()
+    from nines.core.budget import TimeBudget
+
+    # C04: bound every dimension to ``evaluator_timeout`` seconds so a
+    # runaway evaluator can't hang the whole report.
+    runner = SelfEvalRunner(
+        default_budget=TimeBudget(
+            soft_seconds=min(20.0, max(1.0, evaluator_timeout / 2)),
+            hard_seconds=max(1.0, float(evaluator_timeout)),
+        ),
+    )
 
     runner.register_dimension(
-        "scoring_accuracy", ScoringAccuracyEvaluator(golden_dir),
+        "scoring_accuracy",
+        ScoringAccuracyEvaluator(golden_dir),
     )
     runner.register_dimension("eval_coverage", EvalCoverageEvaluator(samples_dir))
     runner.register_dimension(
-        "scoring_reliability", ReliabilityEvaluator(golden_dir),
+        "scoring_reliability",
+        ReliabilityEvaluator(golden_dir),
     )
     runner.register_dimension("report_quality", ReportQualityEvaluator())
     runner.register_dimension(
-        "scorer_agreement", ScorerAgreementEvaluator(golden_dir),
+        "scorer_agreement",
+        ScorerAgreementEvaluator(golden_dir),
     )
 
     runner.register_dimension("source_coverage", SourceCoverageEvaluator())
@@ -301,21 +333,26 @@ def self_eval_cmd(
     runner.register_dimension("change_detection", ChangeDetectionEvaluator())
     runner.register_dimension("data_completeness", DataCompletenessEvaluator())
     runner.register_dimension(
-        "collection_throughput", CollectionThroughputEvaluator(),
+        "collection_throughput",
+        CollectionThroughputEvaluator(),
     )
 
     runner.register_dimension(
-        "decomposition_coverage", DecompositionCoverageEvaluator(src_dir),
+        "decomposition_coverage",
+        DecompositionCoverageEvaluator(src_dir),
     )
     runner.register_dimension(
-        "abstraction_quality", AbstractionQualityEvaluator(src_dir),
+        "abstraction_quality",
+        AbstractionQualityEvaluator(src_dir),
     )
     runner.register_dimension(
-        "code_review_accuracy", CodeReviewAccuracyEvaluator(src_dir),
+        "code_review_accuracy",
+        CodeReviewAccuracyEvaluator(src_dir),
     )
     runner.register_dimension("index_recall", IndexRecallEvaluator(src_dir))
     runner.register_dimension(
-        "structure_recognition", StructureRecognitionEvaluator(src_dir),
+        "structure_recognition",
+        StructureRecognitionEvaluator(src_dir),
     )
     runner.register_dimension("pipeline_latency", PipelineLatencyEvaluator())
     runner.register_dimension("sandbox_isolation", SandboxIsolationEvaluator())
@@ -325,15 +362,18 @@ def self_eval_cmd(
 
     if not capability_only:
         runner.register_dimension(
-            "code_coverage", LiveCodeCoverageEvaluator(project_root),
+            "code_coverage",
+            LiveCodeCoverageEvaluator(project_root),
         )
         runner.register_dimension("test_count", LiveTestCountEvaluator(test_dir))
         runner.register_dimension("module_count", LiveModuleCountEvaluator(src_dir))
         runner.register_dimension(
-            "docstring_coverage", DocstringCoverageEvaluator(src_dir),
+            "docstring_coverage",
+            DocstringCoverageEvaluator(src_dir),
         )
         runner.register_dimension(
-            "lint_cleanliness", LintCleanlinessEvaluator(src_dir),
+            "lint_cleanliness",
+            LintCleanlinessEvaluator(src_dir),
         )
 
     if verbose:
@@ -344,17 +384,16 @@ def self_eval_cmd(
     capability_scores = [s for s in report.scores if s.name in _ALL_CAPABILITY_DIMS]
     hygiene_scores = [s for s in report.scores if s.name in set(_HYGIENE_DIMS)]
 
-    report_data = {
-        "version": report.version,
-        "timestamp": report.timestamp,
-        "duration": report.duration,
-    }
-
+    # Pass the SelfEvalReport object directly so renderers see every
+    # field on it (notably ``timeouts`` from C04, plus any future
+    # additions).  Release follow-up N1.
     if output_format == "json":
-        output_text = _build_json_output(report_data, capability_scores, hygiene_scores)
+        output_text = _build_json_output(report, capability_scores, hygiene_scores)
     else:
         output_text = _format_text_report(
-            report_data, capability_scores, hygiene_scores,
+            report,
+            capability_scores,
+            hygiene_scores,
         )
 
     if output_dir:

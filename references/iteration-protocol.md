@@ -1,22 +1,27 @@
 ---
 id: "nines/references/iteration-protocol"
-version: "1.0.0"
+version: "1.1.0"
 purpose: >
   Documents the self-improvement iteration cycle: baseline management,
   self-evaluation, gap detection, improvement planning, convergence
-  checking, and iteration tracking. Load this reference when working on
-  the iterate command, gap detection, or convergence logic.
+  checking, and iteration tracking. v1.1.0 adds the v2.2.0 paradigm
+  extension patterns (audits, budgets, identity, derived metrics).
+  Load this reference when working on the iterate command, gap
+  detection, or convergence logic, or when applying any v2.2.0
+  paradigm to the iteration loop.
 triggers:
   - "iterate"
   - "self-improve"
   - "gap"
   - "cycle"
+  - "paradigm"
 tier: 2
-token_estimate: 1800
+token_estimate: 2000
 dependencies:
   - "nines/SKILL.md"
   - "nines/references/evaluation-framework"
-last_updated: "2026-04-14"
+  - "nines/references/resilience-budgets"
+last_updated: "2026-04-18"
 ---
 
 # Iteration Protocol Reference
@@ -298,3 +303,67 @@ A complete iteration cycle follows these steps:
 | `eval_evaluators.py`  | Eval dimension evaluators     | (internal)   |
 | `system_evaluators.py`| System dimension evaluators   | (internal)   |
 | `v1_evaluators.py`    | V1 dimension evaluators       | (internal)   |
+
+## 9. v2.2.0 Paradigm Extension Patterns
+
+The v2.2.0 paradigm-extension work introduced four cross-cutting
+patterns that the iteration loop should adopt as new evaluators,
+analyzers, or improvement-plan stages are added. Each is documented
+in a dedicated reference file; the table below summarises how each
+pattern slots into the iteration cycle and points to the empirical
+evidence file that motivated it.
+
+| Pattern                              | Reference                              | Iteration-cycle integration                                                                                                                       | Empirical evidence                                                |
+|--------------------------------------|----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
+| **Cross-artifact consistency audit** | `references/cross-artifact-audit.md`   | Run `ConsistencyAuditor` (planned C10) over each iteration's artifacts before promoting a baseline; gate on critical issues via `QualityGateMachine` (planned C07). | `.local/v2.2.0/profile/00_baseline_report.md` §4.1, §4.2, §4.5    |
+| **Resilience budgets**               | `references/resilience-budgets.md`     | Wrap each `DimensionEvaluator.evaluate()` in `evaluator_budget(name, TimeBudget)` (shipped C04); use `with_retry` for transient-failure-prone evaluators (shipped C05). | `.local/v2.2.0/profile/00_baseline_report.md` §4.7 + `_timings.txt` |
+| **Project identity**                 | `references/project-identity.md`       | All findings carry `project_fingerprint` (shipped C02); `EvaluationContext` (planned C01) makes per-project context explicit so foreign-repo iterations stop reading NineS's own values. | `.local/v2.2.0/profile/00_baseline_report.md` §4.5, §4.8           |
+| **Derived metrics**                  | `references/derived-metrics.md`        | Score-like outputs (e.g. `economics_score`, planned `weighted_overall`) are computed from real inputs with `formula_version` migration; weighted by `MetricRegistry` (planned C08). | `.local/v2.2.0/profile/00_baseline_report.md` §4.6, §4.10          |
+
+### How the patterns combine in a v2.2.x iteration round
+
+1. **Bind context.** Build an `EvaluationContext(project_root, src_dir,
+   …)` from CLI options; pass to `runner.run_all(ctx)` (post-C01). The
+   context's `.fingerprint()` reuses `nines.core.identity.project_fingerprint`
+   (shipped C02) so every analyzer and evaluator emits namespaced
+   finding-IDs and dimension-metadata against the right project.
+2. **Run within budgets.** Each evaluator is wrapped in
+   `evaluator_budget(name, TimeBudget(soft, hard))` (shipped C04).
+   Transient-failure paths use `with_retry(fn, RetryPolicy(attempts=
+   cfg.eval_max_retries))` (shipped C05). Cost-bounded paths use
+   `CostBudget(token_limit=…)` (shipped C05) with `CostExceeded`
+   producing partial-results reports rather than crashes.
+3. **Compute derived scores.** Per-evaluator scores feed into a
+   `MetricRegistry` (planned C08) for per-group weighted aggregation.
+   Score-like outputs (e.g. `economics_score`, shipped C09) are
+   computed from real inputs with explicit `formula_version`
+   migration.
+4. **Audit and gate.** Before promoting a new baseline, run
+   `ConsistencyAuditor.run_all(report_dir)` (planned C10) and
+   `QualityGateMachine` (planned C07). If any `severity == "critical"`
+   issue is detected, the gate refuses promotion (`GateState =
+   REJECTED`) and the report is preserved for forensic inspection.
+
+### Wave plan for these patterns
+
+The patterns ship in waves keyed off the
+`.local/v2.2.0/validate/03_consolidated_findings.md` §6 plan:
+
+- **Wave 1 (v2.2.0):** identity (C02), derived economics (C09), resilience
+  primitives (C04 runner-level + C05).
+- **Wave 2 (v2.2.x or v2.3.0-rc1):** identity full migration (C01),
+  consistency auditor (C10), gate FSM (C07), full mock harness for
+  golden tests (C06 follow-up).
+- **Wave 3 (v2.3.0):** weighted metric registry (C08), mechanism
+  diversification rule-based (C11a).
+- **Wave 4 (v2.4.0+):** breakdown reporter (C12), opt-in LLM-judge
+  (C11b).
+
+### Cross-references
+
+- For accept-list decisions on each candidate: `.local/accept_list_v2.2.0.md`.
+- For empirical proofs from the S04 POC stage:
+  `.local/v2.2.0/benchmark/c0*_*.txt`.
+- For per-track design rationale: `.local/v2.2.0/design/0[1-4]_track_*.md`.
+- For per-candidate validation verdicts:
+  `.local/v2.2.0/validate/0[1-3]_*.md`.

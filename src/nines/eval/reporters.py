@@ -53,6 +53,7 @@ REPORT_JSON_SCHEMA = {
 @dataclass
 class ReportSummary:
     """Report summary."""
+
     total: int = 0
     passed: int = 0
     failed: int = 0
@@ -96,9 +97,7 @@ class MarkdownReporter:
 
         lines.append(f"# {self._title}")
         lines.append("")
-        lines.append(
-            f"*Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}*"
-        )
+        lines.append(f"*Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}*")
         lines.append("")
 
         lines.append("## Summary")

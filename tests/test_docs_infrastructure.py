@@ -159,6 +159,4 @@ def test_zh_docs_no_zh_md_links(repo_root: Path) -> None:
         if matches:
             rel = zh_file.relative_to(repo_root)
             violations.extend(f"{rel}: {m}" for m in matches)
-    assert not violations, (
-        f"Found .zh.md internal links (should use .md):\n" + "\n".join(violations)
-    )
+    assert not violations, "Found .zh.md internal links (should use .md):\n" + "\n".join(violations)

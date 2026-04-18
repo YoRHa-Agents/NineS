@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
 import json
 import textwrap
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
@@ -359,8 +363,10 @@ class TestBenchmarkOutputDir:
                 cli,
                 [
                     "benchmark",
-                    "--target-path", str(project),
-                    "--output-dir", str(out_dir),
+                    "--target-path",
+                    str(project),
+                    "--output-dir",
+                    str(out_dir),
                 ],
                 obj={"verbose": False, "format": "text"},
             )
@@ -392,8 +398,10 @@ class TestBenchmarkOptions:
                 cli,
                 [
                     "benchmark",
-                    "--target-path", str(project),
-                    "--rounds", "5",
+                    "--target-path",
+                    str(project),
+                    "--rounds",
+                    "5",
                 ],
                 obj={"verbose": False, "format": "text"},
             )
@@ -414,8 +422,10 @@ class TestBenchmarkOptions:
                 cli,
                 [
                     "benchmark",
-                    "--target-path", str(project),
-                    "--suite-id", "my-suite",
+                    "--target-path",
+                    str(project),
+                    "--suite-id",
+                    "my-suite",
                 ],
                 obj={"verbose": False, "format": "text"},
             )
@@ -539,11 +549,14 @@ class TestBenchmarkTasksPath:
         report = _make_report(suite)
         mapping = _make_mapping(key_points, suite)
 
-        with patch(
-            "nines.cli.commands.benchmark.MultiRoundRunner",
-        ) as mock_runner, patch(
-            "nines.cli.commands.benchmark.MappingTableGenerator",
-        ) as mock_mapping:
+        with (
+            patch(
+                "nines.cli.commands.benchmark.MultiRoundRunner",
+            ) as mock_runner,
+            patch(
+                "nines.cli.commands.benchmark.MappingTableGenerator",
+            ) as mock_mapping,
+        ):
             mock_runner.return_value.run.return_value = report
             mock_mapping.return_value.generate.return_value = mapping
 
@@ -552,8 +565,10 @@ class TestBenchmarkTasksPath:
                 cli,
                 [
                     "benchmark",
-                    "--target-path", str(project),
-                    "--tasks-path", str(tasks_dir),
+                    "--target-path",
+                    str(project),
+                    "--tasks-path",
+                    str(tasks_dir),
                 ],
                 obj={"verbose": False, "format": "text"},
             )
@@ -592,19 +607,26 @@ class TestBenchmarkTasksPath:
         report = _make_report(suite)
         mapping = _make_mapping(key_points, suite)
 
-        with patch(
-            "nines.cli.commands.benchmark.AnalysisPipeline",
-        ) as mock_pipeline, patch(
-            "nines.cli.commands.benchmark.AgentImpactAnalyzer",
-        ) as mock_impact, patch(
-            "nines.cli.commands.benchmark.KeyPointExtractor",
-        ) as mock_extractor, patch(
-            "nines.cli.commands.benchmark.BenchmarkGenerator",
-        ) as mock_gen, patch(
-            "nines.cli.commands.benchmark.MultiRoundRunner",
-        ) as mock_runner, patch(
-            "nines.cli.commands.benchmark.MappingTableGenerator",
-        ) as mock_mapping:
+        with (
+            patch(
+                "nines.cli.commands.benchmark.AnalysisPipeline",
+            ) as mock_pipeline,
+            patch(
+                "nines.cli.commands.benchmark.AgentImpactAnalyzer",
+            ) as mock_impact,
+            patch(
+                "nines.cli.commands.benchmark.KeyPointExtractor",
+            ) as mock_extractor,
+            patch(
+                "nines.cli.commands.benchmark.BenchmarkGenerator",
+            ) as mock_gen,
+            patch(
+                "nines.cli.commands.benchmark.MultiRoundRunner",
+            ) as mock_runner,
+            patch(
+                "nines.cli.commands.benchmark.MappingTableGenerator",
+            ) as mock_mapping,
+        ):
             mock_runner.return_value.run.return_value = report
             mock_mapping.return_value.generate.return_value = mapping
 
@@ -613,8 +635,10 @@ class TestBenchmarkTasksPath:
                 cli,
                 [
                     "benchmark",
-                    "--target-path", str(project),
-                    "--tasks-path", str(tasks_dir),
+                    "--target-path",
+                    str(project),
+                    "--tasks-path",
+                    str(tasks_dir),
                 ],
                 obj={"verbose": False, "format": "text"},
             )
@@ -631,8 +655,10 @@ class TestBenchmarkTasksPath:
             cli,
             [
                 "benchmark",
-                "--target-path", ".",
-                "--tasks-path", "/nonexistent/custom_tasks",
+                "--target-path",
+                ".",
+                "--tasks-path",
+                "/nonexistent/custom_tasks",
             ],
             obj={"verbose": False, "format": "text"},
         )

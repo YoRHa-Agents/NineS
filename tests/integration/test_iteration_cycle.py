@@ -8,8 +8,12 @@ Covers:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
 import json
-from pathlib import Path
 
 import pytest
 
@@ -24,7 +28,6 @@ from nines.iteration.self_eval import (
     SelfEvalRunner,
     UnitTestCountEvaluator,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -157,7 +160,7 @@ class TestBaselineComparison:
 
         comparison = baseline_mgr.compare(current, base)
         assert isinstance(comparison.details, dict)
-        for dim, detail in comparison.details.items():
+        for _dim, detail in comparison.details.items():
             assert "current" in detail
             assert "baseline" in detail
             assert "delta" in detail
@@ -300,7 +303,8 @@ class TestFullIterationCycle:
         assert "v2.0" in versions
 
     def test_cycle_with_regression_and_recovery(
-        self, baseline_mgr: BaselineManager,
+        self,
+        baseline_mgr: BaselineManager,
     ) -> None:
         r1 = _make_runner_with_scores(coverage=80.0, test_count=100).run_all(version="v1")
         baseline_mgr.save_baseline(r1, "v1")
@@ -346,6 +350,7 @@ class TestConvergenceCheck:
 
     def test_convergence_result_to_dict(self) -> None:
         from nines.iteration.convergence import ConvergenceResult
+
         cr = ConvergenceResult(converged=True, variance=0.001, rounds_checked=5, mean=0.85)
         d = cr.to_dict()
         assert d["converged"] is True

@@ -53,8 +53,10 @@ class TestGraphNode:
 class TestGraphEdge:
     def test_round_trip(self):
         edge = GraphEdge(
-            source="file:a.py", target="file:b.py",
-            edge_type="imports", weight=0.8,
+            source="file:a.py",
+            target="file:b.py",
+            edge_type="imports",
+            weight=0.8,
             metadata={"line": 5},
         )
         d = edge.to_dict()
@@ -72,7 +74,8 @@ class TestGraphEdge:
 class TestArchitectureLayer:
     def test_round_trip(self):
         layer = ArchitectureLayer(
-            id="domain", name="Domain",
+            id="domain",
+            name="Domain",
             description="Core domain",
             node_ids=["file:a.py", "file:b.py"],
         )
@@ -97,13 +100,16 @@ class TestKnowledgeGraph:
         ]
         layers = [
             ArchitectureLayer(
-                id="core", name="Core",
+                id="core",
+                name="Core",
                 node_ids=["file:a.py", "file:b.py"],
             ),
         ]
         return KnowledgeGraph(
             project_name="test",
-            nodes=nodes, edges=edges, layers=layers,
+            nodes=nodes,
+            edges=edges,
+            layers=layers,
         )
 
     def test_round_trip(self, sample_graph):

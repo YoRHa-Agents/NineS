@@ -62,6 +62,7 @@ class CodexAdapter(_BaseCodexAdapter):
 
         logger.info(
             "Generated Codex skill directory at %s (%d files)",
-            install_dir, len(written),
+            install_dir,
+            len(written),
         )
         return written

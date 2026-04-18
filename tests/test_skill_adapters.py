@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 from nines.skill.claude_adapter import ClaudeAdapter
 from nines.skill.codex_adapter import CodexAdapter
@@ -35,9 +39,15 @@ class TestCursorSkillMdGenerated:
 
         skill_md = tmp_path / ".cursor" / "skills" / "nines" / "SKILL.md"
         content = skill_md.read_text(encoding="utf-8")
-        for cmd_name in ("nines-eval", "nines-collect", "nines-analyze",
-                         "nines-self-eval", "nines-iterate", "nines-install",
-                         "nines-update"):
+        for cmd_name in (
+            "nines-eval",
+            "nines-collect",
+            "nines-analyze",
+            "nines-self-eval",
+            "nines-iterate",
+            "nines-install",
+            "nines-update",
+        ):
             assert cmd_name in content, f"{cmd_name} missing from SKILL.md"
 
     def test_cursor_generates_command_workflow_files(self, tmp_path: Path) -> None:
@@ -83,17 +93,22 @@ class TestClaudeCommandsGenerated:
         adapter.generate_commands(tmp_path)
 
         base = tmp_path / ".claude" / "commands" / "nines"
-        for name in ("eval.md", "collect.md", "analyze.md",
-                     "self-eval.md", "iterate.md", "install.md", "update.md"):
+        for name in (
+            "eval.md",
+            "collect.md",
+            "analyze.md",
+            "self-eval.md",
+            "iterate.md",
+            "install.md",
+            "update.md",
+        ):
             assert (base / name).exists(), f"{name} missing"
 
     def test_claude_command_frontmatter(self, tmp_path: Path) -> None:
         adapter = ClaudeAdapter()
         adapter.generate_commands(tmp_path)
 
-        content = (
-            tmp_path / ".claude" / "commands" / "nines" / "collect.md"
-        ).read_text()
+        content = (tmp_path / ".claude" / "commands" / "nines" / "collect.md").read_text()
         assert content.startswith("---")
         assert "nines:collect" in content
         assert "description:" in content
@@ -244,7 +259,8 @@ class TestCodexSkillMdGenerated:
             assert f.relative_path.startswith("commands/")
 
     def test_codex_satisfies_skill_adapter_protocol(self) -> None:
-        from nines.skill.adapters import CodexAdapter as BaseCodexAdapter, SkillAdapter
+        from nines.skill.adapters import CodexAdapter as BaseCodexAdapter
+        from nines.skill.adapters import SkillAdapter
 
         adapter = BaseCodexAdapter()
         assert isinstance(adapter, SkillAdapter)
@@ -294,7 +310,8 @@ class TestCopilotInstructionsGenerated:
         assert "Custom NineS" in content
 
     def test_copilot_satisfies_skill_adapter_protocol(self) -> None:
-        from nines.skill.adapters import CopilotAdapter as BaseCopilotAdapter, SkillAdapter
+        from nines.skill.adapters import CopilotAdapter as BaseCopilotAdapter
+        from nines.skill.adapters import SkillAdapter
 
         adapter = BaseCopilotAdapter()
         assert isinstance(adapter, SkillAdapter)

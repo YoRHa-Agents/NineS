@@ -40,28 +40,21 @@ def agent_repo(tmp_path: Path) -> Path:
     """Create a synthetic AI-agent-oriented repository."""
     (tmp_path / ".cursor" / "rules").mkdir(parents=True)
     (tmp_path / ".cursor" / "rules" / "style.md").write_text(
-        "# Style Rules\nAlways use concise variable names.\n"
-        "Never skip safety checks.\n"
+        "# Style Rules\nAlways use concise variable names.\nNever skip safety checks.\n"
     )
 
     (tmp_path / "CLAUDE.md").write_text(
-        "# Claude Instructions\n"
-        "You must follow these rules.\n"
-        "Always compress token usage.\n"
+        "# Claude Instructions\nYou must follow these rules.\nAlways compress token usage.\n"
     )
 
     (tmp_path / "AGENTS.md").write_text(
-        "# Agent Guidelines\n"
-        "Sync rules across platforms.\n"
-        "Deploy to CI workflow.\n"
+        "# Agent Guidelines\nSync rules across platforms.\nDeploy to CI workflow.\n"
     )
 
     skill_dir = tmp_path / "skills"
     skill_dir.mkdir()
     (skill_dir / "SKILL.md").write_text(
-        "# Skill Definition\n"
-        "This skill provides safety fallback.\n"
-        "Drift prevention is enforced.\n"
+        "# Skill Definition\nThis skill provides safety fallback.\nDrift prevention is enforced.\n"
     )
 
     (tmp_path / "src").mkdir()
@@ -90,10 +83,13 @@ class TestAgentMechanism:
 
     def test_to_dict(self) -> None:
         mech = AgentMechanism(
-            id="m1", name="test_mech", category="safety",
+            id="m1",
+            name="test_mech",
+            category="safety",
             description="A safety mechanism",
             evidence_files=["a.md", "b.md"],
-            estimated_token_impact=-100, confidence=0.8,
+            estimated_token_impact=-100,
+            confidence=0.8,
         )
         d = mech.to_dict()
         assert d["id"] == "m1"
@@ -105,10 +101,13 @@ class TestAgentMechanism:
 
     def test_from_dict(self) -> None:
         data = {
-            "id": "m2", "name": "compression", "category": "context_compression",
+            "id": "m2",
+            "name": "compression",
+            "category": "context_compression",
             "description": "Compresses tokens",
             "evidence_files": ["c.md"],
-            "estimated_token_impact": -50, "confidence": 0.6,
+            "estimated_token_impact": -50,
+            "confidence": 0.6,
         }
         mech = AgentMechanism.from_dict(data)
         assert mech.id == "m2"
@@ -124,9 +123,13 @@ class TestAgentMechanism:
 
     def test_roundtrip(self) -> None:
         original = AgentMechanism(
-            id="rt", name="roundtrip", category="distribution",
-            description="Round trip test", evidence_files=["x.md"],
-            estimated_token_impact=200, confidence=0.9,
+            id="rt",
+            name="roundtrip",
+            category="distribution",
+            description="Round trip test",
+            evidence_files=["x.md"],
+            estimated_token_impact=200,
+            confidence=0.9,
         )
         restored = AgentMechanism.from_dict(original.to_dict())
         assert restored.to_dict() == original.to_dict()
@@ -137,9 +140,12 @@ class TestContextEconomics:
 
     def test_to_dict(self) -> None:
         econ = ContextEconomics(
-            overhead_tokens=500, estimated_savings_ratio=0.15,
-            mechanism_count=3, agent_facing_files=4,
-            total_agent_context_tokens=500, break_even_interactions=7,
+            overhead_tokens=500,
+            estimated_savings_ratio=0.15,
+            mechanism_count=3,
+            agent_facing_files=4,
+            total_agent_context_tokens=500,
+            break_even_interactions=7,
         )
         d = econ.to_dict()
         assert d["overhead_tokens"] == 500
@@ -147,10 +153,12 @@ class TestContextEconomics:
         assert d["break_even_interactions"] == 7
 
     def test_from_dict(self) -> None:
-        econ = ContextEconomics.from_dict({
-            "overhead_tokens": 1000,
-            "estimated_savings_ratio": 0.25,
-        })
+        econ = ContextEconomics.from_dict(
+            {
+                "overhead_tokens": 1000,
+                "estimated_savings_ratio": 0.25,
+            }
+        )
         assert econ.overhead_tokens == 1000
         assert econ.mechanism_count == 0
 
@@ -161,9 +169,12 @@ class TestContextEconomics:
 
     def test_roundtrip(self) -> None:
         original = ContextEconomics(
-            overhead_tokens=100, estimated_savings_ratio=0.5,
-            mechanism_count=2, agent_facing_files=3,
-            total_agent_context_tokens=100, break_even_interactions=2,
+            overhead_tokens=100,
+            estimated_savings_ratio=0.5,
+            mechanism_count=2,
+            agent_facing_files=3,
+            total_agent_context_tokens=100,
+            break_even_interactions=2,
         )
         restored = ContextEconomics.from_dict(original.to_dict())
         assert restored.to_dict() == original.to_dict()
@@ -265,7 +276,9 @@ class TestEstimateContextEconomics:
     """Tests for _estimate_context_economics."""
 
     def test_economics_with_artifacts(
-        self, analyzer: AgentImpactAnalyzer, agent_repo: Path,
+        self,
+        analyzer: AgentImpactAnalyzer,
+        agent_repo: Path,
     ) -> None:
         artifacts = analyzer._discover_agent_artifacts(agent_repo)
         econ = analyzer._estimate_context_economics(agent_repo, artifacts)
@@ -308,7 +321,9 @@ class TestDetectMechanisms:
         assert "safety" in categories
 
     def test_mechanisms_have_evidence(
-        self, analyzer: AgentImpactAnalyzer, agent_repo: Path,
+        self,
+        analyzer: AgentImpactAnalyzer,
+        agent_repo: Path,
     ) -> None:
         artifacts = analyzer._discover_agent_artifacts(agent_repo)
         mechanisms = analyzer._detect_mechanisms(agent_repo, artifacts)
@@ -365,8 +380,12 @@ class TestCreateKnowledgeUnits:
     def test_units_from_mechanisms(self, analyzer: AgentImpactAnalyzer) -> None:
         mechs = [
             AgentMechanism(
-                id="m1", name="rules", category="behavioral_instruction",
-                description="desc", evidence_files=["a.md"], confidence=0.8,
+                id="m1",
+                name="rules",
+                category="behavioral_instruction",
+                description="desc",
+                evidence_files=["a.md"],
+                confidence=0.8,
             ),
         ]
         units = analyzer._create_knowledge_units(mechs, ["a.md"])
@@ -463,18 +482,20 @@ class TestAnalyzeEndToEnd:
         assert len(report.agent_facing_artifacts) == 1
 
     def test_economics_enriched_with_mechanisms(
-        self, analyzer: AgentImpactAnalyzer, agent_repo: Path,
+        self,
+        analyzer: AgentImpactAnalyzer,
+        agent_repo: Path,
     ) -> None:
         report = analyzer.analyze(agent_repo)
         assert report.economics.mechanism_count > 0
         assert report.economics.mechanism_count == len(report.mechanisms)
-        total_mech_tokens = sum(
-            abs(m.estimated_token_impact) for m in report.mechanisms
-        )
+        total_mech_tokens = sum(abs(m.estimated_token_impact) for m in report.mechanisms)
         assert report.economics.total_agent_context_tokens >= total_mech_tokens
 
     def test_economics_minimum_estimate_fallback(
-        self, analyzer: AgentImpactAnalyzer, tmp_path: Path,
+        self,
+        analyzer: AgentImpactAnalyzer,
+        tmp_path: Path,
     ) -> None:
         """Empty agent files still get a minimum token estimate."""
         f = tmp_path / "AGENTS.md"
@@ -485,7 +506,9 @@ class TestAnalyzeEndToEnd:
         assert report.economics.total_agent_context_tokens > 0
 
     def test_economics_to_dict_always_populated(
-        self, analyzer: AgentImpactAnalyzer, agent_repo: Path,
+        self,
+        analyzer: AgentImpactAnalyzer,
+        agent_repo: Path,
     ) -> None:
         report = analyzer.analyze(agent_repo)
         d = report.economics.to_dict()
@@ -496,7 +519,9 @@ class TestAnalyzeEndToEnd:
         assert d["mechanism_count"] > 0
 
     def test_pyproject_toml_detected(
-        self, analyzer: AgentImpactAnalyzer, tmp_path: Path,
+        self,
+        analyzer: AgentImpactAnalyzer,
+        tmp_path: Path,
     ) -> None:
         (tmp_path / "pyproject.toml").write_text("[tool.nines]\nrules = true\n")
         artifacts = analyzer._discover_agent_artifacts(tmp_path)

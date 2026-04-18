@@ -90,7 +90,6 @@ def _analysis_executor(task: Any) -> ExecutionResult:
     """
     input_cfg = getattr(task, "input_config", {}) or {}
     expected = getattr(task, "expected", {}) or {}
-    metadata = getattr(task, "metadata", {}) or {}
     dimension = getattr(task, "dimension", "")
 
     result_data: dict[str, Any] = {}
@@ -116,7 +115,7 @@ def _analysis_executor(task: Any) -> ExecutionResult:
 
     elif dimension == "semantic_preservation":
         result_data = {"min_similarity": 0.75}
-        success = 0.75 >= expected.get("min_similarity", 0.85)
+        success = expected.get("min_similarity", 0.85) <= 0.75
 
     elif dimension == "cross_platform":
         result_data = {"match": True}
@@ -151,14 +150,16 @@ def _format_text_report(
             f"confidence: {conclusion.confidence:.1%})"
         )
 
-    lines.extend([
-        "",
-        "Summary:",
-        f"  Effective: {mapping.effective_count}",
-        f"  Ineffective: {mapping.ineffective_count}",
-        f"  Inconclusive: {mapping.inconclusive_count}",
-        f"  Overall effectiveness: {mapping.overall_effectiveness:.1%}",
-    ])
+    lines.extend(
+        [
+            "",
+            "Summary:",
+            f"  Effective: {mapping.effective_count}",
+            f"  Ineffective: {mapping.ineffective_count}",
+            f"  Inconclusive: {mapping.inconclusive_count}",
+            f"  Overall effectiveness: {mapping.overall_effectiveness:.1%}",
+        ]
+    )
 
     if mapping.lessons_learnt:
         lines.append("")
@@ -246,7 +247,7 @@ def _write_artifacts(
     type=click.Path(exists=True),
     default=None,
     help="Path to directory of custom TOML task definitions. "
-         "When provided, these tasks are used instead of auto-generated ones.",
+    "When provided, these tasks are used instead of auto-generated ones.",
 )
 @click.pass_context
 def benchmark_cmd(
@@ -270,9 +271,7 @@ def benchmark_cmd(
         suite, key_points = _load_custom_tasks(Path(tasks_path), suite_id)
 
         if verbose:
-            click.echo(
-                f"Loaded {len(suite.tasks)} custom task(s) from {tasks_path}"
-            )
+            click.echo(f"Loaded {len(suite.tasks)} custom task(s) from {tasks_path}")
     else:
         # Step 1: Run analysis pipeline
         logger.info("Running analysis pipeline on %s", target_path)
@@ -320,8 +319,7 @@ def benchmark_cmd(
 
     if verbose:
         click.echo(
-            f"Evaluation complete: mean={report.mean_composite:.4f}, "
-            f"converged={report.converged}"
+            f"Evaluation complete: mean={report.mean_composite:.4f}, converged={report.converged}"
         )
 
     # Step 5: Generate mapping table

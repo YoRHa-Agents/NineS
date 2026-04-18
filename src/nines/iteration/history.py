@@ -44,7 +44,9 @@ class ScoreHistory:
         self._reports.append(report)
         logger.debug(
             "Recorded report (version=%s, overall=%.3f), history length=%d",
-            report.version, report.overall, len(self._reports),
+            report.version,
+            report.overall,
+            len(self._reports),
         )
 
     def get_trend(self, dimension: str, window: int = 10) -> list[float]:

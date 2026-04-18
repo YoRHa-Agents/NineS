@@ -13,7 +13,6 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -34,7 +33,6 @@ from nines.iteration.self_eval import (
     SelfEvalRunner,
     UnitTestCountEvaluator,
 )
-
 
 # ---------------------------------------------------------------------------
 # test_self_eval_runner
@@ -82,6 +80,7 @@ def test_self_eval_runner_no_evaluators() -> None:
 
 def test_self_eval_runner_handles_evaluator_error() -> None:
     """A failing evaluator gets a zero score instead of crashing."""
+
     class FailingEvaluator:
         def evaluate(self) -> DimensionScore:
             raise RuntimeError("evaluation exploded")
@@ -308,10 +307,12 @@ def test_history_trend() -> None:
 def test_history_trend_missing_dimension() -> None:
     """get_trend for a non-existent dimension returns empty list."""
     history = ScoreHistory()
-    history.record(SelfEvalReport(
-        scores=[DimensionScore(name="a", value=1.0)],
-        overall=1.0,
-    ))
+    history.record(
+        SelfEvalReport(
+            scores=[DimensionScore(name="a", value=1.0)],
+            overall=1.0,
+        )
+    )
 
     trend = history.get_trend("nonexistent")
     assert trend == []
@@ -334,12 +335,12 @@ def test_history_overall_trend() -> None:
 
 def test_live_coverage_evaluator_custom_package() -> None:
     """cov_package is used in the subprocess command instead of hardcoded 'nines'."""
-    fake_stdout = (
-        "Name    Stmts   Miss  Cover\n"
-        "TOTAL     200     40    80%\n"
-    )
+    fake_stdout = "Name    Stmts   Miss  Cover\nTOTAL     200     40    80%\n"
     fake_result = subprocess.CompletedProcess(
-        args=[], returncode=0, stdout=fake_stdout, stderr="",
+        args=[],
+        returncode=0,
+        stdout=fake_stdout,
+        stderr="",
     )
     with patch("nines.iteration.self_eval.subprocess.run", return_value=fake_result) as mock_run:
         evaluator = LiveCodeCoverageEvaluator(cov_package="devolaflow")
@@ -393,7 +394,10 @@ def test_live_coverage_evaluator_fallback(tmp_path: Path) -> None:
     nonexistent = tmp_path / "does_not_exist.xml"
     fake_stdout = "TOTAL     100     20    80%\n"
     fake_result = subprocess.CompletedProcess(
-        args=[], returncode=0, stdout=fake_stdout, stderr="",
+        args=[],
+        returncode=0,
+        stdout=fake_stdout,
+        stderr="",
     )
     with patch("nines.iteration.self_eval.subprocess.run", return_value=fake_result):
         evaluator = LiveCodeCoverageEvaluator(coverage_file=nonexistent)
@@ -420,7 +424,10 @@ def test_live_test_count_pytest_collect() -> None:
         "5 tests collected\n"
     )
     fake_result = subprocess.CompletedProcess(
-        args=[], returncode=0, stdout=collect_stdout, stderr="",
+        args=[],
+        returncode=0,
+        stdout=collect_stdout,
+        stderr="",
     )
     with patch("nines.iteration.self_eval.subprocess.run", return_value=fake_result):
         evaluator = LiveTestCountEvaluator(project_root="/some/project")
@@ -435,8 +442,7 @@ def test_live_test_count_ast_fallback(tmp_path: Path) -> None:
     test_dir = tmp_path / "tests"
     test_dir.mkdir()
     (test_dir / "test_example.py").write_text(
-        "def test_alpha():\n    pass\n\n"
-        "def test_beta():\n    pass\n"
+        "def test_alpha():\n    pass\n\ndef test_beta():\n    pass\n"
     )
 
     with patch(
@@ -448,3 +454,102 @@ def test_live_test_count_ast_fallback(tmp_path: Path) -> None:
 
     assert score.value == 2.0
     assert score.metadata["method"] == "ast-walk"
+
+
+# ---------------------------------------------------------------------------
+# Release follow-up N2 — runner threads budget into evaluators that accept it
+# ---------------------------------------------------------------------------
+
+
+def test_runner_make_invocation_detects_budget_kwarg() -> None:
+    """N2: SelfEvalRunner._make_invocation introspects evaluator.evaluate
+    and binds ``budget=`` only when the signature accepts it (Approach
+    A — backward compat for evaluators that predate this contract)."""
+    from nines.core.budget import TimeBudget
+    from nines.iteration.self_eval import (
+        DimensionScore,
+        SelfEvalRunner,
+    )
+
+    captured: dict[str, object] = {}
+
+    class BudgetAwareEvaluator:
+        """Modern evaluator — accepts kw-only ``budget``."""
+
+        def evaluate(self, *, budget: TimeBudget | None = None) -> DimensionScore:
+            captured["budget"] = budget
+            return DimensionScore(name="ba", value=0.5)
+
+    class LegacyEvaluator:
+        """Pre-N2 evaluator with no ``budget`` kwarg."""
+
+        def evaluate(self) -> DimensionScore:
+            captured["legacy_called"] = True
+            return DimensionScore(name="legacy", value=0.7)
+
+    bud = TimeBudget(soft_seconds=2.0, hard_seconds=8.0)
+
+    aware_call = SelfEvalRunner._make_invocation(BudgetAwareEvaluator(), bud)
+    score_aware = aware_call()
+    assert score_aware.value == 0.5
+    assert captured["budget"] is bud, "budget not threaded into modern evaluator"
+
+    legacy_call = SelfEvalRunner._make_invocation(LegacyEvaluator(), bud)
+    score_legacy = legacy_call()
+    assert score_legacy.value == 0.7
+    assert captured.get("legacy_called") is True
+
+
+def test_self_eval_report_to_dict_includes_timeouts_field() -> None:
+    """N1 prerequisite: SelfEvalReport.to_dict already exposes
+    ``timeouts`` so the CLI can simply forward the dict.  This guards
+    against accidental removal of the field."""
+    from nines.iteration.self_eval import (
+        DimensionScore,
+        SelfEvalReport,
+    )
+
+    report = SelfEvalReport(
+        scores=[DimensionScore(name="a", value=0.5)],
+        timeouts=["a"],
+        version="v",
+        timestamp="t",
+        duration=1.0,
+    )
+    d = report.to_dict()
+    assert "timeouts" in d
+    assert d["timeouts"] == ["a"]
+    # Round-trip safety.
+    restored = SelfEvalReport.from_dict(d)
+    assert restored.timeouts == ["a"]
+
+
+def test_runner_records_timeouts_in_report_field() -> None:
+    """N1 + N2 wire-through: a hung evaluator triggers the daemon-thread
+    budget, and the dim's name lands in ``SelfEvalReport.timeouts``
+    (the field that N1 then exposes via the CLI JSON)."""
+    import time
+
+    from nines.core.budget import TimeBudget
+    from nines.iteration.self_eval import (
+        DimensionScore,
+        SelfEvalRunner,
+    )
+
+    class HungEvaluator:
+        """Sleeps past the hard budget — never returns in time."""
+
+        def evaluate(self) -> DimensionScore:
+            time.sleep(2.0)
+            return DimensionScore(name="hung", value=1.0)
+
+    runner = SelfEvalRunner(
+        default_budget=TimeBudget(soft_seconds=0.05, hard_seconds=0.2),
+    )
+    runner.register_dimension("hung", HungEvaluator())
+    report = runner.run_all(version="t")
+
+    assert "hung" in report.timeouts, f"expected 'hung' in report.timeouts, got {report.timeouts}"
+    hung_score = report.get_score("hung")
+    assert hung_score is not None
+    assert hung_score.metadata.get("status") == "timeout"

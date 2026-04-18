@@ -155,5 +155,5 @@ class ReliabilityCalculator:
         if abs(mean) < 1e-15:
             return nan
         variance = sum((x - mean) ** 2 for x in scores) / n
-        std = variance ** 0.5
+        std = variance**0.5
         return 1.0 - std / mean

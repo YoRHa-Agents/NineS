@@ -68,14 +68,18 @@ def load_golden_tasks(golden_dir: str | Path) -> list[dict[str, Any]]:
         if isinstance(expected_section, dict) and "value" in expected_section:
             expected_value = expected_section["value"]
 
-        tasks.append({
-            "id": task_data.get("id", toml_file.stem),
-            "source": input_section.get("source", "") if isinstance(input_section, dict) else "",
-            "expected": expected_value,
-            "expected_score": float(golden.get("expected_score", 0.0)),
-            "scorer": golden.get("scorer", "exact"),
-            "file": toml_file.name,
-        })
+        tasks.append(
+            {
+                "id": task_data.get("id", toml_file.stem),
+                "source": input_section.get("source", "")
+                if isinstance(input_section, dict)
+                else "",
+                "expected": expected_value,
+                "expected_score": float(golden.get("expected_score", 0.0)),
+                "scorer": golden.get("scorer", "exact"),
+                "file": toml_file.name,
+            }
+        )
 
     return tasks
 
@@ -184,9 +188,9 @@ class ReliabilityEvaluator:
                 metadata={"error": f"no golden tasks found in {self._golden_dir}"},
             )
 
-        subset = [t for t in tasks if t["scorer"] == "exact"][:self._max_tasks]
+        subset = [t for t in tasks if t["scorer"] == "exact"][: self._max_tasks]
         if not subset:
-            subset = tasks[:self._max_tasks]
+            subset = tasks[: self._max_tasks]
 
         scorer = ExactScorer()
         consistent_count = 0

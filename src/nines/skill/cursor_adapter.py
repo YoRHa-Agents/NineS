@@ -62,6 +62,7 @@ class CursorAdapter(_BaseCursorAdapter):
 
         logger.info(
             "Generated Cursor skill directory at %s (%d files)",
-            install_dir, len(written),
+            install_dir,
+            len(written),
         )
         return written

@@ -3,6 +3,11 @@
 Implements the ``SourceCollector`` protocol for arXiv papers.
 Uses ``httpx.Client`` for HTTP so callers can inject a mock transport.
 
+Transient HTTP failures (transport errors, 5xx server errors) are
+handled by the shared :func:`with_retry` helper from
+``nines.core.retry``; the previous hand-rolled retry loop has been
+retired (C05 polish).
+
 Covers: FR-203.
 """
 
@@ -18,6 +23,7 @@ import httpx
 
 from nines.collector.models import Paper
 from nines.core.errors import CollectorError
+from nines.core.retry import RetryPolicy, TransientHTTPStatus, with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +31,16 @@ _ATOM_NS = "http://www.w3.org/2005/Atom"
 _ARXIV_NS = "http://arxiv.org/schemas/atom"
 _DEFAULT_BASE_URL = "https://export.arxiv.org/api/query"
 _REQUEST_DELAY = 3.0
+
+# Retry-eligible exceptions: httpx transport errors + the shared marker.
+_RETRYABLE_EXCEPTIONS: tuple[type[BaseException], ...] = (
+    TransientHTTPStatus,
+    httpx.TimeoutException,
+    httpx.ConnectError,
+    httpx.ReadError,
+    httpx.NetworkError,
+    httpx.RemoteProtocolError,
+)
 
 
 @dataclass(frozen=True)
@@ -70,40 +86,39 @@ class ArxivCollector:
         self._last_request_time = time.monotonic()
 
     def _get(self, params: dict[str, Any]) -> httpx.Response:
-        """Send a GET request with rate limiting."""
+        """Send a GET request, retrying transient failures via ``with_retry``."""
         self._rate_limit_wait()
-        last_exc: Exception | None = None
-        for attempt in range(1, self._config.max_retries + 1):
-            try:
-                resp = self._client.get(self._config.base_url, params=params)
-                if resp.status_code >= 500:
-                    logger.warning(
-                        "arXiv server error %d on attempt %d/%d",
-                        resp.status_code,
-                        attempt,
-                        self._config.max_retries,
-                    )
-                    time.sleep(2 ** attempt)
-                    continue
-                resp.raise_for_status()
-                return resp
-            except httpx.HTTPStatusError as exc:
-                last_exc = exc
+
+        def _attempt() -> httpx.Response:
+            resp = self._client.get(self._config.base_url, params=params)
+            if resp.status_code >= 500:
+                logger.warning(
+                    "arXiv transient %d (will retry)",
+                    resp.status_code,
+                )
+                raise TransientHTTPStatus(resp.status_code)
+            if resp.status_code >= 400:
                 raise CollectorError(
-                    f"arXiv API error: {exc.response.status_code}",
-                    details={"status": exc.response.status_code},
-                    cause=exc,
-                ) from exc
-            except httpx.HTTPError as exc:
-                last_exc = exc
-                if attempt == self._config.max_retries:
-                    break
-                logger.warning("HTTP error on attempt %d: %s", attempt, exc)
-                time.sleep(2 ** attempt)
-        raise CollectorError(
-            f"arXiv request failed after {self._config.max_retries} attempts",
-            cause=last_exc,
+                    f"arXiv API error: {resp.status_code}",
+                    details={"status": resp.status_code},
+                )
+            return resp
+
+        policy = RetryPolicy(
+            attempts=self._config.max_retries,
+            retry_on=_RETRYABLE_EXCEPTIONS,
         )
+        try:
+            return with_retry(_attempt, policy)
+        except (TransientHTTPStatus, httpx.RequestError) as exc:
+            details: dict[str, Any] = {}
+            if isinstance(exc, TransientHTTPStatus):
+                details["status"] = exc.status_code
+            raise CollectorError(
+                f"arXiv request failed after {self._config.max_retries} attempts",
+                details=details,
+                cause=exc,
+            ) from exc
 
     # ------------------------------------------------------------------
     # Public API

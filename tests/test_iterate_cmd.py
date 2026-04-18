@@ -75,42 +75,20 @@ class TestIterateWithProjectRoot:
         (tests_dir / "test_app.py").write_text("def test_x(): pass\n")
 
         with (
-            patch(
-                "nines.cli.commands.iterate.LiveCodeCoverageEvaluator"
-            ) as mock_cov,
-            patch(
-                "nines.cli.commands.iterate.LiveTestCountEvaluator"
-            ) as mock_test,
-            patch(
-                "nines.cli.commands.iterate.LiveModuleCountEvaluator"
-            ) as mock_mod,
-            patch(
-                "nines.cli.commands.iterate.DocstringCoverageEvaluator"
-            ) as mock_doc,
-            patch(
-                "nines.cli.commands.iterate.LintCleanlinessEvaluator"
-            ) as mock_lint,
+            patch("nines.cli.commands.iterate.LiveCodeCoverageEvaluator") as mock_cov,
+            patch("nines.cli.commands.iterate.LiveTestCountEvaluator") as mock_test,
+            patch("nines.cli.commands.iterate.LiveModuleCountEvaluator") as mock_mod,
+            patch("nines.cli.commands.iterate.DocstringCoverageEvaluator") as mock_doc,
+            patch("nines.cli.commands.iterate.LintCleanlinessEvaluator") as mock_lint,
         ):
-            mock_cov.return_value.evaluate.return_value = _make_fake_score(
-                "code_coverage"
-            )
-            mock_test.return_value.evaluate.return_value = _make_fake_score(
-                "test_count"
-            )
-            mock_mod.return_value.evaluate.return_value = _make_fake_score(
-                "module_count"
-            )
-            mock_doc.return_value.evaluate.return_value = _make_fake_score(
-                "docstring_coverage"
-            )
-            mock_lint.return_value.evaluate.return_value = _make_fake_score(
-                "lint_cleanliness"
-            )
+            mock_cov.return_value.evaluate.return_value = _make_fake_score("code_coverage")
+            mock_test.return_value.evaluate.return_value = _make_fake_score("test_count")
+            mock_mod.return_value.evaluate.return_value = _make_fake_score("module_count")
+            mock_doc.return_value.evaluate.return_value = _make_fake_score("docstring_coverage")
+            mock_lint.return_value.evaluate.return_value = _make_fake_score("lint_cleanliness")
 
             runner = CliRunner()
-            result = runner.invoke(
-                cli, ["iterate", "--project-root", str(tmp_path)]
-            )
+            result = runner.invoke(cli, ["iterate", "--project-root", str(tmp_path)])
             assert result.exit_code == 0
             mock_cov.assert_called_once()
             mock_test.assert_called_once()
@@ -127,42 +105,20 @@ class TestIterateWithProjectRoot:
         tests_dir.mkdir()
 
         with (
-            patch(
-                "nines.cli.commands.iterate.LiveCodeCoverageEvaluator"
-            ) as mock_cov,
-            patch(
-                "nines.cli.commands.iterate.LiveTestCountEvaluator"
-            ) as mock_test,
-            patch(
-                "nines.cli.commands.iterate.LiveModuleCountEvaluator"
-            ) as mock_mod,
-            patch(
-                "nines.cli.commands.iterate.DocstringCoverageEvaluator"
-            ) as mock_doc,
-            patch(
-                "nines.cli.commands.iterate.LintCleanlinessEvaluator"
-            ) as mock_lint,
+            patch("nines.cli.commands.iterate.LiveCodeCoverageEvaluator") as mock_cov,
+            patch("nines.cli.commands.iterate.LiveTestCountEvaluator") as mock_test,
+            patch("nines.cli.commands.iterate.LiveModuleCountEvaluator") as mock_mod,
+            patch("nines.cli.commands.iterate.DocstringCoverageEvaluator") as mock_doc,
+            patch("nines.cli.commands.iterate.LintCleanlinessEvaluator") as mock_lint,
         ):
-            mock_cov.return_value.evaluate.return_value = _make_fake_score(
-                "code_coverage"
-            )
-            mock_test.return_value.evaluate.return_value = _make_fake_score(
-                "test_count"
-            )
-            mock_mod.return_value.evaluate.return_value = _make_fake_score(
-                "module_count"
-            )
-            mock_doc.return_value.evaluate.return_value = _make_fake_score(
-                "docstring_coverage"
-            )
-            mock_lint.return_value.evaluate.return_value = _make_fake_score(
-                "lint_cleanliness"
-            )
+            mock_cov.return_value.evaluate.return_value = _make_fake_score("code_coverage")
+            mock_test.return_value.evaluate.return_value = _make_fake_score("test_count")
+            mock_mod.return_value.evaluate.return_value = _make_fake_score("module_count")
+            mock_doc.return_value.evaluate.return_value = _make_fake_score("docstring_coverage")
+            mock_lint.return_value.evaluate.return_value = _make_fake_score("lint_cleanliness")
 
             runner = CliRunner()
-            result = runner.invoke(
-                cli, ["-v", "iterate", "--project-root", str(tmp_path)]
-            )
+            result = runner.invoke(cli, ["-v", "iterate", "--project-root", str(tmp_path)])
             assert result.exit_code == 0
             assert "Using live evaluators" in result.output
 

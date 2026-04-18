@@ -48,7 +48,8 @@ class ConvergenceRateEvaluator:
             )
 
             runner.register_dimension(
-                "decomposition_coverage", DecompositionCoverageEvaluator(self._src_dir),
+                "decomposition_coverage",
+                DecompositionCoverageEvaluator(self._src_dir),
             )
 
             report = runner.run_all()
@@ -88,7 +89,9 @@ class ConvergenceRateEvaluator:
         except Exception as exc:
             logger.error("ConvergenceRateEvaluator failed: %s", exc, exc_info=True)
             return DimensionScore(
-                name="convergence_rate", value=0.0, max_value=1.0,
+                name="convergence_rate",
+                value=0.0,
+                max_value=1.0,
                 metadata={"error": str(exc)},
             )
 
@@ -111,6 +114,7 @@ class CrossVertexSynergyEvaluator:
             try:
                 from nines.eval.models import TaskDefinition
                 from nines.eval.runner import EvalRunner
+
                 _ = EvalRunner()
                 _ = TaskDefinition
                 checks_passed += 1
@@ -120,6 +124,7 @@ class CrossVertexSynergyEvaluator:
 
             try:
                 from nines.collector.models import Paper, Repository
+
                 _ = Repository()
                 _ = Paper()
                 checks_passed += 1
@@ -130,6 +135,7 @@ class CrossVertexSynergyEvaluator:
             try:
                 from nines.analyzer.pipeline import AnalysisPipeline
                 from nines.analyzer.reviewer import CodeReviewer
+
                 _ = AnalysisPipeline()
                 _ = CodeReviewer()
                 checks_passed += 1
@@ -139,6 +145,7 @@ class CrossVertexSynergyEvaluator:
 
             try:
                 from nines.orchestrator.pipeline import Pipeline
+
                 _ = Pipeline
                 checks_passed += 1
                 details["orchestrator_importable"] = True
@@ -149,6 +156,7 @@ class CrossVertexSynergyEvaluator:
                 from nines.iteration.gap_detector import GapDetector
                 from nines.iteration.planner import ImprovementPlanner
                 from nines.iteration.self_eval import SelfEvalRunner
+
                 _ = SelfEvalRunner()
                 _ = GapDetector()
                 _ = ImprovementPlanner()
@@ -172,6 +180,8 @@ class CrossVertexSynergyEvaluator:
         except Exception as exc:
             logger.error("CrossVertexSynergyEvaluator failed: %s", exc, exc_info=True)
             return DimensionScore(
-                name="cross_vertex_synergy", value=0.0, max_value=1.0,
+                name="cross_vertex_synergy",
+                value=0.0,
+                max_value=1.0,
                 metadata={"error": str(exc)},
             )

@@ -16,6 +16,7 @@ Covers: FR-310, FR-311, FR-313, FR-314, FR-315, FR-319.
 
 from __future__ import annotations
 
+import importlib.metadata
 import logging
 import time
 from pathlib import Path
@@ -230,10 +231,15 @@ class AnalysisPipeline:
         import_graph = import_builder.build(target, scan_result.files)
 
         graph = self._graph_decomposer.build_graph(
-            scan_result, import_graph, reviews,
+            scan_result,
+            import_graph,
+            reviews,
         )
 
-        verification = self._graph_verifier.verify(graph)
+        verification = self._graph_verifier.verify(
+            graph,
+            project_root=str(target),
+        )
         summary = self._summarizer.summarize(graph, verification)
 
         return {
@@ -299,10 +305,7 @@ class AnalysisPipeline:
                 continue
             if fpath.suffix not in _AGENT_EXTENSIONS:
                 continue
-            if any(
-                p in _SKIP_DIRS or p.startswith(".")
-                for p in fpath.relative_to(target).parts
-            ):
+            if any(p in _SKIP_DIRS or p.startswith(".") for p in fpath.relative_to(target).parts):
                 continue
             files.append(fpath)
 
@@ -333,6 +336,67 @@ class AnalysisPipeline:
         if strategy == "layer":
             return self._decomposer.layer_decompose(reviews, structure)
         return self._decomposer.functional_decompose(reviews)
+
+    # Schema-version constants for the analyze JSON output
+    # ------------------------------------------------------------------
+    # ``id_namespace_version`` signals the namespaced finding-ID format
+    # introduced by C02 (``AI-{8-hex-fp}-NNNN`` instead of ``AI-NNNN``).
+    # Bump when the finding-ID grammar changes again.
+    _ID_NAMESPACE_VERSION = 2
+    # ``analyzer_schema_version`` describes the top-level analyze JSON
+    # report shape (target / findings / metrics / timestamp /
+    # report_metadata).  Bump when the top-level keys change.
+    _ANALYZER_SCHEMA_VERSION = 1
+
+    @classmethod
+    def build_report_metadata(cls) -> dict[str, Any]:
+        """Build the schema-versioning ``report_metadata`` block.
+
+        The returned dict is intended to live at the top level of
+        ``nines analyze --format json`` output so that downstream
+        parsers can detect the report format without sniffing
+        individual finding IDs.
+
+        Keys
+        ----
+        id_namespace_version:
+            ``2`` for this release; signals namespaced finding IDs
+            (``AI-{8-hex-fp}-NNNN``) per C02.  Legacy parsers that
+            still expect bare ``AI-NNNN`` should gate on
+            ``id_namespace_version == 2`` before consuming finding IDs.
+        analyzer_schema_version:
+            Currently ``1``.  Reserved for future top-level shape
+            changes (e.g. moving ``metrics`` under a ``payload`` key).
+        nines_version:
+            Runtime ``nines`` version, looked up via
+            :func:`importlib.metadata.version`.  Falls back to the
+            in-tree :data:`nines.__version__` constant if the package
+            is not installed (e.g. running from an in-place source
+            checkout without ``uv sync``).
+        """
+        try:
+            nines_version = importlib.metadata.version("nines")
+        except importlib.metadata.PackageNotFoundError:
+            # No installed distribution — fall back to the source-tree
+            # constant.  Explicit fallback (per workspace rule
+            # "No Silent Failures"): we log at debug, never silently
+            # return an empty string.  Local import keeps the package
+            # version reference out of the module-level namespace
+            # (which would trip ruff N812 because of the leading
+            # underscore + uppercase rename).
+            from nines import __version__ as fallback_version
+
+            logger.debug(
+                "importlib.metadata.version('nines') not found; "
+                "falling back to nines.__version__=%s",
+                fallback_version,
+            )
+            nines_version = fallback_version
+        return {
+            "id_namespace_version": cls._ID_NAMESPACE_VERSION,
+            "analyzer_schema_version": cls._ANALYZER_SCHEMA_VERSION,
+            "nines_version": nines_version,
+        }
 
     @staticmethod
     def _build_metrics(

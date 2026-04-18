@@ -20,11 +20,23 @@ from nines.core.errors import AnalyzerError
 
 logger = logging.getLogger(__name__)
 
-_SKIP_DIRS = frozenset({
-    "__pycache__", ".git", ".hg", ".svn", "node_modules",
-    ".tox", ".mypy_cache", ".pytest_cache", ".ruff_cache",
-    ".venv", "venv", ".eggs", "*.egg-info",
-})
+_SKIP_DIRS = frozenset(
+    {
+        "__pycache__",
+        ".git",
+        ".hg",
+        ".svn",
+        "node_modules",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".venv",
+        "venv",
+        ".eggs",
+        "*.egg-info",
+    }
+)
 
 
 @dataclass
@@ -62,9 +74,7 @@ class DependencyMap:
     def coupling_for(self, module: str) -> dict[str, int]:
         """Return afferent (Ca) and efferent (Ce) coupling for *module*."""
         efferent = len(self.edges.get(module, set()))
-        afferent = sum(
-            1 for targets in self.edges.values() if module in targets
-        )
+        afferent = sum(1 for targets in self.edges.values() if module in targets)
         return {"afferent": afferent, "efferent": efferent}
 
 
@@ -84,8 +94,12 @@ class StructureReport:
         return {
             "root": self.root,
             "packages": [
-                {"name": p.name, "path": p.path, "module_count": p.module_count,
-                 "has_init": p.has_init}
+                {
+                    "name": p.name,
+                    "path": p.path,
+                    "module_count": p.module_count,
+                    "has_init": p.has_init,
+                }
                 for p in self.packages
             ],
             "file_type_counts": {
@@ -93,9 +107,7 @@ class StructureReport:
                 "total": self.file_type_counts.total,
             },
             "python_module_count": self.python_module_count,
-            "dependency_map": {
-                k: sorted(v) for k, v in self.dependency_map.edges.items()
-            },
+            "dependency_map": {k: sorted(v) for k, v in self.dependency_map.edges.items()},
             "coupling_metrics": self.coupling_metrics,
         }
 
@@ -159,24 +171,29 @@ class StructureAnalyzer:
             except ValueError:
                 name = dirpath.name
 
-            packages.append(PackageInfo(
-                name=name,
-                path=str(dirpath),
-                module_count=py_count,
-                has_init=has_init,
-            ))
+            packages.append(
+                PackageInfo(
+                    name=name,
+                    path=str(dirpath),
+                    module_count=py_count,
+                    has_init=has_init,
+                )
+            )
 
         if (root / "__init__.py").is_file() or any(
             f.suffix == ".py" for f in root.iterdir() if f.is_file()
         ):
             py_count = sum(1 for f in root.iterdir() if f.suffix == ".py" and f.is_file())
             if py_count > 0:
-                packages.insert(0, PackageInfo(
-                    name=root.name,
-                    path=str(root),
-                    module_count=py_count,
-                    has_init=(root / "__init__.py").is_file(),
-                ))
+                packages.insert(
+                    0,
+                    PackageInfo(
+                        name=root.name,
+                        path=str(root),
+                        module_count=py_count,
+                        has_init=(root / "__init__.py").is_file(),
+                    ),
+                )
 
         return packages
 
@@ -252,9 +269,7 @@ class StructureAnalyzer:
 
         return dep_map
 
-    def _resolve_import_node(
-        self, node: ast.AST, known_modules: set[str]
-    ) -> str | None:
+    def _resolve_import_node(self, node: ast.AST, known_modules: set[str]) -> str | None:
         """Resolve import node."""
         if isinstance(node, ast.Import):
             for alias in node.names:

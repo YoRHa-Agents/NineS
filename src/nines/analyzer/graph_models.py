@@ -12,19 +12,48 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-VALID_NODE_TYPES = frozenset({
-    "file", "function", "class", "module", "config", "document",
-    "service", "endpoint", "schema", "resource", "concept",
-})
+VALID_NODE_TYPES = frozenset(
+    {
+        "file",
+        "function",
+        "class",
+        "module",
+        "config",
+        "document",
+        "service",
+        "endpoint",
+        "schema",
+        "resource",
+        "concept",
+    }
+)
 
-VALID_EDGE_TYPES = frozenset({
-    "imports", "contains", "calls", "configures", "deploys",
-    "implements", "extends", "uses", "tests", "documents",
-})
+VALID_EDGE_TYPES = frozenset(
+    {
+        "imports",
+        "contains",
+        "calls",
+        "configures",
+        "deploys",
+        "implements",
+        "extends",
+        "uses",
+        "tests",
+        "documents",
+    }
+)
 
-VALID_FILE_CATEGORIES = frozenset({
-    "code", "config", "docs", "infra", "data", "script", "markup",
-})
+VALID_FILE_CATEGORIES = frozenset(
+    {
+        "code",
+        "config",
+        "docs",
+        "infra",
+        "data",
+        "script",
+        "markup",
+    }
+)
 
 
 @dataclass

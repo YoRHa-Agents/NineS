@@ -2,31 +2,34 @@
 
 from __future__ import annotations
 
-import pytest
-
 from nines.analyzer.abstraction import AbstractionLayer, Pattern
 from nines.analyzer.indexer import KnowledgeIndex
 from nines.analyzer.search import SearchEngine, SearchResult
 from nines.core.models import KnowledgeUnit
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_units() -> list[KnowledgeUnit]:
     return [
         KnowledgeUnit(
             id="u1",
             source="src/auth/login.py",
-            content="def validate_credentials(username, password): checks user credentials against the database",
+            content=(
+                "def validate_credentials(username, password): "
+                "checks user credentials against the database"
+            ),
             unit_type="function",
             metadata={"complexity": 3},
         ),
         KnowledgeUnit(
             id="u2",
             source="src/auth/tokens.py",
-            content="def create_jwt_token(user_id, expiry): generates JSON web token for authentication",
+            content=(
+                "def create_jwt_token(user_id, expiry): generates JSON web token for authentication"
+            ),
             unit_type="function",
             metadata={"complexity": 2},
         ),
@@ -40,14 +43,19 @@ def _make_units() -> list[KnowledgeUnit]:
         KnowledgeUnit(
             id="u4",
             source="src/data/repository.py",
-            content="class UserRepository: data access layer for user CRUD operations on the database",
+            content=(
+                "class UserRepository: data access layer for user CRUD operations on the database"
+            ),
             unit_type="class",
             metadata={"complexity": 4},
         ),
         KnowledgeUnit(
             id="u5",
             source="src/api/handlers.py",
-            content="def handle_login_request(request): HTTP handler that validates input and returns token",
+            content=(
+                "def handle_login_request(request): HTTP handler that "
+                "validates input and returns token"
+            ),
             unit_type="function",
             relationships={"calls": ["u1", "u2"]},
         ),
@@ -57,6 +65,7 @@ def _make_units() -> list[KnowledgeUnit]:
 # ---------------------------------------------------------------------------
 # KnowledgeIndex
 # ---------------------------------------------------------------------------
+
 
 class TestKnowledgeIndex:
     def test_add_and_get_unit(self) -> None:
@@ -151,6 +160,7 @@ class TestKnowledgeIndex:
 # SearchEngine
 # ---------------------------------------------------------------------------
 
+
 class TestSearchEngine:
     def test_search_returns_results(self) -> None:
         engine = SearchEngine()
@@ -210,6 +220,7 @@ class TestSearchEngine:
 # AbstractionLayer
 # ---------------------------------------------------------------------------
 
+
 class TestAbstractionLayer:
     def test_extract_naming_patterns(self) -> None:
         units = _make_units()
@@ -240,7 +251,9 @@ class TestAbstractionLayer:
         assert len(structural) >= 1
 
     def test_confidence_filtering(self) -> None:
-        units = [KnowledgeUnit(id=f"u{i}", content=f"item {i}", unit_type="misc") for i in range(10)]
+        units = [
+            KnowledgeUnit(id=f"u{i}", content=f"item {i}", unit_type="misc") for i in range(10)
+        ]
         units[0] = KnowledgeUnit(id="u0", content="validate_input", unit_type="misc")
         layer = AbstractionLayer(min_instances=1, min_confidence=0.9)
         patterns = layer.extract_patterns(units)
