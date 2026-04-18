@@ -6,14 +6,16 @@ also gains a hook so the existing ``NinesConfig.eval_max_retries`` knob
 (per the gap-analysis §1: "configured-but-unused") finally controls
 behaviour.
 
-Covers: C05 (with_retry helper).
+Covers: C05 (with_retry helper) — sync + async variants, plus the
+shared :class:`TransientHTTPStatus` marker used by the HTTP collectors.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import TypeVar
 
@@ -29,6 +31,20 @@ class TransientError(Exception):
     be retried by :func:`with_retry`; everything else is re-raised
     immediately.
     """
+
+
+class TransientHTTPStatus(TransientError):
+    """Marker raised when an HTTP response carries a retry-eligible status.
+
+    Used by :mod:`nines.collector.github` and :mod:`nines.collector.arxiv`
+    so both HTTP collectors share a single retry-eligible-status marker
+    rather than each defining their own.
+    """
+
+    def __init__(self, status_code: int) -> None:
+        """Initialize transient http status."""
+        super().__init__(f"Transient HTTP status {status_code}")
+        self.status_code = status_code
 
 
 @dataclass
@@ -150,4 +166,88 @@ def with_retry(
     raise RuntimeError(msg)
 
 
-__all__ = ["RetryPolicy", "TransientError", "with_retry"]
+async def with_retry_async(
+    fn: Callable[[], Awaitable[T]],
+    policy: RetryPolicy,
+    *,
+    on_retry: Callable[[int, BaseException], None] | None = None,
+    sleep: Callable[[float], Awaitable[None]] | None = None,
+) -> T:
+    """Async variant of :func:`with_retry`.
+
+    Mirrors the sync helper one-for-one: same :class:`RetryPolicy`, same
+    :class:`TransientError`, same exponential back-off, same observer
+    contract.  The only differences are that *fn* must return an
+    :class:`Awaitable` and that ``asyncio.sleep`` (or an injected
+    awaitable sleep) replaces ``time.sleep``.
+
+    Parameters
+    ----------
+    fn:
+        Zero-arg async callable to invoke.
+    policy:
+        :class:`RetryPolicy` controlling attempts and back-off.
+    on_retry:
+        Optional synchronous observer invoked as
+        ``on_retry(attempt_idx, exc)`` just before each retry sleep.
+    sleep:
+        Optional awaitable sleep callable (test injection point).
+        Defaults to :func:`asyncio.sleep`.
+
+    Returns
+    -------
+    T
+        Whatever *fn* awaits to on the first successful attempt.
+
+    Raises
+    ------
+    BaseException
+        Re-raises the final attempt's exception when all retries are
+        exhausted, or any non-retry-eligible exception immediately.
+    """
+    sleep_fn: Callable[[float], Awaitable[None]] = (
+        sleep if sleep is not None else asyncio.sleep
+    )
+    last_exc: BaseException | None = None
+    for attempt in range(policy.attempts):
+        try:
+            return await fn()
+        except policy.retry_on as exc:
+            last_exc = exc
+            remaining = policy.attempts - attempt - 1
+            if remaining <= 0:
+                logger.warning(
+                    "with_retry_async: exhausted %d attempt(s); re-raising %s",
+                    policy.attempts, type(exc).__name__,
+                )
+                raise
+            backoff = policy.backoff_for(attempt + 1)
+            logger.info(
+                "with_retry_async: attempt %d/%d failed with %s; sleeping %.3fs",
+                attempt + 1, policy.attempts, type(exc).__name__, backoff,
+            )
+            if on_retry is not None:
+                # Observer must not swallow exceptions silently; let them
+                # propagate so callers see misconfigurations.
+                on_retry(attempt, exc)
+            if backoff > 0:
+                await sleep_fn(backoff)
+        except BaseException:
+            # Non-retry-eligible: re-raise immediately, never silently
+            # swallow.
+            raise
+    # Defensive: same as the sync variant; loop must have returned or
+    # raised already.  Keep the explicit raise so mypy is happy.
+    if last_exc is not None:
+        raise last_exc
+    msg = "with_retry_async: zero attempts configured (RetryPolicy bug)"
+    raise RuntimeError(msg)
+
+
+__all__ = [
+    "RetryPolicy",
+    "TransientError",
+    "TransientHTTPStatus",
+    "with_retry",
+    "with_retry_async",
+]
