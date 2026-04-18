@@ -210,7 +210,7 @@ class TestStructureAnalyzer:
         analyzer = StructureAnalyzer()
         report = analyzer.analyze_directory(sample_project)
 
-        for mod, metrics in report.coupling_metrics.items():
+        for _mod, metrics in report.coupling_metrics.items():
             assert "afferent_coupling" in metrics
             assert "efferent_coupling" in metrics
             assert "instability" in metrics
@@ -445,10 +445,7 @@ class TestAnalysisPipeline:
         result = pipeline.run(sample_project, strategy="concern", agent_impact=False)
 
         assert result.metrics["strategy"] == "concern"
-        unit_types = {
-            u.unit_type
-            for u in self._extract_units(result)
-        }
+        unit_types = {u.unit_type for u in self._extract_units(result)}
         assert "concern" in unit_types
 
     def test_pipeline_strategy_layer(self, sample_project: Path) -> None:
@@ -456,10 +453,7 @@ class TestAnalysisPipeline:
         result = pipeline.run(sample_project, strategy="layer", agent_impact=False)
 
         assert result.metrics["strategy"] == "layer"
-        unit_types = {
-            u.unit_type
-            for u in self._extract_units(result)
-        }
+        unit_types = {u.unit_type for u in self._extract_units(result)}
         assert "layer" in unit_types
 
     def test_pipeline_strategy_functional_default(
@@ -470,10 +464,7 @@ class TestAnalysisPipeline:
         result = pipeline.run(sample_project, agent_impact=False)
 
         assert result.metrics["strategy"] == "functional"
-        unit_types = {
-            u.unit_type
-            for u in self._extract_units(result)
-        }
+        unit_types = {u.unit_type for u in self._extract_units(result)}
         assert "function" in unit_types or "class" in unit_types
         assert "concern" not in unit_types
         assert "layer" not in unit_types
@@ -481,7 +472,9 @@ class TestAnalysisPipeline:
     def test_pipeline_depth_in_metrics(self, sample_project: Path) -> None:
         pipeline = AnalysisPipeline()
         result = pipeline.run(
-            sample_project, depth="deep", agent_impact=False,
+            sample_project,
+            depth="deep",
+            agent_impact=False,
         )
         assert result.metrics["depth"] == "deep"
 
@@ -499,7 +492,10 @@ class TestAnalysisPipeline:
         structure = None
         if target.is_dir():
             from nines.analyzer.structure import StructureAnalyzer
+
             structure = StructureAnalyzer().analyze_directory(target)
         return pipeline.decompose(
-            reviews, structure, strategy=result.metrics["strategy"],
+            reviews,
+            structure,
+            strategy=result.metrics["strategy"],
         )

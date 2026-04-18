@@ -100,9 +100,9 @@ def _normalise_path(raw_path: str, project_root: str | Path) -> str:
         root_resolved = root.resolve()
     except OSError as exc:
         logger.warning(
-            "canonicalize_id: could not resolve project_root %s (%s); "
-            "using absolute fallback",
-            root, exc,
+            "canonicalize_id: could not resolve project_root %s (%s); using absolute fallback",
+            root,
+            exc,
         )
         root_resolved = root.absolute()
 
@@ -116,9 +116,10 @@ def _normalise_path(raw_path: str, project_root: str | Path) -> str:
         # Path may not exist on disk — best-effort absolute form so we
         # still produce a stable canonical result.
         logger.debug(
-            "canonicalize_id: could not resolve %s under %s (%s); "
-            "using best-effort normalisation",
-            candidate, root_resolved, exc,
+            "canonicalize_id: could not resolve %s under %s (%s); using best-effort normalisation",
+            candidate,
+            root_resolved,
+            exc,
         )
         resolved = candidate.absolute()
 

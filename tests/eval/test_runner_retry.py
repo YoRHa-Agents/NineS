@@ -5,8 +5,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from nines.core.cost_budget import CostBudget  # noqa: E402
@@ -44,6 +42,7 @@ def test_run_single_retries_flaky_executor() -> None:
 
 def test_run_aborts_on_cost_exceeded() -> None:
     """When the budget is exhausted, run() breaks the loop."""
+
     def cheap_executor(task: TaskDefinition) -> ExecutionResult:
         return ExecutionResult(
             task_id=task.id,
@@ -55,9 +54,7 @@ def test_run_aborts_on_cost_exceeded() -> None:
     runner = EvalRunner(
         cost_budget=CostBudget(token_limit=100),
     )
-    tasks = [
-        TaskDefinition(id=f"t{i}", name=f"t{i}", expected="x") for i in range(5)
-    ]
+    tasks = [TaskDefinition(id=f"t{i}", name=f"t{i}", expected="x") for i in range(5)]
     results = runner.run(tasks, cheap_executor, [ExactScorer()])
     # First 2 succeed (50 + 50 = 100, exactly at limit, no breach yet);
     # third charge takes us to 150 > 100 → CostExceeded → break-out

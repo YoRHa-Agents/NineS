@@ -29,8 +29,7 @@ from nines.sandbox.isolation import (
     VenvFactory,
 )
 from nines.sandbox.manager import SandboxConfig, SandboxContext, SandboxManager
-from nines.sandbox.runner import IsolatedRunner, RunResult
-
+from nines.sandbox.runner import RunResult
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -89,7 +88,8 @@ def test_sandbox_cleans_up_on_exit(tmp_path: Path) -> None:
 
 
 def test_runner_captures_output(
-    manager: SandboxManager, sandbox: SandboxContext,
+    manager: SandboxManager,
+    sandbox: SandboxContext,
 ) -> None:
     script = sandbox.work_dir / "hello.py"
     script.write_text(
@@ -121,7 +121,8 @@ def test_runner_captures_output(
 
 
 def test_runner_enforces_timeout(
-    manager: SandboxManager, sandbox: SandboxContext,
+    manager: SandboxManager,
+    sandbox: SandboxContext,
 ) -> None:
     script = sandbox.work_dir / "sleeper.py"
     script.write_text(
@@ -165,7 +166,9 @@ def test_same_seed_same_result(manager: SandboxManager) -> None:
             script = ctx.work_dir / "seeded.py"
             script.write_text(script_src, encoding="utf-8")
             result = manager.run_in_sandbox(
-                ctx, [sys.executable, str(script)], seed=42,
+                ctx,
+                [sys.executable, str(script)],
+                seed=42,
             )
             assert result.exit_code == 0, result.stderr
             fingerprints.append(result.fingerprint)
@@ -203,7 +206,8 @@ def test_no_cross_pollution(manager: SandboxManager) -> None:
         )
 
         result_b = manager.run_in_sandbox(
-            ctx_b, [sys.executable, str(script_b)],
+            ctx_b,
+            [sys.executable, str(script_b)],
         )
 
         assert result_b.exit_code == 0
@@ -247,12 +251,12 @@ def test_pollution_detector_detects_changes(tmp_path: Path) -> None:
 
     detector = PollutionDetector(watched_dirs=[watch_dir])
 
-    before = detector.snapshot_before()
+    detector.snapshot_before()
 
     # Simulate pollution: add a file in the watched dir
     (watch_dir / "intruder.txt").write_text("bad data", encoding="utf-8")
 
-    after = detector.snapshot_after()
+    detector.snapshot_after()
     report = detector.detect_pollution()
 
     assert report.is_clean is False
@@ -269,8 +273,8 @@ def test_max_concurrent_enforcement(tmp_path: Path) -> None:
     """Creating more sandboxes than max_concurrent raises RuntimeError."""
     mgr = SandboxManager(base_dir=tmp_path / "sandboxes", max_concurrent=2)
     try:
-        ctx1 = mgr.create()
-        ctx2 = mgr.create()
+        mgr.create()
+        mgr.create()
         with pytest.raises(RuntimeError, match="Max concurrent"):
             mgr.create()
     finally:
@@ -286,7 +290,8 @@ def test_destroy_removes_from_active(manager: SandboxManager) -> None:
 
 
 def test_runner_nonzero_exit(
-    manager: SandboxManager, sandbox: SandboxContext,
+    manager: SandboxManager,
+    sandbox: SandboxContext,
 ) -> None:
     script = sandbox.work_dir / "fail.py"
     script.write_text("import sys; sys.exit(42)\n", encoding="utf-8")
@@ -311,7 +316,8 @@ def test_sandbox_unique_ids(manager: SandboxManager) -> None:
 
 
 def test_sandbox_env_isolation(
-    manager: SandboxManager, sandbox: SandboxContext,
+    manager: SandboxManager,
+    sandbox: SandboxContext,
 ) -> None:
     """Sandbox processes should not see modifications to parent env vars."""
     script = sandbox.work_dir / "check_env.py"
@@ -326,7 +332,8 @@ def test_sandbox_env_isolation(
     os.environ["NINES_TEST_ISOLATION"] = "parent_value"
     try:
         result = manager.run_in_sandbox(
-            sandbox, [sys.executable, str(script)],
+            sandbox,
+            [sys.executable, str(script)],
         )
         assert result.exit_code == 0
     finally:

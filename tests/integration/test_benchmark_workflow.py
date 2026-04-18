@@ -6,16 +6,19 @@ Tests the complete flow: KeyPoints → BenchmarkSuite → MultiRoundRunner → M
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from nines.analyzer.keypoint import KeyPoint
 from nines.core.models import ExecutionResult
-from nines.eval.benchmark_gen import BenchmarkGenerator, BenchmarkSuite
-from nines.eval.mapping import MappingTable, MappingTableGenerator
-from nines.eval.models import TaskDefinition
+from nines.eval.benchmark_gen import BenchmarkGenerator
+from nines.eval.mapping import MappingTableGenerator
 from nines.eval.multi_round import MultiRoundRunner
 from nines.eval.scorers import ExactScorer
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from nines.eval.models import TaskDefinition
 
 
 def _make_kp(

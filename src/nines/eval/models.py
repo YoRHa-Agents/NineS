@@ -183,18 +183,20 @@ class TaskDefinition:
         expected_raw = task_data.get("expected")
         if isinstance(expected_raw, dict):
             keys = set(expected_raw.keys())
-            if keys == {"value"} or "value" in expected_raw and expected_raw.get("type") in (
-                None,
-                "text",
-                "code",
-                "pattern",
+            if (
+                keys == {"value"}
+                or "value" in expected_raw
+                and expected_raw.get("type")
+                in (
+                    None,
+                    "text",
+                    "code",
+                    "pattern",
+                )
             ):
                 expected_raw = expected_raw["value"]
 
-        criteria = [
-            ScoringCriterion.from_dict(c)
-            for c in task_data.get("scoring_criteria", [])
-        ]
+        criteria = [ScoringCriterion.from_dict(c) for c in task_data.get("scoring_criteria", [])]
 
         metadata = dict(task_data.get("metadata", {}))
         for meta_key in ("difficulty", "tags", "timeout_seconds", "version"):

@@ -26,6 +26,7 @@ from nines.analyzer.graph_models import (
     GraphNode,
     KnowledgeGraph,
 )
+
 if TYPE_CHECKING:
     from nines.analyzer.import_graph import ImportGraph
     from nines.analyzer.reviewer import FileReview
@@ -35,28 +36,61 @@ logger = logging.getLogger(__name__)
 
 _LAYER_PATH_PATTERNS: dict[str, set[str]] = {
     "presentation": {
-        "cli", "api", "web", "ui", "views", "routes",
-        "endpoints", "handlers", "controllers",
+        "cli",
+        "api",
+        "web",
+        "ui",
+        "views",
+        "routes",
+        "endpoints",
+        "handlers",
+        "controllers",
     },
     "application": {
-        "services", "usecases", "commands", "orchestrator",
-        "workflows", "application",
+        "services",
+        "usecases",
+        "commands",
+        "orchestrator",
+        "workflows",
+        "application",
     },
     "domain": {
-        "models", "entities", "domain", "core", "types", "schemas",
+        "models",
+        "entities",
+        "domain",
+        "core",
+        "types",
+        "schemas",
     },
     "infrastructure": {
-        "db", "database", "repos", "repositories", "adapters",
-        "clients", "storage", "external", "infrastructure",
+        "db",
+        "database",
+        "repos",
+        "repositories",
+        "adapters",
+        "clients",
+        "storage",
+        "external",
+        "infrastructure",
     },
     "testing": {
-        "tests", "test", "fixtures", "conftest", "mocks",
+        "tests",
+        "test",
+        "fixtures",
+        "conftest",
+        "mocks",
     },
     "documentation": {
-        "docs", "doc", "documentation", "guides", "references",
+        "docs",
+        "doc",
+        "documentation",
+        "guides",
+        "references",
     },
     "configuration": {
-        "config", "configs", "settings",
+        "config",
+        "configs",
+        "settings",
     },
 }
 
@@ -117,7 +151,8 @@ class GraphDecomposer:
 
         if reviews:
             code_nodes, containment_edges = self._create_code_nodes(
-                reviews, effective_root,
+                reviews,
+                effective_root,
             )
 
         all_nodes = file_nodes + code_nodes
@@ -128,7 +163,9 @@ class GraphDecomposer:
 
         logger.info(
             "Built knowledge graph: %d nodes, %d edges, %d layers",
-            len(all_nodes), len(all_edges), len(layers),
+            len(all_nodes),
+            len(all_edges),
+            len(layers),
         )
 
         return KnowledgeGraph(
@@ -171,19 +208,21 @@ class GraphDecomposer:
                 rel = fi.path
 
             raw_id = f"file:{rel}"
-            nodes.append(GraphNode(
-                id=self._canonical(raw_id, project_root),
-                node_type="file",
-                name=Path(rel).name,
-                file_path=rel,
-                file_category=fi.category,
-                tags=[fi.language] if fi.language else [],
-                metadata={
-                    "language": fi.language,
-                    "line_count": fi.line_count,
-                    "size_bytes": fi.size_bytes,
-                },
-            ))
+            nodes.append(
+                GraphNode(
+                    id=self._canonical(raw_id, project_root),
+                    node_type="file",
+                    name=Path(rel).name,
+                    file_path=rel,
+                    file_category=fi.category,
+                    tags=[fi.language] if fi.language else [],
+                    metadata={
+                        "language": fi.language,
+                        "line_count": fi.line_count,
+                        "size_bytes": fi.size_bytes,
+                    },
+                )
+            )
         return nodes
 
     def _create_code_nodes(
@@ -209,76 +248,88 @@ class GraphDecomposer:
                     f"function:{review.path}::{func.qualified_name}",
                     project_root,
                 )
-                nodes.append(GraphNode(
-                    id=func_id,
-                    node_type="function",
-                    name=func.name,
-                    file_path=review.path,
-                    file_category="code",
-                    summary=func.docstring or "",
-                    complexity=func.complexity,
-                    line_start=func.lineno,
-                    line_end=func.end_lineno,
-                    tags=["async"] if func.is_async else [],
-                    metadata={
-                        "args": func.args,
-                        "decorators": func.decorators,
-                    },
-                ))
-                edges.append(GraphEdge(
-                    source=file_id,
-                    target=func_id,
-                    edge_type="contains",
-                ))
+                nodes.append(
+                    GraphNode(
+                        id=func_id,
+                        node_type="function",
+                        name=func.name,
+                        file_path=review.path,
+                        file_category="code",
+                        summary=func.docstring or "",
+                        complexity=func.complexity,
+                        line_start=func.lineno,
+                        line_end=func.end_lineno,
+                        tags=["async"] if func.is_async else [],
+                        metadata={
+                            "args": func.args,
+                            "decorators": func.decorators,
+                        },
+                    )
+                )
+                edges.append(
+                    GraphEdge(
+                        source=file_id,
+                        target=func_id,
+                        edge_type="contains",
+                    )
+                )
 
             for cls in review.classes:
                 cls_id = self._canonical(
                     f"class:{review.path}::{cls.name}",
                     project_root,
                 )
-                nodes.append(GraphNode(
-                    id=cls_id,
-                    node_type="class",
-                    name=cls.name,
-                    file_path=review.path,
-                    file_category="code",
-                    summary=cls.docstring or "",
-                    line_start=cls.lineno,
-                    line_end=cls.end_lineno,
-                    tags=[],
-                    metadata={
-                        "bases": cls.bases,
-                        "method_count": len(cls.methods),
-                    },
-                ))
-                edges.append(GraphEdge(
-                    source=file_id,
-                    target=cls_id,
-                    edge_type="contains",
-                ))
+                nodes.append(
+                    GraphNode(
+                        id=cls_id,
+                        node_type="class",
+                        name=cls.name,
+                        file_path=review.path,
+                        file_category="code",
+                        summary=cls.docstring or "",
+                        line_start=cls.lineno,
+                        line_end=cls.end_lineno,
+                        tags=[],
+                        metadata={
+                            "bases": cls.bases,
+                            "method_count": len(cls.methods),
+                        },
+                    )
+                )
+                edges.append(
+                    GraphEdge(
+                        source=file_id,
+                        target=cls_id,
+                        edge_type="contains",
+                    )
+                )
 
                 for method in cls.methods:
                     method_id = self._canonical(
                         f"function:{review.path}::{cls.name}.{method.name}",
                         project_root,
                     )
-                    nodes.append(GraphNode(
-                        id=method_id,
-                        node_type="function",
-                        name=method.name,
-                        file_path=review.path,
-                        file_category="code",
-                        summary=method.docstring or "",
-                        complexity=method.complexity,
-                        line_start=method.lineno,
-                        line_end=method.end_lineno,
-                        tags=["method"] + (["async"] if method.is_async else []),
-                    ))
-                    edges.append(GraphEdge(
-                        source=cls_id,
-                        target=method_id,
-                        edge_type="contains",
-                    ))
+                    nodes.append(
+                        GraphNode(
+                            id=method_id,
+                            node_type="function",
+                            name=method.name,
+                            file_path=review.path,
+                            file_category="code",
+                            summary=method.docstring or "",
+                            complexity=method.complexity,
+                            line_start=method.lineno,
+                            line_end=method.end_lineno,
+                            tags=["method"] + (["async"] if method.is_async else []),
+                        )
+                    )
+                    edges.append(
+                        GraphEdge(
+                            source=cls_id,
+                            target=method_id,
+                            edge_type="contains",
+                        )
+                    )
 
         return nodes, edges
 
@@ -290,12 +341,14 @@ class GraphDecomposer:
         """Convert :class:`ImportEdge` instances to :class:`GraphEdge`."""
         edges: list[GraphEdge] = []
         for ie in import_graph.edges:
-            edges.append(GraphEdge(
-                source=self._canonical(f"file:{ie.source_file}", project_root),
-                target=self._canonical(f"file:{ie.target_file}", project_root),
-                edge_type="imports",
-                metadata={"import_name": ie.import_name, "line_number": ie.line_number},
-            ))
+            edges.append(
+                GraphEdge(
+                    source=self._canonical(f"file:{ie.source_file}", project_root),
+                    target=self._canonical(f"file:{ie.target_file}", project_root),
+                    edge_type="imports",
+                    metadata={"import_name": ie.import_name, "line_number": ie.line_number},
+                )
+            )
         return edges
 
     def _detect_layers(
@@ -330,21 +383,25 @@ class GraphDecomposer:
         for layer_id, node_ids in sorted(layer_buckets.items()):
             if layer_id == "unclassified":
                 continue
-            layers.append(ArchitectureLayer(
-                id=layer_id,
-                name=layer_id.replace("_", " ").title(),
-                description=f"Nodes classified as {layer_id}",
-                node_ids=sorted(node_ids),
-            ))
+            layers.append(
+                ArchitectureLayer(
+                    id=layer_id,
+                    name=layer_id.replace("_", " ").title(),
+                    description=f"Nodes classified as {layer_id}",
+                    node_ids=sorted(node_ids),
+                )
+            )
 
         unclassified = layer_buckets.get("unclassified", [])
         if unclassified:
-            layers.append(ArchitectureLayer(
-                id="unclassified",
-                name="Unclassified",
-                description="Nodes not matching any layer pattern",
-                node_ids=sorted(unclassified),
-            ))
+            layers.append(
+                ArchitectureLayer(
+                    id="unclassified",
+                    name="Unclassified",
+                    description="Nodes not matching any layer pattern",
+                    node_ids=sorted(unclassified),
+                )
+            )
 
         return layers
 

@@ -8,21 +8,20 @@ Proves:
 
 from __future__ import annotations
 
-import os
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
 import sys
 import textwrap
-from pathlib import Path
 
 import pytest
 
 from nines.sandbox.isolation import (
-    EnvironmentSnapshot,
     PollutionDetector,
-    PollutionReport,
-    VenvFactory,
 )
-from nines.sandbox.manager import SandboxConfig, SandboxContext, SandboxManager
-from nines.sandbox.runner import IsolatedRunner, RunResult
+from nines.sandbox.manager import SandboxConfig, SandboxManager
 
 
 @pytest.fixture()
@@ -41,7 +40,9 @@ class TestNoSystemPollution:
     """Host environment must not change after sandbox execution."""
 
     def test_env_unchanged_after_execution(
-        self, manager: SandboxManager, tmp_path: Path,
+        self,
+        manager: SandboxManager,
+        tmp_path: Path,
     ) -> None:
         watch_dir = tmp_path / "watched"
         watch_dir.mkdir()
@@ -49,7 +50,8 @@ class TestNoSystemPollution:
         watch_file.write_text("original", encoding="utf-8")
 
         detector = PollutionDetector(
-            watched_dirs=[watch_dir], watched_files=[watch_file],
+            watched_dirs=[watch_dir],
+            watched_files=[watch_file],
         )
         detector.snapshot_before()
 
@@ -195,25 +197,22 @@ class TestDeterministicRetest:
                 script = ctx.work_dir / "deterministic.py"
                 script.write_text(script_src, encoding="utf-8")
                 result = manager.run_in_sandbox(
-                    ctx, [sys.executable, str(script)], seed=42,
+                    ctx,
+                    [sys.executable, str(script)],
+                    seed=42,
                 )
-                assert result.exit_code == 0, (
-                    f"Round {round_num} failed: {result.stderr}"
-                )
+                assert result.exit_code == 0, f"Round {round_num} failed: {result.stderr}"
                 fingerprints.append(result.fingerprint)
                 outputs.append(result.stdout.strip())
             finally:
                 manager.destroy(ctx)
 
-        assert len(set(fingerprints)) == 1, (
-            f"Fingerprints differ across 3 rounds: {fingerprints}"
-        )
-        assert len(set(outputs)) == 1, (
-            f"Outputs differ across 3 rounds: {outputs}"
-        )
+        assert len(set(fingerprints)) == 1, f"Fingerprints differ across 3 rounds: {fingerprints}"
+        assert len(set(outputs)) == 1, f"Outputs differ across 3 rounds: {outputs}"
 
     def test_different_seeds_produce_different_results(
-        self, manager: SandboxManager,
+        self,
+        manager: SandboxManager,
     ) -> None:
         script_src = textwrap.dedent("""\
             import random, os
@@ -229,7 +228,9 @@ class TestDeterministicRetest:
                 script = ctx.work_dir / "seeded.py"
                 script.write_text(script_src, encoding="utf-8")
                 result = manager.run_in_sandbox(
-                    ctx, [sys.executable, str(script)], seed=seed,
+                    ctx,
+                    [sys.executable, str(script)],
+                    seed=seed,
                 )
                 assert result.exit_code == 0
                 results_by_seed[seed] = result.stdout.strip()
@@ -253,7 +254,9 @@ class TestDeterministicRetest:
                 script = ctx.work_dir / "hashseed.py"
                 script.write_text(script_src, encoding="utf-8")
                 result = manager.run_in_sandbox(
-                    ctx, [sys.executable, str(script)], seed=123,
+                    ctx,
+                    [sys.executable, str(script)],
+                    seed=123,
                 )
                 assert result.exit_code == 0
                 lines = result.stdout.strip().splitlines()

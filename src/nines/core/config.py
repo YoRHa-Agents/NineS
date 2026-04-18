@@ -24,11 +24,13 @@ from nines.core.errors import (
 
 _DEFAULTS_TOML = Path(__file__).parent / "defaults.toml"
 
-_SECRET_FIELDS = frozenset({
-    "github_token",
-    "token",
-    "collect.github.token",
-})
+_SECRET_FIELDS = frozenset(
+    {
+        "github_token",
+        "token",
+        "collect.github.token",
+    }
+)
 
 _ENV_PREFIX = "NINES_"
 
@@ -197,8 +199,7 @@ class NinesConfig:
 
         if not (0.0 <= self.convergence_threshold <= 1.0):
             raise ConfigValidationError(
-                f"convergence_threshold={self.convergence_threshold} "
-                f"out of range [0.0, 1.0]",
+                f"convergence_threshold={self.convergence_threshold} out of range [0.0, 1.0]",
                 details={"field": "iteration.convergence.variance_threshold"},
             )
 
@@ -321,11 +322,7 @@ def merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Deep merge two config dicts. Override values win for leaf keys."""
     result = copy.deepcopy(base)
     for key, value in override.items():
-        if (
-            key in result
-            and isinstance(result[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = merge(result[key], value)
         else:
             result[key] = copy.deepcopy(value)
@@ -356,23 +353,21 @@ def from_env(config: NinesConfig | None = None) -> NinesConfig:
 
 
 _BOOL_FIELDS: frozenset[str] = frozenset(
-    f.name for f in fields(NinesConfig)
+    f.name
+    for f in fields(NinesConfig)
     if f.type in ("bool",) or (not f.name.startswith("_") and isinstance(f.default, bool))
 )
 
 _INT_FIELDS: frozenset[str] = frozenset(
-    f.name for f in fields(NinesConfig)
-    if f.type == "int" and not f.name.startswith("_")
+    f.name for f in fields(NinesConfig) if f.type == "int" and not f.name.startswith("_")
 )
 
 _FLOAT_FIELDS: frozenset[str] = frozenset(
-    f.name for f in fields(NinesConfig)
-    if f.type == "float" and not f.name.startswith("_")
+    f.name for f in fields(NinesConfig) if f.type == "float" and not f.name.startswith("_")
 )
 
 _LIST_FIELDS: frozenset[str] = frozenset(
-    f.name for f in fields(NinesConfig)
-    if "list" in str(f.type) and not f.name.startswith("_")
+    f.name for f in fields(NinesConfig) if "list" in str(f.type) and not f.name.startswith("_")
 )
 
 
@@ -436,9 +431,7 @@ def _dict_to_config(data: dict[str, Any]) -> NinesConfig:
     return config
 
 
-def _try_extract_field(
-    section_data: dict[str, Any], field_name: str, flat: dict[str, Any]
-) -> None:
+def _try_extract_field(section_data: dict[str, Any], field_name: str, flat: dict[str, Any]) -> None:
     """Try multiple key variants to extract a field from section data."""
     # Short TOML keys (e.g. ``timeout``) must win over merged defaults that also
     # carry the canonical key (e.g. ``default_timeout`` from defaults.toml).

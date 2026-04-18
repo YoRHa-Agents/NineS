@@ -22,9 +22,11 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 from nines.core.models import ExecutionResult
 from nines.eval.models import TaskDefinition
@@ -59,10 +61,7 @@ class DeterministicMockExecutor:
     def __call__(self, task: TaskDefinition) -> ExecutionResult:
         """Return a deterministic :class:`ExecutionResult` for *task*."""
         if not isinstance(task, TaskDefinition):
-            msg = (
-                "DeterministicMockExecutor expects a TaskDefinition, "
-                f"got {type(task).__name__}"
-            )
+            msg = f"DeterministicMockExecutor expects a TaskDefinition, got {type(task).__name__}"
             raise TypeError(msg)
 
         if task.id in self.fixed_outputs:

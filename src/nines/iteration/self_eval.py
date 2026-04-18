@@ -20,8 +20,10 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import UTC
 from pathlib import Path
-from collections.abc import Callable
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from nines.core.budget import (
     EvaluatorBudgetExceeded,
@@ -53,6 +55,7 @@ def _budgeted_subprocess_timeout(
         return float(default_seconds)
     capped = budget.hard_seconds * margin
     return float(min(default_seconds, capped))
+
 
 logger = logging.getLogger(__name__)
 
@@ -108,10 +111,32 @@ class DimensionScore:
 
 @runtime_checkable
 class DimensionEvaluator(Protocol):
-    """Protocol for evaluating a single dimension."""
+    """Protocol for evaluating a single dimension.
+
+    Implementations may *optionally* accept a kw-only ``budget`` argument to
+    opt in to the C04 wall-clock budget; ``SelfEvalRunner`` introspects via
+    :func:`inspect.signature` and passes ``budget=`` only when the
+    implementation declares it. The minimal Protocol below describes the
+    common subset; the budget-aware call site uses ``cast`` to the
+    :class:`_BudgetedEvaluator` shape.
+    """
 
     def evaluate(self) -> DimensionScore:
         """Run evaluation and return a score for this dimension."""
+        ...
+
+
+class _BudgetedEvaluator(Protocol):
+    """Internal Protocol describing budget-aware evaluators.
+
+    Implementations whose ``evaluate`` accepts a kw-only ``budget`` argument
+    structurally match this Protocol. Used by
+    :meth:`SelfEvalRunner._bind_evaluator_with_budget` to type-check the
+    ``evaluator.evaluate(budget=...)`` call after a runtime
+    ``inspect.signature`` gate.
+    """
+
+    def evaluate(self, *, budget: TimeBudget | None = None) -> DimensionScore:
         ...
 
 
@@ -203,7 +228,8 @@ class SelfEvalRunner:
         self._evaluators: dict[str, DimensionEvaluator] = {}
         self._budgets: dict[str, TimeBudget] = {}
         self._default_budget = default_budget or TimeBudget(
-            soft_seconds=20.0, hard_seconds=60.0,
+            soft_seconds=20.0,
+            hard_seconds=60.0,
         )
 
     def register_dimension(
@@ -234,7 +260,7 @@ class SelfEvalRunner:
     def _make_invocation(
         evaluator: DimensionEvaluator,
         budget: TimeBudget,
-    ) -> "Callable[[], DimensionScore]":
+    ) -> Callable[[], DimensionScore]:
         """Bind ``budget`` to ``evaluator.evaluate`` if the method accepts it.
 
         Returns a zero-arg callable that invokes the evaluator with or
@@ -251,14 +277,14 @@ class SelfEvalRunner:
             # downstream evaluator errors still surface through the
             # ``except Exception`` branch in run_all.
             logger.debug(
-                "inspect.signature failed for evaluator %r; "
-                "calling without budget",
+                "inspect.signature failed for evaluator %r; calling without budget",
                 evaluator,
             )
             accepts_budget = False
 
         if accepts_budget:
-            return lambda: evaluator.evaluate(budget=budget)
+            budgeted = cast("_BudgetedEvaluator", evaluator)
+            return lambda: budgeted.evaluate(budget=budget)
         return evaluator.evaluate
 
     def run_all(self, version: str = "") -> SelfEvalReport:
@@ -295,25 +321,32 @@ class SelfEvalRunner:
                 scores.append(score)
                 logger.info(
                     "Dimension '%s': %.3f / %.3f (%.1f%%)",
-                    name, score.value, score.max_value, score.normalized * 100,
+                    name,
+                    score.value,
+                    score.max_value,
+                    score.normalized * 100,
                 )
             except EvaluatorBudgetExceeded as exc:
                 # C04: append a placeholder score with status='timeout'
                 # so the report records exactly which dim breached.
                 logger.warning(
                     "Evaluator '%s' timed out after %.1fs: %s",
-                    name, exc.elapsed_s, exc,
+                    name,
+                    exc.elapsed_s,
+                    exc,
                 )
-                scores.append(DimensionScore(
-                    name=name,
-                    value=0.0,
-                    max_value=1.0,
-                    metadata={
-                        "status": "timeout",
-                        "hard_seconds": exc.hard_seconds,
-                        "elapsed_s": exc.elapsed_s,
-                    },
-                ))
+                scores.append(
+                    DimensionScore(
+                        name=name,
+                        value=0.0,
+                        max_value=1.0,
+                        metadata={
+                            "status": "timeout",
+                            "hard_seconds": exc.hard_seconds,
+                            "elapsed_s": exc.elapsed_s,
+                        },
+                    )
+                )
                 timeouts.append(name)
             except Exception as exc:
                 logger.error("Evaluator for '%s' failed: %s", name, exc, exc_info=True)
@@ -474,7 +507,9 @@ class LiveCodeCoverageEvaluator:
             )
         except Exception as exc:
             logger.error(
-                "Failed to parse coverage file %s: %s", self._coverage_file, exc,
+                "Failed to parse coverage file %s: %s",
+                self._coverage_file,
+                exc,
             )
         return None
 
@@ -490,9 +525,12 @@ class LiveCodeCoverageEvaluator:
         try:
             result = subprocess.run(
                 [
-                    "python", "-m", "pytest",
+                    "python",
+                    "-m",
+                    "pytest",
                     f"--cov={self._cov_package}",
-                    "--cov-report=term-missing", "-q",
+                    "--cov-report=term-missing",
+                    "-q",
                 ],
                 capture_output=True,
                 text=True,
@@ -614,7 +652,11 @@ class LiveTestCountEvaluator:
         try:
             result = subprocess.run(
                 [
-                    "python", "-m", "pytest", "--collect-only", "-q",
+                    "python",
+                    "-m",
+                    "pytest",
+                    "--collect-only",
+                    "-q",
                     str(self._test_dir),
                 ],
                 capture_output=True,
@@ -661,10 +703,9 @@ class LiveTestCountEvaluator:
                     logger.warning("Skipping %s: %s", py_file, exc)
                     continue
                 for node in ast.walk(tree):
-                    if (
-                        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-                        and node.name.startswith("test_")
-                    ):
+                    if isinstance(
+                        node, (ast.FunctionDef, ast.AsyncFunctionDef)
+                    ) and node.name.startswith("test_"):
                         count += 1
         except Exception as exc:
             logger.error("Failed to scan test directory %s: %s", self._test_dir, exc)

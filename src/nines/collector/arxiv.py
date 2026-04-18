@@ -93,7 +93,8 @@ class ArxivCollector:
             resp = self._client.get(self._config.base_url, params=params)
             if resp.status_code >= 500:
                 logger.warning(
-                    "arXiv transient %d (will retry)", resp.status_code,
+                    "arXiv transient %d (will retry)",
+                    resp.status_code,
                 )
                 raise TransientHTTPStatus(resp.status_code)
             if resp.status_code >= 400:
@@ -104,7 +105,8 @@ class ArxivCollector:
             return resp
 
         policy = RetryPolicy(
-            attempts=self._config.max_retries, retry_on=_RETRYABLE_EXCEPTIONS,
+            attempts=self._config.max_retries,
+            retry_on=_RETRYABLE_EXCEPTIONS,
         )
         try:
             return with_retry(_attempt, policy)

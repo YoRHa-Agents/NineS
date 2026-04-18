@@ -13,7 +13,6 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -34,7 +33,6 @@ from nines.iteration.self_eval import (
     SelfEvalRunner,
     UnitTestCountEvaluator,
 )
-
 
 # ---------------------------------------------------------------------------
 # test_self_eval_runner
@@ -82,6 +80,7 @@ def test_self_eval_runner_no_evaluators() -> None:
 
 def test_self_eval_runner_handles_evaluator_error() -> None:
     """A failing evaluator gets a zero score instead of crashing."""
+
     class FailingEvaluator:
         def evaluate(self) -> DimensionScore:
             raise RuntimeError("evaluation exploded")
@@ -308,10 +307,12 @@ def test_history_trend() -> None:
 def test_history_trend_missing_dimension() -> None:
     """get_trend for a non-existent dimension returns empty list."""
     history = ScoreHistory()
-    history.record(SelfEvalReport(
-        scores=[DimensionScore(name="a", value=1.0)],
-        overall=1.0,
-    ))
+    history.record(
+        SelfEvalReport(
+            scores=[DimensionScore(name="a", value=1.0)],
+            overall=1.0,
+        )
+    )
 
     trend = history.get_trend("nonexistent")
     assert trend == []
@@ -334,12 +335,12 @@ def test_history_overall_trend() -> None:
 
 def test_live_coverage_evaluator_custom_package() -> None:
     """cov_package is used in the subprocess command instead of hardcoded 'nines'."""
-    fake_stdout = (
-        "Name    Stmts   Miss  Cover\n"
-        "TOTAL     200     40    80%\n"
-    )
+    fake_stdout = "Name    Stmts   Miss  Cover\nTOTAL     200     40    80%\n"
     fake_result = subprocess.CompletedProcess(
-        args=[], returncode=0, stdout=fake_stdout, stderr="",
+        args=[],
+        returncode=0,
+        stdout=fake_stdout,
+        stderr="",
     )
     with patch("nines.iteration.self_eval.subprocess.run", return_value=fake_result) as mock_run:
         evaluator = LiveCodeCoverageEvaluator(cov_package="devolaflow")
@@ -393,7 +394,10 @@ def test_live_coverage_evaluator_fallback(tmp_path: Path) -> None:
     nonexistent = tmp_path / "does_not_exist.xml"
     fake_stdout = "TOTAL     100     20    80%\n"
     fake_result = subprocess.CompletedProcess(
-        args=[], returncode=0, stdout=fake_stdout, stderr="",
+        args=[],
+        returncode=0,
+        stdout=fake_stdout,
+        stderr="",
     )
     with patch("nines.iteration.self_eval.subprocess.run", return_value=fake_result):
         evaluator = LiveCodeCoverageEvaluator(coverage_file=nonexistent)
@@ -420,7 +424,10 @@ def test_live_test_count_pytest_collect() -> None:
         "5 tests collected\n"
     )
     fake_result = subprocess.CompletedProcess(
-        args=[], returncode=0, stdout=collect_stdout, stderr="",
+        args=[],
+        returncode=0,
+        stdout=collect_stdout,
+        stderr="",
     )
     with patch("nines.iteration.self_eval.subprocess.run", return_value=fake_result):
         evaluator = LiveTestCountEvaluator(project_root="/some/project")
@@ -435,8 +442,7 @@ def test_live_test_count_ast_fallback(tmp_path: Path) -> None:
     test_dir = tmp_path / "tests"
     test_dir.mkdir()
     (test_dir / "test_example.py").write_text(
-        "def test_alpha():\n    pass\n\n"
-        "def test_beta():\n    pass\n"
+        "def test_alpha():\n    pass\n\ndef test_beta():\n    pass\n"
     )
 
     with patch(
@@ -543,9 +549,7 @@ def test_runner_records_timeouts_in_report_field() -> None:
     runner.register_dimension("hung", HungEvaluator())
     report = runner.run_all(version="t")
 
-    assert "hung" in report.timeouts, (
-        f"expected 'hung' in report.timeouts, got {report.timeouts}"
-    )
+    assert "hung" in report.timeouts, f"expected 'hung' in report.timeouts, got {report.timeouts}"
     hung_score = report.get_score("hung")
     assert hung_score is not None
     assert hung_score.metadata.get("status") == "timeout"

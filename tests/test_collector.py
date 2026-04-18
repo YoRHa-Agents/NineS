@@ -6,12 +6,9 @@ run without network access and without rate-limit delays.
 
 from __future__ import annotations
 
-import json
-from datetime import datetime, timezone
 from typing import Any
 
 import httpx
-import pytest
 
 from nines.collector.arxiv import ArxivCollector, ArxivConfig
 from nines.collector.github import GitHubCollector, GitHubConfig
@@ -23,10 +20,10 @@ from nines.collector.models import (
 )
 from nines.collector.store import DataStore
 
-
 # ======================================================================
 # Helpers
 # ======================================================================
+
 
 def _json_response(data: Any, status_code: int = 200) -> httpx.Response:
     return httpx.Response(
@@ -103,6 +100,7 @@ SAMPLE_ARXIV_XML = """\
 # ======================================================================
 # GitHub tests
 # ======================================================================
+
 
 class TestGitHubSearch:
     """AC: GitHub search returns results."""
@@ -199,6 +197,7 @@ class TestGitHubFetchRepo:
 # arXiv tests
 # ======================================================================
 
+
 class TestArxivSearch:
     """AC: arXiv search works."""
 
@@ -271,6 +270,7 @@ class TestArxivSearch:
 # ======================================================================
 # DataStore tests
 # ======================================================================
+
 
 class TestStoreCrud:
     """AC: Data stores and retrieves."""
@@ -408,9 +408,7 @@ class TestSnapshotSaveLoad:
         store = DataStore(":memory:")
         try:
             for ts in ["2026-04-08T00:00:00Z", "2026-04-10T00:00:00Z", "2026-04-09T00:00:00Z"]:
-                store.save_snapshot(
-                    CollectionSnapshot(source="arxiv", timestamp=ts, items=[])
-                )
+                store.save_snapshot(CollectionSnapshot(source="arxiv", timestamp=ts, items=[]))
 
             snapshots = store.get_snapshots(source="arxiv")
             assert len(snapshots) == 3
@@ -423,6 +421,7 @@ class TestSnapshotSaveLoad:
 # ======================================================================
 # Model round-trip tests
 # ======================================================================
+
 
 class TestModelSerialization:
     def test_repository_round_trip(self) -> None:

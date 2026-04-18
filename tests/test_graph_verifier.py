@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from nines.analyzer.graph_models import (
     ArchitectureLayer,
     GraphEdge,
@@ -77,10 +75,7 @@ class TestGraphVerifier:
         assert result.orphan_count >= 1
 
     def test_low_layer_coverage(self):
-        nodes = [
-            GraphNode(id=f"n{i}", node_type="file", name=f"n{i}")
-            for i in range(10)
-        ]
+        nodes = [GraphNode(id=f"n{i}", node_type="file", name=f"n{i}") for i in range(10)]
         layers = [ArchitectureLayer(id="core", name="Core", node_ids=["n0"])]
 
         result = GraphVerifier().verify(_make_graph(nodes, layers=layers))

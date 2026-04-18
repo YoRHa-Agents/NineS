@@ -124,25 +124,16 @@ def analyze_cmd(
 
         if has_impact:
             ai_data = metrics["agent_impact"]
-            lines.append(
-                f"  Total files scanned: {metrics.get('total_files_scanned', 0)}"
-            )
-            lines.append(
-                f"  Agent mechanisms: {len(ai_data.get('mechanisms', []))}"
-            )
-            lines.append(
-                f"  Agent artifacts: {len(ai_data.get('agent_facing_artifacts', []))}"
-            )
+            lines.append(f"  Total files scanned: {metrics.get('total_files_scanned', 0)}")
+            lines.append(f"  Agent mechanisms: {len(ai_data.get('mechanisms', []))}")
+            lines.append(f"  Agent artifacts: {len(ai_data.get('agent_facing_artifacts', []))}")
 
             if "key_points" in metrics:
                 kp_data = metrics["key_points"]
                 kp_list = kp_data.get("key_points", [])
                 lines.append(f"  Key points: {len(kp_list)}")
                 for kp in kp_list[:5]:
-                    lines.append(
-                        f"    [{kp.get('priority', '?')}] "
-                        f"{kp.get('title', 'untitled')}"
-                    )
+                    lines.append(f"    [{kp.get('priority', '?')}] {kp.get('title', 'untitled')}")
 
             lines.append("")
             lines.append("  Code structure:")
@@ -202,8 +193,7 @@ def analyze_cmd(
         critical_issues = [
             issue
             for issue in verification.get("issues", [])
-            if isinstance(issue, dict)
-            and issue.get("severity") == "critical"
+            if isinstance(issue, dict) and issue.get("severity") == "critical"
         ]
         if not passed and critical_issues:
             click.echo(

@@ -135,7 +135,8 @@ class ImprovementPlanner:
         )
         logger.info(
             "Generated improvement plan: %d suggestions for %d gaps",
-            len(suggestions), plan.total_gaps,
+            len(suggestions),
+            plan.total_gaps,
         )
         return plan
 

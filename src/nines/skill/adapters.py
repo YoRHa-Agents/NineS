@@ -117,8 +117,7 @@ class CursorAdapter:
         """Emit command."""
         short = command_name.removeprefix("nines-")
         content = (
-            f"# {command_name}\n\n"
-            f"Invoke via: `{manifest.cli_binary} {short} {{{{NINES_ARGS}}}}`\n"
+            f"# {command_name}\n\nInvoke via: `{manifest.cli_binary} {short} {{{{NINES_ARGS}}}}`\n"
         )
         return EmittedFile(
             relative_path=f"commands/{short}.md",

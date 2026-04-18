@@ -24,17 +24,19 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
 
-class EvaluatorBudgetExceeded(Exception):
+class EvaluatorBudgetExceeded(Exception):  # noqa: N818 — public API; renaming would break collector imports
     """Raised by :func:`evaluator_budget` when ``hard_seconds`` elapses.
 
     Carries the evaluator name and elapsed wall time so reports can
@@ -120,6 +122,7 @@ def evaluator_budget(
         On hard-timeout breach.  Exceptions raised inside the wrapped
         callable propagate verbatim through the ``run()`` invocation.
     """
+
     def run(fn: Callable[[], T]) -> T:
         # Holders for the worker thread's result / exception so the
         # caller can see them after join.
@@ -152,7 +155,9 @@ def evaluator_budget(
                 cancel_flag.set()
             logger.warning(
                 "Evaluator %s exceeded hard budget %.1fs (elapsed %.1fs)",
-                name, budget.hard_seconds, elapsed,
+                name,
+                budget.hard_seconds,
+                elapsed,
             )
             raise EvaluatorBudgetExceeded(
                 name=name,
@@ -168,7 +173,9 @@ def evaluator_budget(
         if elapsed > budget.soft_seconds:
             logger.info(
                 "Evaluator %s exceeded soft budget %.1fs (elapsed %.1fs)",
-                name, budget.soft_seconds, elapsed,
+                name,
+                budget.soft_seconds,
+                elapsed,
             )
 
         if not result_box:

@@ -94,9 +94,11 @@ def test_5xx_response_is_retried_then_wraps_collector_error() -> None:
     collector = GitHubCollector(config=config, client=client)
 
     # Patch the sleep used by with_retry so the test stays fast.
-    with patch("nines.core.retry.time.sleep", lambda _s: None):
-        with pytest.raises(CollectorError) as excinfo:
-            collector._request("GET", "/repos/x/y")
+    with (
+        patch("nines.core.retry.time.sleep", lambda _s: None),
+        pytest.raises(CollectorError) as excinfo,
+    ):
+        collector._request("GET", "/repos/x/y")
 
     assert calls["n"] == 2
     assert excinfo.value.details.get("status") == 503

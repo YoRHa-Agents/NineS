@@ -108,9 +108,7 @@ _DIMENSION_LABELS: dict[str, str] = {
     "agent_analysis_quality": "agent_analysis_quality (D20)",
 }
 
-_ALL_CAPABILITY_DIMS = {
-    name for names in _CAPABILITY_GROUPS.values() for name in names
-}
+_ALL_CAPABILITY_DIMS = {name for names in _CAPABILITY_GROUPS.values() for name in names}
 
 _HYGIENE_DIMS = [
     "code_coverage",
@@ -135,9 +133,7 @@ def _format_text_report(
     cap_mean = _mean_normalized(capability_scores)
     hyg_mean = _mean_normalized(hygiene_scores)
     overall = (
-        CAPABILITY_WEIGHT * cap_mean + HYGIENE_WEIGHT * hyg_mean
-        if hygiene_scores
-        else cap_mean
+        CAPABILITY_WEIGHT * cap_mean + HYGIENE_WEIGHT * hyg_mean if hygiene_scores else cap_mean
     )
 
     lines = [
@@ -154,9 +150,7 @@ def _format_text_report(
         lines.append(f"  Overall: {overall:.4f} (capability only)")
     lines.append(f"  Duration: {report.duration:.3f}s")
     if report.timeouts:
-        lines.append(
-            "  Timeouts (C04): " + ", ".join(report.timeouts)
-        )
+        lines.append("  Timeouts (C04): " + ", ".join(report.timeouts))
 
     score_map = {s.name: s for s in capability_scores + hygiene_scores}
 
@@ -171,8 +165,7 @@ def _format_text_report(
                 continue
             label = _DIMENSION_LABELS.get(dim_name, dim_name)
             lines.append(
-                f"    {label}: {score.value:.3f} / {score.max_value:.3f} "
-                f"({score.normalized:.1%})"
+                f"    {label}: {score.value:.3f} / {score.max_value:.3f} ({score.normalized:.1%})"
             )
 
     if hygiene_scores:
@@ -209,9 +202,7 @@ def _build_json_output(
     cap_mean = _mean_normalized(capability_scores)
     hyg_mean = _mean_normalized(hygiene_scores)
     overall = (
-        CAPABILITY_WEIGHT * cap_mean + HYGIENE_WEIGHT * hyg_mean
-        if hygiene_scores
-        else cap_mean
+        CAPABILITY_WEIGHT * cap_mean + HYGIENE_WEIGHT * hyg_mean if hygiene_scores else cap_mean
     )
 
     # Forward every report field, then layer on CLI-specific computed
@@ -312,6 +303,7 @@ def self_eval_cmd(
     output_format = ctx.obj.get("format", "text")
 
     from nines.core.budget import TimeBudget
+
     # C04: bound every dimension to ``evaluator_timeout`` seconds so a
     # runaway evaluator can't hang the whole report.
     runner = SelfEvalRunner(
@@ -322,15 +314,18 @@ def self_eval_cmd(
     )
 
     runner.register_dimension(
-        "scoring_accuracy", ScoringAccuracyEvaluator(golden_dir),
+        "scoring_accuracy",
+        ScoringAccuracyEvaluator(golden_dir),
     )
     runner.register_dimension("eval_coverage", EvalCoverageEvaluator(samples_dir))
     runner.register_dimension(
-        "scoring_reliability", ReliabilityEvaluator(golden_dir),
+        "scoring_reliability",
+        ReliabilityEvaluator(golden_dir),
     )
     runner.register_dimension("report_quality", ReportQualityEvaluator())
     runner.register_dimension(
-        "scorer_agreement", ScorerAgreementEvaluator(golden_dir),
+        "scorer_agreement",
+        ScorerAgreementEvaluator(golden_dir),
     )
 
     runner.register_dimension("source_coverage", SourceCoverageEvaluator())
@@ -338,21 +333,26 @@ def self_eval_cmd(
     runner.register_dimension("change_detection", ChangeDetectionEvaluator())
     runner.register_dimension("data_completeness", DataCompletenessEvaluator())
     runner.register_dimension(
-        "collection_throughput", CollectionThroughputEvaluator(),
+        "collection_throughput",
+        CollectionThroughputEvaluator(),
     )
 
     runner.register_dimension(
-        "decomposition_coverage", DecompositionCoverageEvaluator(src_dir),
+        "decomposition_coverage",
+        DecompositionCoverageEvaluator(src_dir),
     )
     runner.register_dimension(
-        "abstraction_quality", AbstractionQualityEvaluator(src_dir),
+        "abstraction_quality",
+        AbstractionQualityEvaluator(src_dir),
     )
     runner.register_dimension(
-        "code_review_accuracy", CodeReviewAccuracyEvaluator(src_dir),
+        "code_review_accuracy",
+        CodeReviewAccuracyEvaluator(src_dir),
     )
     runner.register_dimension("index_recall", IndexRecallEvaluator(src_dir))
     runner.register_dimension(
-        "structure_recognition", StructureRecognitionEvaluator(src_dir),
+        "structure_recognition",
+        StructureRecognitionEvaluator(src_dir),
     )
     runner.register_dimension("pipeline_latency", PipelineLatencyEvaluator())
     runner.register_dimension("sandbox_isolation", SandboxIsolationEvaluator())
@@ -362,15 +362,18 @@ def self_eval_cmd(
 
     if not capability_only:
         runner.register_dimension(
-            "code_coverage", LiveCodeCoverageEvaluator(project_root),
+            "code_coverage",
+            LiveCodeCoverageEvaluator(project_root),
         )
         runner.register_dimension("test_count", LiveTestCountEvaluator(test_dir))
         runner.register_dimension("module_count", LiveModuleCountEvaluator(src_dir))
         runner.register_dimension(
-            "docstring_coverage", DocstringCoverageEvaluator(src_dir),
+            "docstring_coverage",
+            DocstringCoverageEvaluator(src_dir),
         )
         runner.register_dimension(
-            "lint_cleanliness", LintCleanlinessEvaluator(src_dir),
+            "lint_cleanliness",
+            LintCleanlinessEvaluator(src_dir),
         )
 
     if verbose:
@@ -388,7 +391,9 @@ def self_eval_cmd(
         output_text = _build_json_output(report, capability_scores, hygiene_scores)
     else:
         output_text = _format_text_report(
-            report, capability_scores, hygiene_scores,
+            report,
+            capability_scores,
+            hygiene_scores,
         )
 
     if output_dir:

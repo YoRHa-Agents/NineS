@@ -35,7 +35,8 @@ _JS_DYNAMIC_IMPORT_RE = re.compile(r"""import\(\s*['"]([^'"]+)['"]\s*\)""")
 # ---------------------------------------------------------------------------
 _GO_SINGLE_IMPORT_RE = re.compile(r'^\s*import\s+"([^"]+)"', re.MULTILINE)
 _GO_BLOCK_IMPORT_RE = re.compile(
-    r"import\s*\((.*?)\)", re.DOTALL,
+    r"import\s*\((.*?)\)",
+    re.DOTALL,
 )
 _GO_BLOCK_ITEM_RE = re.compile(r'"([^"]+)"')
 
@@ -52,8 +53,14 @@ _RUST_MOD_RE = re.compile(r"^\s*(?:pub\s+)?mod\s+(\w+)\s*;", re.MULTILINE)
 # JS / TS resolution suffixes
 # ---------------------------------------------------------------------------
 _JS_RESOLVE_SUFFIXES = (
-    ".ts", ".tsx", ".js", ".jsx",
-    "/index.ts", "/index.tsx", "/index.js", "/index.jsx",
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    "/index.ts",
+    "/index.tsx",
+    "/index.js",
+    "/index.jsx",
 )
 
 _LANG_EXTENSIONS: dict[str, set[str]] = {
@@ -109,8 +116,7 @@ class ImportGraph:
         return {
             "edges": [e.to_dict() for e in self.edges],
             "unresolved": [
-                {"source_file": src, "import_name": name}
-                for src, name in self.unresolved
+                {"source_file": src, "import_name": name} for src, name in self.unresolved
             ],
         }
 
@@ -119,8 +125,7 @@ class ImportGraph:
         """Deserialize from a plain dictionary."""
         edges = [ImportEdge.from_dict(e) for e in data.get("edges", [])]
         unresolved = [
-            (item["source_file"], item["import_name"])
-            for item in data.get("unresolved", [])
+            (item["source_file"], item["import_name"]) for item in data.get("unresolved", [])
         ]
         return cls(edges=edges, unresolved=unresolved)
 
@@ -187,22 +192,28 @@ class ImportGraphBuilder:
                 raw_imports = extractor(abs_path)
             except Exception:
                 logger.warning(
-                    "Failed to extract imports from %s", rel_path,
+                    "Failed to extract imports from %s",
+                    rel_path,
                 )
                 continue
 
             for import_name, is_relative, lineno in raw_imports:
                 resolved = self._resolve_import(
-                    rel_path, import_name, is_relative, file_index,
+                    rel_path,
+                    import_name,
+                    is_relative,
+                    file_index,
                 )
                 if resolved is not None:
-                    edges.append(ImportEdge(
-                        source_file=rel_path,
-                        target_file=resolved,
-                        import_name=import_name,
-                        is_relative=is_relative,
-                        line_number=lineno,
-                    ))
+                    edges.append(
+                        ImportEdge(
+                            source_file=rel_path,
+                            target_file=resolved,
+                            import_name=import_name,
+                            is_relative=is_relative,
+                            line_number=lineno,
+                        )
+                    )
                 else:
                     unresolved.append((rel_path, import_name))
 
@@ -213,7 +224,8 @@ class ImportGraphBuilder:
     # ------------------------------------------------------------------
 
     def _extract_python_imports(
-        self, path: Path,
+        self,
+        path: Path,
     ) -> list[tuple[str, bool, int]]:
         """Extract imports from a Python file using the ``ast`` module.
 
@@ -246,7 +258,8 @@ class ImportGraphBuilder:
         return results
 
     def _extract_js_ts_imports(
-        self, path: Path,
+        self,
+        path: Path,
     ) -> list[tuple[str, bool, int]]:
         """Extract imports from a JS/TS file using regex patterns.
 
@@ -269,7 +282,8 @@ class ImportGraphBuilder:
         return results
 
     def _extract_go_imports(
-        self, path: Path,
+        self,
+        path: Path,
     ) -> list[tuple[str, bool, int]]:
         """Extract imports from a Go file using regex patterns.
 
@@ -291,14 +305,19 @@ class ImportGraphBuilder:
             for i, block_line in enumerate(block.splitlines()):
                 item = _GO_BLOCK_ITEM_RE.search(block_line)
                 if item:
-                    results.append((
-                        item.group(1), False, block_start + i + 1,
-                    ))
+                    results.append(
+                        (
+                            item.group(1),
+                            False,
+                            block_start + i + 1,
+                        )
+                    )
 
         return results
 
     def _extract_rust_imports(
-        self, path: Path,
+        self,
+        path: Path,
     ) -> list[tuple[str, bool, int]]:
         """Extract imports from a Rust file using regex patterns.
 
@@ -340,7 +359,9 @@ class ImportGraphBuilder:
         """
         if is_relative and import_name.startswith("."):
             return self._resolve_relative_import(
-                source_file, import_name, file_index,
+                source_file,
+                import_name,
+                file_index,
             )
 
         if import_name in file_index:
@@ -367,9 +388,7 @@ class ImportGraphBuilder:
             # JS/TS style relative import — normalise without hitting the
             # real filesystem so paths stay project-relative.
             combined = Path(source_dir) / import_name
-            norm = "/".join(
-                p for p in combined.parts if p != "."
-            )
+            norm = "/".join(p for p in combined.parts if p != ".")
             # Collapse ".." segments manually
             parts = norm.split("/")
             resolved_parts: list[str] = []
@@ -447,7 +466,9 @@ class ImportGraphBuilder:
 
     @staticmethod
     def _index_python_file(
-        rel: Path, rel_str: str, index: dict[str, str],
+        rel: Path,
+        rel_str: str,
+        index: dict[str, str],
     ) -> None:
         """Add Python module entries to the index."""
         parts = list(rel.parts)
@@ -461,7 +482,9 @@ class ImportGraphBuilder:
 
     @staticmethod
     def _index_js_ts_file(
-        rel: Path, rel_str: str, index: dict[str, str],
+        rel: Path,
+        rel_str: str,
+        index: dict[str, str],
     ) -> None:
         """Add JS/TS file entries to the index."""
         index[rel_str] = rel_str
@@ -476,7 +499,9 @@ class ImportGraphBuilder:
 
     @staticmethod
     def _index_go_file(
-        rel: Path, rel_str: str, index: dict[str, str],
+        rel: Path,
+        rel_str: str,
+        index: dict[str, str],
     ) -> None:
         """Add Go package entries to the index."""
         pkg_dir = str(rel.parent)
@@ -485,7 +510,9 @@ class ImportGraphBuilder:
 
     @staticmethod
     def _index_rust_file(
-        rel: Path, rel_str: str, index: dict[str, str],
+        rel: Path,
+        rel_str: str,
+        index: dict[str, str],
     ) -> None:
         """Add Rust module entries to the index."""
         parts = list(rel.parts)

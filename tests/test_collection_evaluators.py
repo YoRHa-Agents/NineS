@@ -24,7 +24,6 @@ from nines.iteration.collection_evaluators import (
 )
 from nines.iteration.self_eval import DimensionEvaluator, DimensionScore
 
-
 # ---------------------------------------------------------------------------
 # Protocol conformance
 # ---------------------------------------------------------------------------
@@ -69,7 +68,7 @@ def test_source_coverage_full_when_both_active() -> None:
 
     assert score.value == 1.0
     assert score.metadata["active_sources"] == 2
-    for source_name, detail in score.metadata["details"].items():
+    for _source_name, detail in score.metadata["details"].items():
         assert detail["importable"] is True
         assert detail["has_search"] is True
         assert detail["has_fetch"] is True
@@ -174,7 +173,8 @@ def test_all_evaluators_with_runner() -> None:
     runner.register_dimension("source_coverage", SourceCoverageEvaluator())
     runner.register_dimension("data_completeness", DataCompletenessEvaluator())
     runner.register_dimension(
-        "collection_throughput", CollectionThroughputEvaluator(),
+        "collection_throughput",
+        CollectionThroughputEvaluator(),
     )
 
     report = runner.run_all(version="test-v2-collection")

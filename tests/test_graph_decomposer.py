@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-import pytest
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 from nines.analyzer.graph_decomposer import GraphDecomposer
 from nines.analyzer.graph_models import KnowledgeGraph
@@ -16,11 +18,30 @@ def _make_scan_result(tmp_path: Path) -> ScanResult:
     """Create a minimal scan result for testing."""
     root = str(tmp_path)
     files = [
-        FileInfo(path=str(tmp_path / "src" / "main.py"), language="python", category="code", line_count=50),
-        FileInfo(path=str(tmp_path / "src" / "utils.py"), language="python", category="code", line_count=30),
-        FileInfo(path=str(tmp_path / "tests" / "test_main.py"), language="python", category="code", line_count=40),
-        FileInfo(path=str(tmp_path / "config.yaml"), language="yaml", category="config", line_count=10),
-        FileInfo(path=str(tmp_path / "README.md"), language="markdown", category="docs", line_count=20),
+        FileInfo(
+            path=str(tmp_path / "src" / "main.py"),
+            language="python",
+            category="code",
+            line_count=50,
+        ),
+        FileInfo(
+            path=str(tmp_path / "src" / "utils.py"),
+            language="python",
+            category="code",
+            line_count=30,
+        ),
+        FileInfo(
+            path=str(tmp_path / "tests" / "test_main.py"),
+            language="python",
+            category="code",
+            line_count=40,
+        ),
+        FileInfo(
+            path=str(tmp_path / "config.yaml"), language="yaml", category="config", line_count=10
+        ),
+        FileInfo(
+            path=str(tmp_path / "README.md"), language="markdown", category="docs", line_count=20
+        ),
     ]
     return ScanResult(
         project_root=root,
@@ -71,12 +92,17 @@ class TestGraphDecomposer:
             (tmp_path / f).touch()
 
         scan = _make_scan_result(tmp_path)
-        ig = ImportGraph(edges=[
-            ImportEdge(
-                source_file="src/main.py", target_file="src/utils.py",
-                import_name="utils", is_relative=False, line_number=1,
-            ),
-        ])
+        ig = ImportGraph(
+            edges=[
+                ImportEdge(
+                    source_file="src/main.py",
+                    target_file="src/utils.py",
+                    import_name="utils",
+                    is_relative=False,
+                    line_number=1,
+                ),
+            ]
+        )
 
         graph = GraphDecomposer().build_graph(scan, ig)
 
@@ -121,7 +147,8 @@ class TestGraphDecomposer:
         graph = GraphDecomposer().build_graph(scan, ImportGraph())
 
         entry_points = GraphDecomposer().identify_entry_points(
-            graph.nodes, graph.edges,
+            graph.nodes,
+            graph.edges,
         )
         entry_paths = []
         for eid in entry_points:

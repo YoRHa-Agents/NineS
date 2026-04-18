@@ -61,9 +61,7 @@ class Event:
 
     type: str
     data: dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(
-        default_factory=lambda: datetime.now(UTC)
-    )
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 # ---------------------------------------------------------------------------
@@ -129,8 +127,7 @@ class EventBus:
         if len(handlers) >= self._max_handlers:
             raise NinesError(
                 message=(
-                    f"Max handlers ({self._max_handlers}) exceeded "
-                    f"for event type '{event_type}'"
+                    f"Max handlers ({self._max_handlers}) exceeded for event type '{event_type}'"
                 ),
                 details={"event_type": event_type, "limit": self._max_handlers},
             )

@@ -65,11 +65,13 @@ class SearchEngine:
         for unit_id, score in hits:
             unit = self._index.get_unit(unit_id)
             snippet = self._extract_snippet(unit, query) if unit else ""
-            results.append(SearchResult(
-                unit_id=unit_id,
-                score=score,
-                snippet=snippet,
-            ))
+            results.append(
+                SearchResult(
+                    unit_id=unit_id,
+                    score=score,
+                    snippet=snippet,
+                )
+            )
 
         return results
 

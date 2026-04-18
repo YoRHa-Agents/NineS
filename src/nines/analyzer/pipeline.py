@@ -231,11 +231,14 @@ class AnalysisPipeline:
         import_graph = import_builder.build(target, scan_result.files)
 
         graph = self._graph_decomposer.build_graph(
-            scan_result, import_graph, reviews,
+            scan_result,
+            import_graph,
+            reviews,
         )
 
         verification = self._graph_verifier.verify(
-            graph, project_root=str(target),
+            graph,
+            project_root=str(target),
         )
         summary = self._summarizer.summarize(graph, verification)
 
@@ -302,10 +305,7 @@ class AnalysisPipeline:
                 continue
             if fpath.suffix not in _AGENT_EXTENSIONS:
                 continue
-            if any(
-                p in _SKIP_DIRS or p.startswith(".")
-                for p in fpath.relative_to(target).parts
-            ):
+            if any(p in _SKIP_DIRS or p.startswith(".") for p in fpath.relative_to(target).parts):
                 continue
             files.append(fpath)
 
@@ -385,6 +385,7 @@ class AnalysisPipeline:
             # (which would trip ruff N812 because of the leading
             # underscore + uppercase rename).
             from nines import __version__ as fallback_version
+
             logger.debug(
                 "importlib.metadata.version('nines') not found; "
                 "falling back to nines.__version__=%s",

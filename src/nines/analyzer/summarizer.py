@@ -75,8 +75,10 @@ class AnalysisSummarizer:
 
         logger.info(
             "Summary: %d files, %d nodes, %d edges, %d layers",
-            summary.total_files, summary.total_nodes,
-            summary.total_edges, summary.layer_count,
+            summary.total_files,
+            summary.total_nodes,
+            summary.total_edges,
+            summary.layer_count,
         )
         return summary
 

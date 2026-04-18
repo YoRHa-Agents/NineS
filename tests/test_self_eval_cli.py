@@ -23,7 +23,6 @@ from nines.iteration.self_eval import (  # noqa: E402
     SelfEvalReport,
 )
 
-
 # ---------------------------------------------------------------------------
 # N1 — CLI JSON exposes ``timeouts`` and other report-level fields
 # ---------------------------------------------------------------------------
@@ -68,9 +67,7 @@ def test_build_json_output_includes_timeouts_when_present() -> None:
     raw = _build_json_output(report, cap_scores, hyg_scores)
     payload = json.loads(raw)
 
-    assert "timeouts" in payload, (
-        f"timeouts field missing — payload keys: {sorted(payload.keys())}"
-    )
+    assert "timeouts" in payload, f"timeouts field missing — payload keys: {sorted(payload.keys())}"
     assert payload["timeouts"] == ["agent_analysis_quality"]
 
 
@@ -116,8 +113,8 @@ def test_build_json_output_preserves_legacy_top_level_fields() -> None:
         "scores",
         "timeouts",
     }
-    assert expected_keys.issubset(payload.keys()), (
-        "missing keys: " + repr(expected_keys - set(payload.keys()))
+    assert expected_keys.issubset(payload.keys()), "missing keys: " + repr(
+        expected_keys - set(payload.keys())
     )
     assert payload["weights"]["capability"] == 0.7
     assert payload["weights"]["hygiene"] == 0.3

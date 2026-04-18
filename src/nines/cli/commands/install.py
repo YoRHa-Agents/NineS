@@ -23,9 +23,7 @@ def resolve_install_dir(is_global: bool) -> Path:
 @click.option(
     "--target",
     required=True,
-    type=click.Choice(
-        ["cursor", "claude", "codex", "copilot", "all"], case_sensitive=False
-    ),
+    type=click.Choice(["cursor", "claude", "codex", "copilot", "all"], case_sensitive=False),
     help="Runtime target for installation.",
 )
 @click.option(

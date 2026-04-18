@@ -41,7 +41,8 @@ class GraphDecompositionCoverageEvaluator:
             if scan_result.total_files == 0:
                 return DimensionScore(
                     name="graph_decomposition_coverage",
-                    value=0.0, max_value=1.0,
+                    value=0.0,
+                    max_value=1.0,
                     metadata={"reason": "no files found"},
                 )
 
@@ -69,7 +70,8 @@ class GraphDecompositionCoverageEvaluator:
             logger.error("D21 graph decomposition coverage failed: %s", exc)
             return DimensionScore(
                 name="graph_decomposition_coverage",
-                value=0.0, max_value=1.0,
+                value=0.0,
+                max_value=1.0,
                 metadata={"error": str(exc)},
             )
 
@@ -93,7 +95,8 @@ class GraphVerificationPassRateEvaluator:
             if scan_result.total_files == 0:
                 return DimensionScore(
                     name="graph_verification_pass_rate",
-                    value=0.0, max_value=1.0,
+                    value=0.0,
+                    max_value=1.0,
                     metadata={"reason": "no files found"},
                 )
 
@@ -106,12 +109,8 @@ class GraphVerificationPassRateEvaluator:
             verifier = GraphVerifier()
             result = verifier.verify(graph)
 
-            critical_count = sum(
-                1 for i in result.issues if i.severity == "critical"
-            )
-            warning_count = sum(
-                1 for i in result.issues if i.severity == "warning"
-            )
+            critical_count = sum(1 for i in result.issues if i.severity == "critical")
+            warning_count = sum(1 for i in result.issues if i.severity == "warning")
 
             integrity_score = 1.0 if critical_count == 0 else 0.0
             coverage_score = result.layer_coverage_pct / 100.0
@@ -135,7 +134,8 @@ class GraphVerificationPassRateEvaluator:
             logger.error("D22 graph verification failed: %s", exc)
             return DimensionScore(
                 name="graph_verification_pass_rate",
-                value=0.0, max_value=1.0,
+                value=0.0,
+                max_value=1.0,
                 metadata={"error": str(exc)},
             )
 
@@ -158,7 +158,8 @@ class LayerAssignmentQualityEvaluator:
             if scan_result.total_files == 0:
                 return DimensionScore(
                     name="layer_assignment_quality",
-                    value=0.0, max_value=1.0,
+                    value=0.0,
+                    max_value=1.0,
                     metadata={"reason": "no files found"},
                 )
 
@@ -171,35 +172,38 @@ class LayerAssignmentQualityEvaluator:
             if not graph.layers:
                 return DimensionScore(
                     name="layer_assignment_quality",
-                    value=0.0, max_value=1.0,
+                    value=0.0,
+                    max_value=1.0,
                     metadata={"reason": "no layers detected"},
                 )
 
-            meaningful_layers = [
-                la for la in graph.layers if la.id != "unclassified"
-            ]
+            meaningful_layers = [la for la in graph.layers if la.id != "unclassified"]
             layer_diversity = min(1.0, len(meaningful_layers) / 4.0)
 
             total_assigned = sum(len(la.node_ids) for la in graph.layers)
             unclassified_layer = next(
-                (la for la in graph.layers if la.id == "unclassified"), None,
+                (la for la in graph.layers if la.id == "unclassified"),
+                None,
             )
             unclassified_count = len(unclassified_layer.node_ids) if unclassified_layer else 0
 
             classification_rate = (
                 (total_assigned - unclassified_count) / total_assigned
-                if total_assigned > 0 else 0.0
+                if total_assigned > 0
+                else 0.0
             )
 
             max_layer_size = max(
-                (len(la.node_ids) for la in meaningful_layers), default=0,
+                (len(la.node_ids) for la in meaningful_layers),
+                default=0,
             )
             balance = (
                 1.0 - (max_layer_size / total_assigned)
-                if total_assigned > 0 and meaningful_layers else 0.0
+                if total_assigned > 0 and meaningful_layers
+                else 0.0
             )
 
-            value = (layer_diversity * 0.3 + classification_rate * 0.5 + balance * 0.2)
+            value = layer_diversity * 0.3 + classification_rate * 0.5 + balance * 0.2
 
             return DimensionScore(
                 name="layer_assignment_quality",
@@ -216,7 +220,8 @@ class LayerAssignmentQualityEvaluator:
             logger.error("D23 layer assignment quality failed: %s", exc)
             return DimensionScore(
                 name="layer_assignment_quality",
-                value=0.0, max_value=1.0,
+                value=0.0,
+                max_value=1.0,
                 metadata={"error": str(exc)},
             )
 
@@ -239,7 +244,8 @@ class SummaryCompletenessEvaluator:
             if scan_result.total_files == 0:
                 return DimensionScore(
                     name="summary_completeness",
-                    value=0.0, max_value=1.0,
+                    value=0.0,
+                    max_value=1.0,
                     metadata={"reason": "no files found"},
                 )
 
@@ -285,6 +291,7 @@ class SummaryCompletenessEvaluator:
             logger.error("D24 summary completeness failed: %s", exc)
             return DimensionScore(
                 name="summary_completeness",
-                value=0.0, max_value=1.0,
+                value=0.0,
+                max_value=1.0,
                 metadata={"error": str(exc)},
             )

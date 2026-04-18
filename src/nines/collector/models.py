@@ -114,9 +114,7 @@ class CollectionSnapshot:
     """A point-in-time snapshot of a collection run."""
 
     source: str = ""
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     items: list[dict[str, Any]] = field(default_factory=list)
     snapshot_id: int | None = None
 
@@ -148,9 +146,7 @@ class ChangeEvent:
     change_type: str = ""
     old_value: Any = None
     new_value: Any = None
-    detected_at: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    detected_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""

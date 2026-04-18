@@ -585,7 +585,9 @@ class TestExtractFromAnalysis:
         result = AnalysisResult(
             target="/repo",
             findings=[
-                Finding(id="af1", severity="critical", message="security issue", location="src/foo.py"),
+                Finding(
+                    id="af1", severity="critical", message="security issue", location="src/foo.py"
+                ),
             ],
         )
         points = extractor._extract_from_analysis(result)
@@ -880,7 +882,9 @@ class TestExtractEndToEnd:
     ) -> None:
         analysis = AnalysisResult(
             target="/repo",
-            findings=[Finding(id="af1", severity="error", message="critical issue", location="main.py")],
+            findings=[
+                Finding(id="af1", severity="error", message="critical issue", location="main.py")
+            ],
             metrics={"files_analyzed": 10, "agent_impact": {"mechanisms": []}},
         )
         report = extractor.extract(sample_report, analysis_result=analysis)
@@ -1109,12 +1113,20 @@ class TestLogMagnitude:
         """1K-token and 10K-token mechanisms must have different magnitudes."""
         extractor = KeyPointExtractor()
         small = AgentMechanism(
-            id="s", name="s", category="context_compression",
-            description="d", estimated_token_impact=-1000, confidence=1.0,
+            id="s",
+            name="s",
+            category="context_compression",
+            description="d",
+            estimated_token_impact=-1000,
+            confidence=1.0,
         )
         large = AgentMechanism(
-            id="l", name="l", category="context_compression",
-            description="d", estimated_token_impact=-10000, confidence=1.0,
+            id="l",
+            name="l",
+            category="context_compression",
+            description="d",
+            estimated_token_impact=-10000,
+            confidence=1.0,
         )
         pts_s = extractor._extract_from_mechanisms([small])
         pts_l = extractor._extract_from_mechanisms([large])
@@ -1124,8 +1136,12 @@ class TestLogMagnitude:
         """5K tokens at confidence 1.0 must be well below 1.0."""
         extractor = KeyPointExtractor()
         mech = AgentMechanism(
-            id="m", name="n", category="context_compression",
-            description="d", estimated_token_impact=5000, confidence=1.0,
+            id="m",
+            name="n",
+            category="context_compression",
+            description="d",
+            estimated_token_impact=5000,
+            confidence=1.0,
         )
         pts = extractor._extract_from_mechanisms([mech])
         assert pts[0].impact_magnitude < 0.85
@@ -1134,8 +1150,12 @@ class TestLogMagnitude:
         """50K tokens at confidence 1.0 should be at or near 1.0."""
         extractor = KeyPointExtractor()
         mech = AgentMechanism(
-            id="m", name="n", category="context_compression",
-            description="d", estimated_token_impact=50000, confidence=1.0,
+            id="m",
+            name="n",
+            category="context_compression",
+            description="d",
+            estimated_token_impact=50000,
+            confidence=1.0,
         )
         pts = extractor._extract_from_mechanisms([mech])
         assert pts[0].impact_magnitude >= 0.99
@@ -1144,8 +1164,12 @@ class TestLogMagnitude:
         """Even with enormous token impact, magnitude must not exceed 1.0."""
         extractor = KeyPointExtractor()
         mech = AgentMechanism(
-            id="m", name="n", category="context_compression",
-            description="d", estimated_token_impact=999999, confidence=1.0,
+            id="m",
+            name="n",
+            category="context_compression",
+            description="d",
+            estimated_token_impact=999999,
+            confidence=1.0,
         )
         pts = extractor._extract_from_mechanisms([mech])
         assert pts[0].impact_magnitude <= 1.0
@@ -1167,7 +1191,10 @@ class TestSemanticDeduplication:
                 id="econ-1",
                 category="context_management",
                 title="Token overhead analysis",
-                description="Agent context overhead is 6000 tokens across 4 file(s). This is high and may degrade agent performance.",
+                description=(
+                    "Agent context overhead is 6000 tokens across 4 file(s). "
+                    "This is high and may degrade agent performance."
+                ),
                 impact_magnitude=0.6,
                 metadata={"source": "economics", "overhead_tokens": 6000},
             ),

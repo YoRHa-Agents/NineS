@@ -24,11 +24,22 @@ from nines.iteration.self_eval import DimensionScore
 
 logger = logging.getLogger(__name__)
 
-_SKIP_DIRS = frozenset({
-    "__pycache__", ".git", ".hg", ".svn", "node_modules",
-    ".tox", ".mypy_cache", ".pytest_cache", ".ruff_cache",
-    ".venv", "venv", ".eggs",
-})
+_SKIP_DIRS = frozenset(
+    {
+        "__pycache__",
+        ".git",
+        ".hg",
+        ".svn",
+        "node_modules",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".venv",
+        "venv",
+        ".eggs",
+    }
+)
 
 _VALID_SEVERITIES = frozenset({"info", "warning", "error", "critical"})
 _VALID_UNIT_TYPES = frozenset({"function", "class", "module", "concern", "layer"})
@@ -123,10 +134,14 @@ class DecompositionCoverageEvaluator:
             )
         except Exception as exc:
             logger.error(
-                "DecompositionCoverageEvaluator failed: %s", exc, exc_info=True,
+                "DecompositionCoverageEvaluator failed: %s",
+                exc,
+                exc_info=True,
             )
             return DimensionScore(
-                name="decomposition_coverage", value=0.0, max_value=1.0,
+                name="decomposition_coverage",
+                value=0.0,
+                max_value=1.0,
             )
 
 
@@ -170,9 +185,7 @@ class AbstractionQualityEvaluator:
                     metadata={"total_units": 0, "well_classified": 0},
                 )
 
-            well_classified = sum(
-                1 for u in units if self._is_well_classified(u)
-            )
+            well_classified = sum(1 for u in units if self._is_well_classified(u))
             ratio = well_classified / len(units)
 
             return DimensionScore(
@@ -187,10 +200,14 @@ class AbstractionQualityEvaluator:
             )
         except Exception as exc:
             logger.error(
-                "AbstractionQualityEvaluator failed: %s", exc, exc_info=True,
+                "AbstractionQualityEvaluator failed: %s",
+                exc,
+                exc_info=True,
             )
             return DimensionScore(
-                name="abstraction_quality", value=0.0, max_value=1.0,
+                name="abstraction_quality",
+                value=0.0,
+                max_value=1.0,
             )
 
     @staticmethod
@@ -245,15 +262,11 @@ class CodeReviewAccuracyEvaluator:
                     metadata={"total_findings": 0, "valid_findings": 0},
                 )
 
-            valid_count = sum(
-                1 for f in all_findings if self._is_valid_finding(f)
-            )
+            valid_count = sum(1 for f in all_findings if self._is_valid_finding(f))
             finding_ratio = valid_count / len(all_findings)
 
             complexity_checks, reasonable = self._check_complexities(reviews)
-            complexity_ratio = (
-                reasonable / complexity_checks if complexity_checks else 1.0
-            )
+            complexity_ratio = reasonable / complexity_checks if complexity_checks else 1.0
 
             score = 0.7 * finding_ratio + 0.3 * complexity_ratio
 
@@ -273,10 +286,14 @@ class CodeReviewAccuracyEvaluator:
             )
         except Exception as exc:
             logger.error(
-                "CodeReviewAccuracyEvaluator failed: %s", exc, exc_info=True,
+                "CodeReviewAccuracyEvaluator failed: %s",
+                exc,
+                exc_info=True,
             )
             return DimensionScore(
-                name="code_review_accuracy", value=0.0, max_value=1.0,
+                name="code_review_accuracy",
+                value=0.0,
+                max_value=1.0,
             )
 
     @staticmethod
@@ -369,10 +386,14 @@ class IndexRecallEvaluator:
             )
         except Exception as exc:
             logger.error(
-                "IndexRecallEvaluator failed: %s", exc, exc_info=True,
+                "IndexRecallEvaluator failed: %s",
+                exc,
+                exc_info=True,
             )
             return DimensionScore(
-                name="index_recall", value=0.0, max_value=1.0,
+                name="index_recall",
+                value=0.0,
+                max_value=1.0,
             )
 
     @staticmethod
@@ -422,9 +443,7 @@ class StructureRecognitionEvaluator:
             if actual_pkgs:
                 total_checks += 1
                 detected_paths = {p.path for p in report.packages}
-                matches = sum(
-                    1 for d in actual_pkgs if str(d) in detected_paths
-                )
+                matches = sum(1 for d in actual_pkgs if str(d) in detected_paths)
                 ok = matches / len(actual_pkgs) >= 0.5
                 check_details["package_detection"] = ok
                 if ok:
@@ -435,8 +454,7 @@ class StructureRecognitionEvaluator:
             total_checks += 1
             module_ok = (
                 report.python_module_count > 0
-                and abs(report.python_module_count - actual_py_count)
-                / max(actual_py_count, 1)
+                and abs(report.python_module_count - actual_py_count) / max(actual_py_count, 1)
                 < 0.3
             )
             check_details["module_count_accuracy"] = module_ok
@@ -480,10 +498,14 @@ class StructureRecognitionEvaluator:
             )
         except Exception as exc:
             logger.error(
-                "StructureRecognitionEvaluator failed: %s", exc, exc_info=True,
+                "StructureRecognitionEvaluator failed: %s",
+                exc,
+                exc_info=True,
             )
             return DimensionScore(
-                name="structure_recognition", value=0.0, max_value=1.0,
+                name="structure_recognition",
+                value=0.0,
+                max_value=1.0,
             )
 
     def _find_actual_packages(self) -> list[Path]:

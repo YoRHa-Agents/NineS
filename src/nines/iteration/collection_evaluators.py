@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import time
+from datetime import UTC
 
 from nines.iteration.self_eval import DimensionScore
 
@@ -29,13 +30,26 @@ _CONFIGURED_SOURCES: dict[str, dict[str, str]] = {
 }
 
 _REPO_EXPECTED_FIELDS = [
-    "name", "owner", "url", "stars", "forks",
-    "description", "language", "topics", "last_updated",
+    "name",
+    "owner",
+    "url",
+    "stars",
+    "forks",
+    "description",
+    "language",
+    "topics",
+    "last_updated",
 ]
 
 _PAPER_EXPECTED_FIELDS = [
-    "id", "title", "authors", "abstract",
-    "categories", "published", "updated", "pdf_url",
+    "id",
+    "title",
+    "authors",
+    "abstract",
+    "categories",
+    "published",
+    "updated",
+    "pdf_url",
 ]
 
 
@@ -76,7 +90,9 @@ class SourceCoverageEvaluator:
                 result["has_fetch"] = callable(getattr(cls, "fetch", None))
             except Exception as exc:
                 logger.warning(
-                    "Source '%s' not available: %s", source_name, exc,
+                    "Source '%s' not available: %s",
+                    source_name,
+                    exc,
                 )
 
             if all(result.values()):
@@ -116,36 +132,48 @@ class SourceFreshnessEvaluator:
 
     def evaluate(self) -> DimensionScore:
         try:
-            from datetime import datetime, timedelta, timezone
+            from datetime import datetime, timedelta
 
             from nines.collector.models import Repository
             from nines.collector.store import DataStore
         except Exception as exc:
             logger.error("Cannot import collection components: %s", exc)
             return DimensionScore(
-                name="source_freshness", value=0.0, max_value=1.0,
+                name="source_freshness",
+                value=0.0,
+                max_value=1.0,
                 metadata={"error": str(exc)},
             )
 
         store = None
         try:
             store = DataStore(db_path=":memory:")
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             fresh_ts = (now - timedelta(days=1)).isoformat()
             stale_ts = (now - timedelta(days=60)).isoformat()
 
             repos = [
                 Repository(
-                    name="fresh-repo", owner="test",
+                    name="fresh-repo",
+                    owner="test",
                     url="https://github.com/test/fresh",
-                    stars=10, forks=1, description="Fresh", language="Python",
-                    topics=["test"], last_updated=fresh_ts,
+                    stars=10,
+                    forks=1,
+                    description="Fresh",
+                    language="Python",
+                    topics=["test"],
+                    last_updated=fresh_ts,
                 ),
                 Repository(
-                    name="stale-repo", owner="test",
+                    name="stale-repo",
+                    owner="test",
                     url="https://github.com/test/stale",
-                    stars=5, forks=0, description="Stale", language="Python",
-                    topics=["test"], last_updated=stale_ts,
+                    stars=5,
+                    forks=0,
+                    description="Stale",
+                    language="Python",
+                    topics=["test"],
+                    last_updated=stale_ts,
                 ),
             ]
             store.save_repos(repos)
@@ -155,11 +183,7 @@ class SourceFreshnessEvaluator:
             fresh_count = 0
             for repo in retrieved:
                 try:
-                    ts_str = (
-                        repo.last_updated.replace("Z", "+00:00")
-                        if repo.last_updated
-                        else ""
-                    )
+                    ts_str = repo.last_updated.replace("Z", "+00:00") if repo.last_updated else ""
                     if ts_str:
                         ts = datetime.fromisoformat(ts_str)
                         if ts >= cutoff:
@@ -182,10 +206,14 @@ class SourceFreshnessEvaluator:
             )
         except Exception as exc:
             logger.error(
-                "SourceFreshnessEvaluator failed: %s", exc, exc_info=True,
+                "SourceFreshnessEvaluator failed: %s",
+                exc,
+                exc_info=True,
             )
             return DimensionScore(
-                name="source_freshness", value=0.0, max_value=1.0,
+                name="source_freshness",
+                value=0.0,
+                max_value=1.0,
                 metadata={"error": str(exc)},
             )
         finally:
@@ -214,7 +242,9 @@ class ChangeDetectionEvaluator:
         except Exception as exc:
             logger.error("Cannot import collection components: %s", exc)
             return DimensionScore(
-                name="change_detection", value=0.0, max_value=1.0,
+                name="change_detection",
+                value=0.0,
+                max_value=1.0,
                 metadata={"error": str(exc)},
             )
 
@@ -222,18 +252,27 @@ class ChangeDetectionEvaluator:
         try:
             store = DataStore(db_path=":memory:")
             original = Repository(
-                name="change-test", owner="test",
+                name="change-test",
+                owner="test",
                 url="https://github.com/test/change",
-                stars=10, forks=1, description="Original", language="Python",
-                topics=["test"], last_updated="2025-01-01T00:00:00Z",
+                stars=10,
+                forks=1,
+                description="Original",
+                language="Python",
+                topics=["test"],
+                last_updated="2025-01-01T00:00:00Z",
             )
             store.save_repos([original])
 
             updated = Repository(
-                name="change-test", owner="test",
+                name="change-test",
+                owner="test",
                 url="https://github.com/test/change",
-                stars=20, forks=5, description="Updated description",
-                language="Python", topics=["test", "updated"],
+                stars=20,
+                forks=5,
+                description="Updated description",
+                language="Python",
+                topics=["test", "updated"],
                 last_updated="2025-06-01T00:00:00Z",
             )
             store.save_repos([updated])
@@ -242,10 +281,7 @@ class ChangeDetectionEvaluator:
             change_detected = False
             for repo in retrieved:
                 if repo.name == "change-test":
-                    change_detected = (
-                        repo.stars == 20
-                        and repo.description == "Updated description"
-                    )
+                    change_detected = repo.stars == 20 and repo.description == "Updated description"
                     break
 
             score = 1.0 if change_detected else 0.0
@@ -257,10 +293,14 @@ class ChangeDetectionEvaluator:
             )
         except Exception as exc:
             logger.error(
-                "ChangeDetectionEvaluator failed: %s", exc, exc_info=True,
+                "ChangeDetectionEvaluator failed: %s",
+                exc,
+                exc_info=True,
             )
             return DimensionScore(
-                name="change_detection", value=0.0, max_value=1.0,
+                name="change_detection",
+                value=0.0,
+                max_value=1.0,
                 metadata={"error": str(exc)},
             )
         finally:
@@ -291,7 +331,9 @@ class DataCompletenessEvaluator:
         except Exception as exc:
             logger.error("Cannot import collector models: %s", exc)
             return DimensionScore(
-                name="data_completeness", value=0.0, max_value=1.0,
+                name="data_completeness",
+                value=0.0,
+                max_value=1.0,
                 metadata={"error": str(exc)},
             )
 
@@ -300,10 +342,15 @@ class DataCompletenessEvaluator:
         field_details: dict[str, bool] = {}
 
         repo = Repository(
-            name="test-repo", owner="test-owner",
-            url="https://github.com/test/repo", stars=42, forks=7,
-            description="A test repository", language="Python",
-            topics=["testing", "ci"], last_updated="2025-01-01T00:00:00Z",
+            name="test-repo",
+            owner="test-owner",
+            url="https://github.com/test/repo",
+            stars=42,
+            forks=7,
+            description="A test repository",
+            language="Python",
+            topics=["testing", "ci"],
+            last_updated="2025-01-01T00:00:00Z",
         )
         repo_dict = repo.to_dict()
         repo_rt = Repository.from_dict(repo_dict)
@@ -318,11 +365,13 @@ class DataCompletenessEvaluator:
                 valid += 1
 
         paper = Paper(
-            id="2401.00001", title="Test Paper",
+            id="2401.00001",
+            title="Test Paper",
             authors=["Author A", "Author B"],
             abstract="This is a test abstract.",
             categories=["cs.AI", "cs.SE"],
-            published="2025-01-01", updated="2025-01-02",
+            published="2025-01-01",
+            updated="2025-01-02",
             pdf_url="https://arxiv.org/pdf/2401.00001",
         )
         paper_dict = paper.to_dict()
@@ -376,7 +425,9 @@ class CollectionThroughputEvaluator:
         except Exception as exc:
             logger.error("Cannot import store components: %s", exc)
             return DimensionScore(
-                name="collection_throughput", value=0.0, max_value=1.0,
+                name="collection_throughput",
+                value=0.0,
+                max_value=1.0,
                 metadata={"error": str(exc)},
             )
 
@@ -418,10 +469,14 @@ class CollectionThroughputEvaluator:
             )
         except Exception as exc:
             logger.error(
-                "CollectionThroughputEvaluator failed: %s", exc, exc_info=True,
+                "CollectionThroughputEvaluator failed: %s",
+                exc,
+                exc_info=True,
             )
             return DimensionScore(
-                name="collection_throughput", value=0.0, max_value=1.0,
+                name="collection_throughput",
+                value=0.0,
+                max_value=1.0,
                 metadata={"error": str(exc)},
             )
         finally:

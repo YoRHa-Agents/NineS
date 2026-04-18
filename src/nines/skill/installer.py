@@ -109,8 +109,7 @@ class SkillInstaller:
             return list(self.ADAPTERS)
         if target not in self.ADAPTERS:
             raise ValueError(
-                f"Unknown target '{target}'. "
-                f"Expected one of: {', '.join(self.ADAPTERS)}, all."
+                f"Unknown target '{target}'. Expected one of: {', '.join(self.ADAPTERS)}, all."
             )
         return [target]
 

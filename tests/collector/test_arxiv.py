@@ -26,10 +26,8 @@ from nines.collector.arxiv import (  # noqa: E402
 from nines.core.errors import CollectorError  # noqa: E402
 from nines.core.retry import RetryPolicy, TransientHTTPStatus  # noqa: E402
 
-
 _EMPTY_FEED = (
-    '<?xml version="1.0" encoding="UTF-8"?>'
-    '<feed xmlns="http://www.w3.org/2005/Atom"></feed>'
+    '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>'
 )
 
 
@@ -102,9 +100,11 @@ def test_5xx_response_is_retried_then_wraps_collector_error() -> None:
     )
     collector = ArxivCollector(config=config, client=client)
 
-    with patch("nines.core.retry.time.sleep", lambda _s: None):
-        with pytest.raises(CollectorError) as excinfo:
-            collector._get({"search_query": "x"})
+    with (
+        patch("nines.core.retry.time.sleep", lambda _s: None),
+        pytest.raises(CollectorError) as excinfo,
+    ):
+        collector._get({"search_query": "x"})
 
     assert calls["n"] == 2
     assert excinfo.value.details.get("status") == 502

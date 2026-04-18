@@ -80,12 +80,14 @@ class AbstractionLayer:
             if len(instance_ids) < self._min_instances:
                 continue
             confidence = min(1.0, len(instance_ids) / max(len(units), 1))
-            patterns.append(Pattern(
-                name=f"naming:{pname}",
-                description=f"Units matching the '{pname}' naming convention",
-                instances=instance_ids,
-                confidence=confidence,
-            ))
+            patterns.append(
+                Pattern(
+                    name=f"naming:{pname}",
+                    description=f"Units matching the '{pname}' naming convention",
+                    instances=instance_ids,
+                    confidence=confidence,
+                )
+            )
         return patterns
 
     def _detect_structural_patterns(self, units: list[KnowledgeUnit]) -> list[Pattern]:
@@ -103,12 +105,14 @@ class AbstractionLayer:
             if len(instance_ids) < self._min_instances:
                 continue
             confidence = min(1.0, len(instance_ids) / max(len(units), 1))
-            patterns.append(Pattern(
-                name=f"structural:{shape}",
-                description=f"Units sharing relationship structure: {shape}",
-                instances=instance_ids,
-                confidence=confidence,
-            ))
+            patterns.append(
+                Pattern(
+                    name=f"structural:{shape}",
+                    description=f"Units sharing relationship structure: {shape}",
+                    instances=instance_ids,
+                    confidence=confidence,
+                )
+            )
         return patterns
 
     def _detect_type_clusters(self, units: list[KnowledgeUnit]) -> list[Pattern]:
@@ -124,10 +128,12 @@ class AbstractionLayer:
             if len(instance_ids) < self._min_instances:
                 continue
             confidence = min(1.0, len(instance_ids) / total)
-            patterns.append(Pattern(
-                name=f"type_cluster:{utype}",
-                description=f"Cluster of '{utype}' knowledge units",
-                instances=instance_ids,
-                confidence=confidence,
-            ))
+            patterns.append(
+                Pattern(
+                    name=f"type_cluster:{utype}",
+                    description=f"Cluster of '{utype}' knowledge units",
+                    instances=instance_ids,
+                    confidence=confidence,
+                )
+            )
         return patterns

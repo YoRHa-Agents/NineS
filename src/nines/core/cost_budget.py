@@ -16,7 +16,7 @@ from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 
 
-class CostExceeded(Exception):
+class CostExceeded(Exception):  # noqa: N818 — public API name kept stable
     """Raised by :meth:`CostBudget.add` when a configured limit is breached."""
 
 
@@ -75,17 +75,11 @@ class CostBudget:
 
         breaches: list[str] = []
         if self.token_limit is not None and self.tokens_spent > self.token_limit:
-            breaches.append(
-                f"tokens={self.tokens_spent} > limit={self.token_limit}"
-            )
+            breaches.append(f"tokens={self.tokens_spent} > limit={self.token_limit}")
         if self.dollar_limit is not None and self.dollars_spent > self.dollar_limit:
-            breaches.append(
-                f"dollars={self.dollars_spent} > limit={self.dollar_limit}"
-            )
+            breaches.append(f"dollars={self.dollars_spent} > limit={self.dollar_limit}")
         if self.time_limit_s is not None and self.elapsed_s > self.time_limit_s:
-            breaches.append(
-                f"elapsed_s={self.elapsed_s} > limit={self.time_limit_s}"
-            )
+            breaches.append(f"elapsed_s={self.elapsed_s} > limit={self.time_limit_s}")
 
         if breaches:
             msg = "CostBudget exceeded: " + ", ".join(breaches)
@@ -96,9 +90,7 @@ class CostBudget:
         """Return a snapshot of remaining budget across each dimension."""
         return {
             "tokens": (
-                None
-                if self.token_limit is None
-                else max(0, self.token_limit - self.tokens_spent)
+                None if self.token_limit is None else max(0, self.token_limit - self.tokens_spent)
             ),
             "dollars": (
                 None
@@ -106,9 +98,7 @@ class CostBudget:
                 else max(0.0, self.dollar_limit - self.dollars_spent)
             ),
             "elapsed_s": (
-                None
-                if self.time_limit_s is None
-                else max(0.0, self.time_limit_s - self.elapsed_s)
+                None if self.time_limit_s is None else max(0.0, self.time_limit_s - self.elapsed_s)
             ),
         }
 

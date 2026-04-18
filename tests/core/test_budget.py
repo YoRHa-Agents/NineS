@@ -28,9 +28,11 @@ def test_no_timeout_returns_value() -> None:
 def test_soft_warning_does_not_raise(caplog: pytest.LogCaptureFixture) -> None:
     """Crossing soft but not hard logs a warning; no exception."""
     caplog.set_level("INFO")
+
     def slow() -> str:
         time.sleep(0.15)
         return "ok"
+
     with evaluator_budget("slow", TimeBudget(soft_seconds=0.05, hard_seconds=2.0)) as run:
         out = run(slow)
     assert out == "ok"
@@ -41,6 +43,7 @@ def test_soft_warning_does_not_raise(caplog: pytest.LogCaptureFixture) -> None:
 def test_hard_timeout_raises_and_sets_cancel_flag() -> None:
     """Crossing hard timeout raises EvaluatorBudgetExceeded and triggers cancel_flag."""
     cancel = threading.Event()
+
     def hangs() -> None:
         # Cooperative: check the flag, but mostly just sleep.
         for _ in range(100):
@@ -48,13 +51,16 @@ def test_hard_timeout_raises_and_sets_cancel_flag() -> None:
                 return None
             time.sleep(0.05)
         return None
-    with evaluator_budget(
-        "hang",
-        TimeBudget(soft_seconds=0.05, hard_seconds=0.2),
-        cancel_flag=cancel,
-    ) as run:
-        with pytest.raises(EvaluatorBudgetExceeded) as exc_info:
-            run(hangs)
+
+    with (
+        evaluator_budget(
+            "hang",
+            TimeBudget(soft_seconds=0.05, hard_seconds=0.2),
+            cancel_flag=cancel,
+        ) as run,
+        pytest.raises(EvaluatorBudgetExceeded) as exc_info,
+    ):
+        run(hangs)
     assert exc_info.value.name == "hang"
     assert exc_info.value.elapsed_s >= 0.2
     assert cancel.is_set()
@@ -62,11 +68,15 @@ def test_hard_timeout_raises_and_sets_cancel_flag() -> None:
 
 def test_exception_passthrough_inside_budget() -> None:
     """Exceptions from the wrapped callable propagate verbatim."""
+
     def boom() -> None:
         raise RuntimeError("boom")
-    with evaluator_budget("err", TimeBudget(0.05, 1.0)) as run:
-        with pytest.raises(RuntimeError, match="boom"):
-            run(boom)
+
+    with (
+        evaluator_budget("err", TimeBudget(0.05, 1.0)) as run,
+        pytest.raises(RuntimeError, match="boom"),
+    ):
+        run(boom)
 
 
 def test_time_budget_validates_bounds() -> None:

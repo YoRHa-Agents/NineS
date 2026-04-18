@@ -150,7 +150,9 @@ class IterationTracker:
         self._iterations.append(self._current)
         logger.info(
             "Completed iteration '%s' (overall=%.3f, duration=%.3fs)",
-            self._current.version, report.overall, self._current.duration,
+            self._current.version,
+            report.overall,
+            self._current.duration,
         )
         self._current = None
 
@@ -165,11 +167,7 @@ class IterationTracker:
         if not self._iterations:
             return ProgressReport()
 
-        overall_trend = [
-            it.report.overall
-            for it in self._iterations
-            if it.report is not None
-        ]
+        overall_trend = [it.report.overall for it in self._iterations if it.report is not None]
 
         improving = False
         if len(overall_trend) >= 2:

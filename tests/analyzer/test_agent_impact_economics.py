@@ -13,8 +13,6 @@ import math
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from nines.analyzer.agent_impact import (  # noqa: E402
@@ -57,13 +55,15 @@ def test_break_even_uses_real_savings(tmp_path: Path) -> None:
     artifact = tmp_path / "BIG.md"
     # ~41343-token target; 1.3 tok/word → ~31800 words; use a stable
     # lorem-ipsum repetition.
-    artifact.write_text(("lorem ipsum dolor sit amet " * 6360))
+    artifact.write_text("lorem ipsum dolor sit amet " * 6360)
     mechs = [
         _mech("token_compression", "context_compression", -6919),
         _mech("behavioral_rules", "behavioral_instruction", 1000),
     ]
     eco = AgentImpactAnalyzer()._estimate_context_economics(
-        tmp_path, ["BIG.md"], mechs,
+        tmp_path,
+        ["BIG.md"],
+        mechs,
     )
     assert eco.per_interaction_savings_tokens == 6919
     assert eco.break_even_interactions == math.ceil(eco.overhead_tokens / 6919)
@@ -79,10 +79,14 @@ def test_break_even_distinct_per_overhead_savings(tmp_path: Path) -> None:
     b.write_text("foo " * 100_000)
     mechs = [_mech("compress", "context_compression", -1000)]
     eco_a = AgentImpactAnalyzer()._estimate_context_economics(
-        tmp_path, ["small.md"], mechs,
+        tmp_path,
+        ["small.md"],
+        mechs,
     )
     eco_b = AgentImpactAnalyzer()._estimate_context_economics(
-        tmp_path, ["large.md"], mechs,
+        tmp_path,
+        ["large.md"],
+        mechs,
     )
     assert eco_a.break_even_interactions != eco_b.break_even_interactions
     assert eco_b.break_even_interactions > eco_a.break_even_interactions
@@ -97,10 +101,14 @@ def test_economics_score_reflects_mechanism_diversity(tmp_path: Path) -> None:
         _mech("safety", "safety", 300),
     ]
     eco_base = AgentImpactAnalyzer()._estimate_context_economics(
-        tmp_path, ["f.md"], base,
+        tmp_path,
+        ["f.md"],
+        base,
     )
     eco_div = AgentImpactAnalyzer()._estimate_context_economics(
-        tmp_path, ["f.md"], diverse,
+        tmp_path,
+        ["f.md"],
+        diverse,
     )
     assert eco_div.mechanism_diversity_factor > eco_base.mechanism_diversity_factor
     # economics_score scales with diversity_factor (within clamp range).
@@ -112,7 +120,9 @@ def test_economics_score_clamped_to_unit_interval(tmp_path: Path) -> None:
     (tmp_path / "tiny.md").write_text("a")
     mechs = [_mech("compress", "context_compression", -10_000_000)]
     eco = AgentImpactAnalyzer()._estimate_context_economics(
-        tmp_path, ["tiny.md"], mechs,
+        tmp_path,
+        ["tiny.md"],
+        mechs,
     )
     assert 0.0 <= eco.economics_score <= 1.0
 
@@ -122,7 +132,8 @@ def test_legacy_call_signature_no_mechanisms_uses_fallback(tmp_path: Path) -> No
     ratio fallback fires so existing callers don't break."""
     (tmp_path / "AGENTS.md").write_text("ai " * 1000)
     eco = AgentImpactAnalyzer()._estimate_context_economics(
-        tmp_path, ["AGENTS.md"],
+        tmp_path,
+        ["AGENTS.md"],
     )
     # Fallback ratio: min(0.95, 1*0.05)=0.05 → savings ≈ 5% of overhead.
     assert eco.per_interaction_savings_tokens > 0
@@ -134,7 +145,9 @@ def test_zero_savings_yields_overhead_sized_break_even(tmp_path: Path) -> None:
     (tmp_path / "x.md").write_text("hi " * 100)
     mechs = [_mech("rules", "behavioral_instruction", 200)]  # no compression
     eco = AgentImpactAnalyzer()._estimate_context_economics(
-        tmp_path, ["x.md"], mechs,
+        tmp_path,
+        ["x.md"],
+        mechs,
     )
     assert eco.per_interaction_savings_tokens == 0
     # break_even = ceil(overhead / max(0, 1)) = overhead

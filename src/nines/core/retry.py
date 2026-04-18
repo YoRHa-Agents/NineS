@@ -15,13 +15,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import TypeVar
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 logger = logging.getLogger(__name__)
-
-T = TypeVar("T")
 
 
 class TransientError(Exception):
@@ -33,7 +33,7 @@ class TransientError(Exception):
     """
 
 
-class TransientHTTPStatus(TransientError):
+class TransientHTTPStatus(TransientError):  # noqa: N818 — public marker imported by collectors
     """Marker raised when an HTTP response carries a retry-eligible status.
 
     Used by :mod:`nines.collector.github` and :mod:`nines.collector.arxiv`
@@ -91,13 +91,17 @@ class RetryPolicy:
         """
         if attempt_idx <= 0:
             return 0.0
-        return min(
-            self.max_backoff_s,
-            self.base_backoff_s * (2 ** (attempt_idx - 1)),
+        # Explicit float() preserves the declared return type; mypy infers
+        # ``2 ** (attempt_idx - 1)`` as ``Any`` under strict mode.
+        return float(
+            min(
+                self.max_backoff_s,
+                self.base_backoff_s * (2 ** (attempt_idx - 1)),
+            )
         )
 
 
-def with_retry(
+def with_retry[T](
     fn: Callable[[], T],
     policy: RetryPolicy,
     *,
@@ -140,13 +144,17 @@ def with_retry(
             if remaining <= 0:
                 logger.warning(
                     "with_retry: exhausted %d attempt(s); re-raising %s",
-                    policy.attempts, type(exc).__name__,
+                    policy.attempts,
+                    type(exc).__name__,
                 )
                 raise
             backoff = policy.backoff_for(attempt + 1)
             logger.info(
                 "with_retry: attempt %d/%d failed with %s; sleeping %.3fs",
-                attempt + 1, policy.attempts, type(exc).__name__, backoff,
+                attempt + 1,
+                policy.attempts,
+                type(exc).__name__,
+                backoff,
             )
             if on_retry is not None:
                 # Observer must not swallow exceptions silently; let them
@@ -166,7 +174,7 @@ def with_retry(
     raise RuntimeError(msg)
 
 
-async def with_retry_async(
+async def with_retry_async[T](
     fn: Callable[[], Awaitable[T]],
     policy: RetryPolicy,
     *,
@@ -205,9 +213,7 @@ async def with_retry_async(
         Re-raises the final attempt's exception when all retries are
         exhausted, or any non-retry-eligible exception immediately.
     """
-    sleep_fn: Callable[[float], Awaitable[None]] = (
-        sleep if sleep is not None else asyncio.sleep
-    )
+    sleep_fn: Callable[[float], Awaitable[None]] = sleep if sleep is not None else asyncio.sleep
     last_exc: BaseException | None = None
     for attempt in range(policy.attempts):
         try:
@@ -218,13 +224,17 @@ async def with_retry_async(
             if remaining <= 0:
                 logger.warning(
                     "with_retry_async: exhausted %d attempt(s); re-raising %s",
-                    policy.attempts, type(exc).__name__,
+                    policy.attempts,
+                    type(exc).__name__,
                 )
                 raise
             backoff = policy.backoff_for(attempt + 1)
             logger.info(
                 "with_retry_async: attempt %d/%d failed with %s; sleeping %.3fs",
-                attempt + 1, policy.attempts, type(exc).__name__, backoff,
+                attempt + 1,
+                policy.attempts,
+                type(exc).__name__,
+                backoff,
             )
             if on_retry is not None:
                 # Observer must not swallow exceptions silently; let them

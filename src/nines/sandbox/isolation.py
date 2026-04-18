@@ -63,8 +63,11 @@ class VenvFactory:
         if self._use_uv:
             subprocess.run(
                 [
-                    "uv", "pip", "install",
-                    "--python", str(self.python_path(venv_path)),
+                    "uv",
+                    "pip",
+                    "install",
+                    "--python",
+                    str(self.python_path(venv_path)),
                     *packages,
                 ],
                 check=True,
@@ -175,9 +178,7 @@ class PollutionDetector:
         dir_listings: dict[str, tuple[str, ...]] = {}
         for d in self._watched_dirs:
             if d.exists():
-                dir_listings[str(d)] = tuple(
-                    sorted(str(p) for p in d.rglob("*"))
-                )
+                dir_listings[str(d)] = tuple(sorted(str(p) for p in d.rglob("*")))
 
         return EnvironmentSnapshot(
             env_vars=dict(os.environ),
@@ -200,9 +201,7 @@ class PollutionDetector:
     def detect_pollution(self) -> PollutionReport:
         """Compare stored before/after snapshots and return a report."""
         if self._before is None or self._after is None:
-            raise RuntimeError(
-                "Must call snapshot_before() and snapshot_after() first"
-            )
+            raise RuntimeError("Must call snapshot_before() and snapshot_after() first")
         return self.compare(self._before, self._after)
 
     def compare(
@@ -219,9 +218,7 @@ class PollutionDetector:
             "dirs": self._diff_dir_listings(
                 before.watched_dir_listings, after.watched_dir_listings
             ),
-            "sys_path": self._diff_sequences(
-                before.python_path, after.python_path, "sys.path"
-            ),
+            "sys_path": self._diff_sequences(before.python_path, after.python_path, "sys.path"),
         }
         non_empty = {k: v for k, v in changes.items() if v}
         is_clean = len(non_empty) == 0
@@ -233,7 +230,9 @@ class PollutionDetector:
 
     @staticmethod
     def _diff_dicts(
-        before: dict[str, str], after: dict[str, str], label: str,
+        before: dict[str, str],
+        after: dict[str, str],
+        label: str,
     ) -> list[str]:
         """Diff dicts."""
         changes: list[str] = []
@@ -268,7 +267,9 @@ class PollutionDetector:
 
     @staticmethod
     def _diff_sequences(
-        before: tuple[str, ...], after: tuple[str, ...], label: str,
+        before: tuple[str, ...],
+        after: tuple[str, ...],
+        label: str,
     ) -> list[str]:
         """Diff sequences."""
         changes: list[str] = []

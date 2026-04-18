@@ -154,9 +154,7 @@ class ReportQualityEvaluator:
             try:
                 parsed = json.loads(json_text)
                 checks["json_valid"] = True
-                checks["json_has_required_keys"] = (
-                    "summary" in parsed and "results" in parsed
-                )
+                checks["json_has_required_keys"] = "summary" in parsed and "results" in parsed
             except json.JSONDecodeError:
                 checks["json_has_required_keys"] = False
         except Exception as exc:

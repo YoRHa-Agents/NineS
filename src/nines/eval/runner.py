@@ -100,14 +100,17 @@ class EvalRunner:
             except CostExceeded as exc:
                 logger.warning(
                     "Cost budget exhausted while running task %s: %s",
-                    task.id, exc,
+                    task.id,
+                    exc,
                 )
-                results.append(EvalResult(
-                    task_id=task.id,
-                    task_name=task.name,
-                    success=False,
-                    error=f"cost_budget_exceeded: {exc}",
-                ))
+                results.append(
+                    EvalResult(
+                        task_id=task.id,
+                        task_name=task.name,
+                        success=False,
+                        error=f"cost_budget_exceeded: {exc}",
+                    )
+                )
                 break
             results.append(result)
         return results
@@ -218,11 +221,13 @@ class EvalRunner:
                 scores.append(s)
             except Exception as exc:
                 logger.error("Scorer %s failed: %s", scorer.name(), exc)
-                scores.append(Score(
-                    value=0.0,
-                    scorer_name=scorer.name(),
-                    breakdown={"error": str(exc)},
-                ))
+                scores.append(
+                    Score(
+                        value=0.0,
+                        scorer_name=scorer.name(),
+                        breakdown={"error": str(exc)},
+                    )
+                )
         return scores
 
     @staticmethod

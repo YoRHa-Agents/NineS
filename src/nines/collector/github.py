@@ -98,7 +98,9 @@ class GitHubCollector:
             resp = self._client.request(method, url, **kwargs)
             if resp.status_code == 429 or resp.status_code >= 500:
                 logger.warning(
-                    "GitHub transient %d for %s (will retry)", resp.status_code, url,
+                    "GitHub transient %d for %s (will retry)",
+                    resp.status_code,
+                    url,
                 )
                 raise TransientHTTPStatus(resp.status_code)
             if resp.status_code >= 400:
@@ -109,7 +111,8 @@ class GitHubCollector:
             return resp
 
         policy = RetryPolicy(
-            attempts=self._config.max_retries, retry_on=_RETRYABLE_EXCEPTIONS,
+            attempts=self._config.max_retries,
+            retry_on=_RETRYABLE_EXCEPTIONS,
         )
         try:
             return with_retry(_attempt, policy)
@@ -155,9 +158,7 @@ class GitHubCollector:
         resp = self._request("GET", f"/repos/{owner}/{name}")
         return self._parse_repo(resp.json())
 
-    def get_commits(
-        self, owner: str, name: str, since: str | None = None
-    ) -> list[dict[str, Any]]:
+    def get_commits(self, owner: str, name: str, since: str | None = None) -> list[dict[str, Any]]:
         """Fetch recent commits for a repository.
 
         Parameters
@@ -173,9 +174,7 @@ class GitHubCollector:
 
     def get_releases(self, owner: str, name: str) -> list[dict[str, Any]]:
         """Fetch releases for a repository."""
-        resp = self._request(
-            "GET", f"/repos/{owner}/{name}/releases", params={"per_page": 10}
-        )
+        resp = self._request("GET", f"/repos/{owner}/{name}/releases", params={"per_page": 10})
         return resp.json()
 
     # ------------------------------------------------------------------

@@ -116,7 +116,8 @@ class IsolatedRunner:
 
     @staticmethod
     def _build_env(
-        ctx: SandboxContext, seed: int | None,
+        ctx: SandboxContext,
+        seed: int | None,
     ) -> dict[str, str]:
         """Build an isolated environment dict for the subprocess."""
         env = os.environ.copy()

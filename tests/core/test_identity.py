@@ -20,7 +20,6 @@ from nines.core.identity import (  # noqa: E402
     project_fingerprint,
 )
 
-
 # ---------------------------------------------------------------------------
 # project_fingerprint
 # ---------------------------------------------------------------------------
@@ -50,7 +49,9 @@ def test_project_fingerprint_distinct_for_distinct_paths(tmp_path: Path) -> None
     assert project_fingerprint(a) != project_fingerprint(b)
 
 
-def test_project_fingerprint_resolves_relative_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_project_fingerprint_resolves_relative_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Relative paths are resolved before hashing — same project, same fp."""
     monkeypatch.chdir(tmp_path)
     sub = tmp_path / "proj"
@@ -117,7 +118,9 @@ def test_parse_namespaced_id() -> None:
     """Namespaced ``AI-deadbeef-0000`` parses with project_id populated."""
     parts = parse_finding_id("AI-deadbeef-0042")
     assert parts == FindingIdParts(
-        prefix="AI", project_id="deadbeef", index=42,
+        prefix="AI",
+        project_id="deadbeef",
+        index=42,
     )
 
 

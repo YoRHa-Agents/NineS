@@ -11,14 +11,13 @@ from pathlib import Path
 
 import pytest
 
-from nines.core.config import NinesConfig, load, merge, from_env
+from nines.core.config import NinesConfig, from_env, load, merge
 from nines.core.errors import (
     ConfigError,
     ConfigFileNotFoundError,
     ConfigParseError,
     ConfigValidationError,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -556,6 +555,7 @@ class TestConfigEdgeCases:
 
     def test_manual_to_toml_fallback(self):
         from nines.core.config import _manual_to_toml
+
         cfg = NinesConfig()
         result = _manual_to_toml(cfg)
         assert "log_level" in result
@@ -563,6 +563,7 @@ class TestConfigEdgeCases:
 
     def test_toml_value_types(self):
         from nines.core.config import _toml_value
+
         assert _toml_value(True) == "true"
         assert _toml_value(False) == "false"
         assert _toml_value(42) == "42"
@@ -613,16 +614,19 @@ class TestConfigEdgeCases:
 
     def test_check_positive_int_zero(self):
         from nines.core.config import _check_positive_int
+
         with pytest.raises(ConfigValidationError):
             _check_positive_int(0, "test_field")
 
     def test_check_positive_int_negative(self):
         from nines.core.config import _check_positive_int
+
         with pytest.raises(ConfigValidationError):
             _check_positive_int(-1, "test_field")
 
     def test_check_positive_int_not_int(self):
         from nines.core.config import _check_positive_int
+
         with pytest.raises(ConfigValidationError):
             _check_positive_int(3.5, "test_field")  # type: ignore[arg-type]
 
@@ -638,7 +642,13 @@ class TestConfigEdgeCases:
         cfg2.validate()
 
     def test_env_bool_variants(self):
-        for val, expected in [("true", True), ("1", True), ("yes", True), ("false", False), ("0", False)]:
+        for val, expected in [
+            ("true", True),
+            ("1", True),
+            ("yes", True),
+            ("false", False),
+            ("0", False),
+        ]:
             os.environ["NINES_NO_COLOR"] = val
             cfg = from_env(NinesConfig())
             assert cfg.no_color is expected

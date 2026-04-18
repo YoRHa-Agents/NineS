@@ -222,9 +222,7 @@ class ScorerRegistry:
     def get(self, name: str, **kwargs: Any) -> ScorerProtocol:
         """Return a scorer instance by name."""
         if name not in self._registry:
-            raise EvalError(
-                f"Unknown scorer: '{name}'. Available: {list(self._registry.keys())}"
-            )
+            raise EvalError(f"Unknown scorer: '{name}'. Available: {list(self._registry.keys())}")
         instance = self._registry[name](**kwargs)
         return instance  # type: ignore[return-value]
 

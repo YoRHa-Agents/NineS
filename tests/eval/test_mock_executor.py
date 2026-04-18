@@ -14,10 +14,7 @@ from nines.eval.models import ScoringCriterion, TaskDefinition  # noqa: E402
 
 
 def _task(task_id: str, *, criteria: int = 0) -> TaskDefinition:
-    crit = [
-        ScoringCriterion(name=f"c{i}", weight=1.0 / max(criteria, 1))
-        for i in range(criteria)
-    ]
+    crit = [ScoringCriterion(name=f"c{i}", weight=1.0 / max(criteria, 1)) for i in range(criteria)]
     return TaskDefinition(id=task_id, name=task_id, scoring_criteria=crit)
 
 

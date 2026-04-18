@@ -44,22 +44,49 @@ CONCERN_PATTERNS: dict[str, list[str]] = {
 
 LAYER_INDICATORS: dict[str, set[str]] = {
     "presentation": {
-        "cli", "api", "web", "ui", "views", "routes",
-        "endpoints", "handlers", "controllers",
+        "cli",
+        "api",
+        "web",
+        "ui",
+        "views",
+        "routes",
+        "endpoints",
+        "handlers",
+        "controllers",
     },
     "application": {
-        "services", "usecases", "commands", "orchestrator",
-        "workflows", "application",
+        "services",
+        "usecases",
+        "commands",
+        "orchestrator",
+        "workflows",
+        "application",
     },
     "domain": {
-        "models", "entities", "domain", "core", "types", "schemas",
+        "models",
+        "entities",
+        "domain",
+        "core",
+        "types",
+        "schemas",
     },
     "infrastructure": {
-        "db", "database", "repos", "repositories", "adapters",
-        "clients", "storage", "external", "infrastructure",
+        "db",
+        "database",
+        "repos",
+        "repositories",
+        "adapters",
+        "clients",
+        "storage",
+        "external",
+        "infrastructure",
     },
     "testing": {
-        "tests", "test", "fixtures", "conftest", "mocks",
+        "tests",
+        "test",
+        "fixtures",
+        "conftest",
+        "mocks",
     },
 }
 
@@ -80,9 +107,15 @@ def _infer_tags(name: str, docstring: str | None, source: str = "") -> list[str]
             tags.append(concern)
     if source:
         module_tags: dict[str, str] = {
-            "eval": "evaluation", "analyzer": "analysis", "collector": "collection",
-            "iteration": "iteration", "sandbox": "sandbox", "skill": "skill",
-            "orchestrator": "orchestration", "cli": "cli", "core": "core",
+            "eval": "evaluation",
+            "analyzer": "analysis",
+            "collector": "collection",
+            "iteration": "iteration",
+            "sandbox": "sandbox",
+            "skill": "skill",
+            "orchestrator": "orchestration",
+            "cli": "cli",
+            "core": "core",
         }
         source_lower = source.lower()
         for module_part, tag in module_tags.items():
@@ -101,9 +134,7 @@ class Decomposer:
     - :meth:`layer_decompose`: by architectural layer (FR-307)
     """
 
-    def functional_decompose(
-        self, reviews: list[FileReview]
-    ) -> list[KnowledgeUnit]:
+    def functional_decompose(self, reviews: list[FileReview]) -> list[KnowledgeUnit]:
         """Decompose by function and class granularity (FR-305).
 
         Each top-level function becomes a ``function`` unit, each class
@@ -129,29 +160,29 @@ class Decomposer:
 
             for cls in review.classes:
                 cls_id = f"{filepath}::{cls.name}"
-                units.append(KnowledgeUnit(
-                    id=cls_id,
-                    source=filepath,
-                    content=f"class {cls.name}({', '.join(cls.bases)})",
-                    unit_type="class",
-                    relationships={"bases": cls.bases},
-                    metadata={
-                        "lineno": str(cls.lineno),
-                        "end_lineno": str(cls.end_lineno),
-                        "method_count": str(len(cls.methods)),
-                        "docstring": cls.docstring or "",
-                        "tags": ",".join(_infer_tags(cls.name, cls.docstring, filepath)),
-                    },
-                ))
+                units.append(
+                    KnowledgeUnit(
+                        id=cls_id,
+                        source=filepath,
+                        content=f"class {cls.name}({', '.join(cls.bases)})",
+                        unit_type="class",
+                        relationships={"bases": cls.bases},
+                        metadata={
+                            "lineno": str(cls.lineno),
+                            "end_lineno": str(cls.end_lineno),
+                            "method_count": str(len(cls.methods)),
+                            "docstring": cls.docstring or "",
+                            "tags": ",".join(_infer_tags(cls.name, cls.docstring, filepath)),
+                        },
+                    )
+                )
                 for method in cls.methods:
                     m_unit = self._func_unit(filepath, method, parent_id=cls_id)
                     units.append(m_unit)
 
         return units
 
-    def concern_decompose(
-        self, reviews: list[FileReview]
-    ) -> list[KnowledgeUnit]:
+    def concern_decompose(self, reviews: list[FileReview]) -> list[KnowledgeUnit]:
         """Group units by cross-cutting concern (FR-306).
 
         First performs functional decomposition, then classifies each unit
@@ -181,14 +212,16 @@ class Decomposer:
 
         result: list[KnowledgeUnit] = []
         for concern, members in sorted(groups.items()):
-            result.append(KnowledgeUnit(
-                id=f"concern::{concern}",
-                source="",
-                content=f"Concern group: {concern}",
-                unit_type="concern",
-                relationships={"members": [m.id for m in members]},
-                metadata={"member_count": str(len(members))},
-            ))
+            result.append(
+                KnowledgeUnit(
+                    id=f"concern::{concern}",
+                    source="",
+                    content=f"Concern group: {concern}",
+                    unit_type="concern",
+                    relationships={"members": [m.id for m in members]},
+                    metadata={"member_count": str(len(members))},
+                )
+            )
             result.extend(members)
 
         return result
@@ -219,14 +252,16 @@ class Decomposer:
 
         result: list[KnowledgeUnit] = []
         for layer, members in sorted(layer_map.items()):
-            result.append(KnowledgeUnit(
-                id=f"layer::{layer}",
-                source="",
-                content=f"Architectural layer: {layer}",
-                unit_type="layer",
-                relationships={"members": [m.id for m in members]},
-                metadata={"member_count": str(len(members))},
-            ))
+            result.append(
+                KnowledgeUnit(
+                    id=f"layer::{layer}",
+                    source="",
+                    content=f"Architectural layer: {layer}",
+                    unit_type="layer",
+                    relationships={"members": [m.id for m in members]},
+                    metadata={"member_count": str(len(members))},
+                )
+            )
             result.extend(members)
 
         return result

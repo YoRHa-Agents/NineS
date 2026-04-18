@@ -15,7 +15,6 @@ from nines.core.models import (
     ScoreCard,
 )
 
-
 # ---------------------------------------------------------------------------
 # EvalTask
 # ---------------------------------------------------------------------------
@@ -364,7 +363,9 @@ class TestCollectionResultEdgeCases:
 
     def test_explicit_collected_at(self) -> None:
         cr = CollectionResult(
-            source="test", identifier="id-1", collected_at="2024-01-01T00:00:00Z",
+            source="test",
+            identifier="id-1",
+            collected_at="2024-01-01T00:00:00Z",
         )
         restored = CollectionResult.from_dict(cr.to_dict())
         assert restored.collected_at == "2024-01-01T00:00:00Z"

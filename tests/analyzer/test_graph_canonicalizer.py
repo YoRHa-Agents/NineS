@@ -9,12 +9,16 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
+from typing import TYPE_CHECKING  # noqa: E402
+
 from nines.analyzer.graph_canonicalizer import (  # noqa: E402
     canonicalize_id,
     canonicalize_pair,
     common_project_root,
 )
 
+if TYPE_CHECKING:
+    from nines.analyzer.reviewer import FileReview
 
 # ---------------------------------------------------------------------------
 # canonicalize_id — happy paths
@@ -138,10 +142,12 @@ def test_common_project_root_picks_shared_prefix(tmp_path: Path) -> None:
     """Returns the longest common prefix of supplied paths."""
     (tmp_path / "a").mkdir()
     (tmp_path / "b").mkdir()
-    common = common_project_root([
-        str(tmp_path / "a" / "x.py"),
-        str(tmp_path / "b" / "y.py"),
-    ])
+    common = common_project_root(
+        [
+            str(tmp_path / "a" / "x.py"),
+            str(tmp_path / "b" / "y.py"),
+        ]
+    )
     assert Path(common).resolve() == tmp_path.resolve()
 
 
@@ -193,13 +199,14 @@ def test_verifier_referential_integrity_canonicalises_paths(tmp_path: Path) -> N
         ),
     ]
     graph = KnowledgeGraph(
-        project_name="t", nodes=nodes, edges=edges, layers=[ArchitectureLayer(id="L", name="L")],
+        project_name="t",
+        nodes=nodes,
+        edges=edges,
+        layers=[ArchitectureLayer(id="L", name="L")],
     )
     result = GraphVerifier().verify(graph)
     critical = [i for i in result.issues if i.severity == "critical"]
-    assert critical == [], (
-        f"expected zero critical issues after canonicalisation; got {critical}"
-    )
+    assert critical == [], f"expected zero critical issues after canonicalisation; got {critical}"
     assert result.passed is True
 
 
@@ -223,7 +230,7 @@ def test_verifier_layer_coverage_zero_when_no_layers(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _build_tiny_review(file_path: str) -> "FileReview":
+def _build_tiny_review(file_path: str) -> FileReview:
     """Return a minimal :class:`FileReview` covering one function and one class.
 
     The function/class IDs minted by :class:`GraphDecomposer` use
@@ -304,15 +311,17 @@ def test_builder_emits_canonical_ids(tmp_path: Path) -> None:
         _build_tiny_review(str(main_py)),
         _build_tiny_review(str(utils_py)),
     ]
-    import_graph = ImportGraph(edges=[
-        ImportEdge(
-            source_file="src/main.py",
-            target_file="src/utils.py",
-            import_name="utils",
-            is_relative=False,
-            line_number=1,
-        ),
-    ])
+    import_graph = ImportGraph(
+        edges=[
+            ImportEdge(
+                source_file="src/main.py",
+                target_file="src/utils.py",
+                import_name="utils",
+                is_relative=False,
+                line_number=1,
+            ),
+        ]
+    )
 
     decomposer = GraphDecomposer(project_root=tmp_path)
     graph = decomposer.build_graph(scan, import_graph, reviews)
@@ -334,13 +343,10 @@ def test_builder_emits_canonical_ids(tmp_path: Path) -> None:
     # Spot-check: containment edges from file → function/class now
     # match the relative file node IDs (no ``file:/abs/...`` mismatch).
     file_ids = {n.id for n in graph.nodes if n.node_type == "file"}
-    containment_sources = {
-        e.source for e in graph.edges if e.edge_type == "contains"
-    }
+    containment_sources = {e.source for e in graph.edges if e.edge_type == "contains"}
     assert containment_sources, "expected containment edges from reviews"
     assert containment_sources <= file_ids, (
-        f"containment edges reference unknown file IDs: "
-        f"{containment_sources - file_ids}"
+        f"containment edges reference unknown file IDs: {containment_sources - file_ids}"
     )
 
 
@@ -390,9 +396,7 @@ def test_check_id_canonicalisation_detects_violation(tmp_path: Path) -> None:
     )
 
     result = GraphVerifier().verify(graph, project_root=str(tmp_path))
-    canonicalisation_issues = [
-        i for i in result.issues if i.category == "id_canonicalisation"
-    ]
+    canonicalisation_issues = [i for i in result.issues if i.category == "id_canonicalisation"]
     assert len(canonicalisation_issues) >= 1, (
         f"expected at least one id_canonicalisation issue; got "
         f"{[(i.category, i.severity) for i in result.issues]}"
@@ -432,19 +436,21 @@ def test_check_id_canonicalisation_passes_clean_graph(tmp_path: Path) -> None:
     ]
     layers = [
         ArchitectureLayer(
-            id="L", name="L", node_ids=["file:a.py", "file:b.py"],
+            id="L",
+            name="L",
+            node_ids=["file:a.py", "file:b.py"],
         ),
     ]
     graph = KnowledgeGraph(
-        project_name="t", nodes=nodes, edges=edges, layers=layers,
+        project_name="t",
+        nodes=nodes,
+        edges=edges,
+        layers=layers,
     )
 
     result = GraphVerifier().verify(graph, project_root=str(tmp_path))
-    canonicalisation_issues = [
-        i for i in result.issues if i.category == "id_canonicalisation"
-    ]
+    canonicalisation_issues = [i for i in result.issues if i.category == "id_canonicalisation"]
     assert canonicalisation_issues == [], (
-        f"expected zero id_canonicalisation issues on a clean graph; got "
-        f"{canonicalisation_issues}"
+        f"expected zero id_canonicalisation issues on a clean graph; got {canonicalisation_issues}"
     )
     assert result.passed is True

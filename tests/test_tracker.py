@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import time
-
 import pytest
 
-from nines.collector.diff import DiffAnalyzer, RepoChanges, PaperChanges
+from nines.collector.diff import DiffAnalyzer, PaperChanges, RepoChanges
 from nines.collector.models import (
-    ChangeEvent,
     CollectionSnapshot,
     Paper,
     Repository,
@@ -16,10 +13,10 @@ from nines.collector.models import (
 from nines.collector.scheduler import CollectionScheduler, ScheduledJob
 from nines.collector.tracker import ChangeTracker
 
-
 # ---------------------------------------------------------------------------
 # ChangeTracker
 # ---------------------------------------------------------------------------
+
 
 class TestChangeTracker:
     def test_track_creates_bookmark(self) -> None:
@@ -135,6 +132,7 @@ class TestChangeTracker:
 # DiffAnalyzer
 # ---------------------------------------------------------------------------
 
+
 class TestDiffAnalyzer:
     def test_diff_repos_added(self) -> None:
         old: list[Repository] = []
@@ -190,6 +188,7 @@ class TestDiffAnalyzer:
 # ---------------------------------------------------------------------------
 # CollectionScheduler
 # ---------------------------------------------------------------------------
+
 
 class TestCollectionScheduler:
     def test_schedule_creates_job(self) -> None:

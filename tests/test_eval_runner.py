@@ -6,11 +6,11 @@ from __future__ import annotations
 
 import json
 import math
-import tempfile
 from pathlib import Path
 
 import pytest
 
+from nines.core.errors import EvalError
 from nines.core.models import EvalTask, ExecutionResult, Score
 from nines.eval.metrics import MetricCollector, ReliabilityCalculator, TaskMetrics
 from nines.eval.models import EvalResult, ScoringCriterion, TaskDefinition
@@ -23,7 +23,6 @@ from nines.eval.scorers import (
     RubricScorer,
     ScorerRegistry,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -136,7 +135,7 @@ class TestTaskDefinitionToml:
         assert restored.expected is None
 
     def test_from_toml_invalid_path(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(EvalError):
             TaskDefinition.from_toml(Path("/nonexistent/task.toml"))
 
     def test_from_toml_quick_start_nested_input_and_typed_expected(self) -> None:
@@ -326,7 +325,7 @@ class TestCompositeScorer:
         assert result.value == pytest.approx(expected_composite)
 
     def test_empty_scorers_raises(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(EvalError):
             CompositeScorer(scorers=[])
 
     def test_breakdown_contains_sub_scores(self) -> None:
@@ -363,13 +362,13 @@ class TestScorerRegistry:
 
     def test_get_unknown_raises(self) -> None:
         registry = ScorerRegistry()
-        with pytest.raises(Exception):
+        with pytest.raises(EvalError):
             registry.get("nonexistent")
 
     def test_duplicate_register_raises(self) -> None:
         registry = ScorerRegistry()
         registry.register("test", ExactScorer)
-        with pytest.raises(Exception):
+        with pytest.raises(EvalError):
             registry.register("test", ExactScorer)
 
 
@@ -448,7 +447,7 @@ class TestEvalRunnerPipeline:
 
     def test_load_nonexistent_path_raises(self) -> None:
         runner = EvalRunner()
-        with pytest.raises(Exception):
+        with pytest.raises(EvalError):
             runner.load_tasks("/nonexistent/path")
 
 
@@ -724,7 +723,10 @@ class TestEvalRunnerEdgeCases:
 class TestTaskDefinitionEdgeCases:
     def test_scoring_criterion_round_trip(self) -> None:
         sc = ScoringCriterion(
-            name="test", weight=0.5, description="A test", scorer_type="fuzzy",
+            name="test",
+            weight=0.5,
+            description="A test",
+            scorer_type="fuzzy",
             params={"threshold": 0.8},
         )
         restored = ScoringCriterion.from_dict(sc.to_dict())

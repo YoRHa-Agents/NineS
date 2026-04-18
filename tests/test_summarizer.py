@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from nines.analyzer.graph_models import (
     ArchitectureLayer,
     GraphEdge,
@@ -17,38 +15,56 @@ from nines.analyzer.summarizer import AnalysisSummarizer
 def _make_graph() -> KnowledgeGraph:
     nodes = [
         GraphNode(
-            id="file:src/main.py", node_type="file", name="main.py",
-            file_path="src/main.py", file_category="code",
+            id="file:src/main.py",
+            node_type="file",
+            name="main.py",
+            file_path="src/main.py",
+            file_category="code",
             metadata={"language": "python"},
         ),
         GraphNode(
-            id="file:src/utils.py", node_type="file", name="utils.py",
-            file_path="src/utils.py", file_category="code",
+            id="file:src/utils.py",
+            node_type="file",
+            name="utils.py",
+            file_path="src/utils.py",
+            file_category="code",
             metadata={"language": "python"},
         ),
         GraphNode(
-            id="file:config.yaml", node_type="file", name="config.yaml",
-            file_path="config.yaml", file_category="config",
+            id="file:config.yaml",
+            node_type="file",
+            name="config.yaml",
+            file_path="config.yaml",
+            file_category="config",
             metadata={"language": "yaml"},
         ),
         GraphNode(
-            id="function:src/main.py::run", node_type="function", name="run",
-            file_path="src/main.py", file_category="code",
+            id="function:src/main.py::run",
+            node_type="function",
+            name="run",
+            file_path="src/main.py",
+            file_category="code",
         ),
     ]
     edges = [
         GraphEdge(source="file:src/main.py", target="file:src/utils.py", edge_type="imports"),
-        GraphEdge(source="file:src/main.py", target="function:src/main.py::run", edge_type="contains"),
+        GraphEdge(
+            source="file:src/main.py", target="function:src/main.py::run", edge_type="contains"
+        ),
     ]
     layers = [
-        ArchitectureLayer(id="domain", name="Domain", node_ids=["file:src/main.py", "file:src/utils.py"]),
+        ArchitectureLayer(
+            id="domain", name="Domain", node_ids=["file:src/main.py", "file:src/utils.py"]
+        ),
         ArchitectureLayer(id="configuration", name="Configuration", node_ids=["file:config.yaml"]),
     ]
     return KnowledgeGraph(
         project_name="test-project",
         languages=["python", "yaml"],
         frameworks=["click"],
-        nodes=nodes, edges=edges, layers=layers,
+        nodes=nodes,
+        edges=edges,
+        layers=layers,
         metadata={"category_breakdown": {"code": 2, "config": 1}},
     )
 
@@ -90,7 +106,10 @@ class TestAnalysisSummarizer:
         graph = _make_graph()
         summary = AnalysisSummarizer().summarize(graph)
         assert "test-project" in summary.agent_impact_summary
-        assert "python" in summary.agent_impact_summary.lower() or "Languages" in summary.agent_impact_summary
+        assert (
+            "python" in summary.agent_impact_summary.lower()
+            or "Languages" in summary.agent_impact_summary
+        )
 
     def test_empty_graph(self):
         graph = KnowledgeGraph(project_name="empty")
@@ -104,6 +123,7 @@ class TestAnalysisSummarizer:
         summary = AnalysisSummarizer().summarize(graph)
         d = summary.to_dict()
         from nines.analyzer.graph_models import AnalysisSummary
+
         restored = AnalysisSummary.from_dict(d)
         assert restored.target == summary.target
         assert restored.total_files == summary.total_files

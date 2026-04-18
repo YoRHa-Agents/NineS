@@ -83,8 +83,7 @@ def test_analyze_json_includes_report_metadata(tmp_path: Path) -> None:
     payload = json.loads(result.output)
 
     assert "report_metadata" in payload, (
-        "analyze --format json must expose top-level report_metadata; "
-        f"got keys={sorted(payload)}"
+        f"analyze --format json must expose top-level report_metadata; got keys={sorted(payload)}"
     )
     metadata = payload["report_metadata"]
     assert metadata["id_namespace_version"] == 2, (
@@ -97,8 +96,7 @@ def test_analyze_json_includes_report_metadata(tmp_path: Path) -> None:
     )
     schema_version = metadata.get("analyzer_schema_version")
     assert isinstance(schema_version, int) and schema_version >= 1, (
-        f"analyzer_schema_version must be a positive int; "
-        f"got {schema_version!r}"
+        f"analyzer_schema_version must be a positive int; got {schema_version!r}"
     )
 
 
@@ -130,10 +128,9 @@ def test_analyze_json_includes_finding_namespace(tmp_path: Path) -> None:
     assert findings, "expected at least one finding from agent-impact run"
 
     namespaced = [
-        f for f in findings
-        if isinstance(f, dict)
-        and isinstance(f.get("id"), str)
-        and _NAMESPACED_ID_RE.match(f["id"])
+        f
+        for f in findings
+        if isinstance(f, dict) and isinstance(f.get("id"), str) and _NAMESPACED_ID_RE.match(f["id"])
     ]
     assert namespaced, (
         "expected at least one finding ID in the namespaced format "
@@ -238,8 +235,7 @@ def test_strict_graph_default_aborts_on_critical(tmp_path: Path) -> None:
     # Forensic artifact must still be on disk so operators can debug.
     written = out_dir / "analysis_report.txt"
     assert written.exists(), (
-        "strict-graph gate must not skip the report write; "
-        "operators need the forensic file"
+        "strict-graph gate must not skip the report write; operators need the forensic file"
     )
 
 

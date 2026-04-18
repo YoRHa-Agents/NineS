@@ -20,33 +20,56 @@ logger = logging.getLogger(__name__)
 
 LANGUAGE_MAP: dict[str, str] = {
     ".py": "python",
-    ".js": "javascript", ".jsx": "javascript", ".mjs": "javascript", ".cjs": "javascript",
-    ".ts": "typescript", ".tsx": "typescript", ".mts": "typescript", ".cts": "typescript",
+    ".js": "javascript",
+    ".jsx": "javascript",
+    ".mjs": "javascript",
+    ".cjs": "javascript",
+    ".ts": "typescript",
+    ".tsx": "typescript",
+    ".mts": "typescript",
+    ".cts": "typescript",
     ".go": "go",
     ".rs": "rust",
     ".java": "java",
     ".rb": "ruby",
-    ".c": "c", ".h": "c",
-    ".cpp": "cpp", ".hpp": "cpp", ".cc": "cpp", ".cxx": "cpp",
+    ".c": "c",
+    ".h": "c",
+    ".cpp": "cpp",
+    ".hpp": "cpp",
+    ".cc": "cpp",
+    ".cxx": "cpp",
     ".cs": "csharp",
     ".swift": "swift",
-    ".kt": "kotlin", ".kts": "kotlin",
+    ".kt": "kotlin",
+    ".kts": "kotlin",
     ".php": "php",
-    ".sh": "shell", ".bash": "shell",
-    ".ps1": "powershell", ".bat": "batch",
-    ".md": "markdown", ".rst": "restructuredtext", ".adoc": "asciidoc",
-    ".yaml": "yaml", ".yml": "yaml",
+    ".sh": "shell",
+    ".bash": "shell",
+    ".ps1": "powershell",
+    ".bat": "batch",
+    ".md": "markdown",
+    ".rst": "restructuredtext",
+    ".adoc": "asciidoc",
+    ".yaml": "yaml",
+    ".yml": "yaml",
     ".json": "json",
     ".toml": "toml",
-    ".ini": "ini", ".cfg": "ini",
+    ".ini": "ini",
+    ".cfg": "ini",
     ".sql": "sql",
-    ".html": "html", ".htm": "html",
-    ".css": "css", ".scss": "scss", ".sass": "sass", ".less": "less",
-    ".xml": "xml", ".svg": "svg",
+    ".html": "html",
+    ".htm": "html",
+    ".css": "css",
+    ".scss": "scss",
+    ".sass": "sass",
+    ".less": "less",
+    ".xml": "xml",
+    ".svg": "svg",
     ".vue": "vue",
     ".svelte": "svelte",
     ".proto": "protobuf",
-    ".graphql": "graphql", ".gql": "graphql",
+    ".graphql": "graphql",
+    ".gql": "graphql",
     ".tf": "terraform",
     ".txt": "plaintext",
     ".env": "dotenv",
@@ -66,78 +89,202 @@ _SPECIAL_FILENAMES: dict[str, str] = {
     "docker-compose.yaml": "yaml",
 }
 
-_CODE_EXTENSIONS = frozenset({
-    ".py", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts",
-    ".go", ".rs", ".java", ".rb", ".c", ".h", ".cpp", ".hpp", ".cc", ".cxx",
-    ".cs", ".swift", ".kt", ".kts", ".php", ".vue", ".svelte",
-})
+_CODE_EXTENSIONS = frozenset(
+    {
+        ".py",
+        ".js",
+        ".jsx",
+        ".mjs",
+        ".cjs",
+        ".ts",
+        ".tsx",
+        ".mts",
+        ".cts",
+        ".go",
+        ".rs",
+        ".java",
+        ".rb",
+        ".c",
+        ".h",
+        ".cpp",
+        ".hpp",
+        ".cc",
+        ".cxx",
+        ".cs",
+        ".swift",
+        ".kt",
+        ".kts",
+        ".php",
+        ".vue",
+        ".svelte",
+    }
+)
 
-_CONFIG_EXTENSIONS = frozenset({
-    ".yaml", ".yml", ".json", ".toml", ".ini", ".cfg", ".env",
-    ".properties",
-})
+_CONFIG_EXTENSIONS = frozenset(
+    {
+        ".yaml",
+        ".yml",
+        ".json",
+        ".toml",
+        ".ini",
+        ".cfg",
+        ".env",
+        ".properties",
+    }
+)
 
-_DOCS_EXTENSIONS = frozenset({
-    ".md", ".rst", ".txt", ".adoc",
-})
+_DOCS_EXTENSIONS = frozenset(
+    {
+        ".md",
+        ".rst",
+        ".txt",
+        ".adoc",
+    }
+)
 
-_DATA_EXTENSIONS = frozenset({
-    ".sql", ".graphql", ".gql", ".proto", ".csv",
-})
+_DATA_EXTENSIONS = frozenset(
+    {
+        ".sql",
+        ".graphql",
+        ".gql",
+        ".proto",
+        ".csv",
+    }
+)
 
-_SCRIPT_EXTENSIONS = frozenset({
-    ".sh", ".bash", ".ps1", ".bat",
-})
+_SCRIPT_EXTENSIONS = frozenset(
+    {
+        ".sh",
+        ".bash",
+        ".ps1",
+        ".bat",
+    }
+)
 
-_MARKUP_EXTENSIONS = frozenset({
-    ".html", ".htm", ".css", ".scss", ".sass", ".less", ".xml", ".svg",
-})
+_MARKUP_EXTENSIONS = frozenset(
+    {
+        ".html",
+        ".htm",
+        ".css",
+        ".scss",
+        ".sass",
+        ".less",
+        ".xml",
+        ".svg",
+    }
+)
 
-_INFRA_FILENAMES = frozenset({
-    "Dockerfile", "Makefile", "Jenkinsfile", "Vagrantfile",
-    "docker-compose.yml", "docker-compose.yaml",
-})
+_INFRA_FILENAMES = frozenset(
+    {
+        "Dockerfile",
+        "Makefile",
+        "Jenkinsfile",
+        "Vagrantfile",
+        "docker-compose.yml",
+        "docker-compose.yaml",
+    }
+)
 
-_INFRA_PATH_MARKERS = frozenset({
-    ".github", ".gitlab-ci.yml", ".circleci", ".travis.yml",
-})
+_INFRA_PATH_MARKERS = frozenset(
+    {
+        ".github",
+        ".gitlab-ci.yml",
+        ".circleci",
+        ".travis.yml",
+    }
+)
 
 FRAMEWORK_INDICATORS: dict[str, list[str]] = {
     "package.json": [
-        "react", "vue", "angular", "@angular/core", "next", "nuxt",
-        "express", "fastify", "koa", "nest", "svelte", "electron",
+        "react",
+        "vue",
+        "angular",
+        "@angular/core",
+        "next",
+        "nuxt",
+        "express",
+        "fastify",
+        "koa",
+        "nest",
+        "svelte",
+        "electron",
         "tailwindcss",
     ],
     "pyproject.toml": [
-        "django", "flask", "fastapi", "click", "pydantic", "celery",
-        "sqlalchemy", "pytest", "httpx", "starlette",
+        "django",
+        "flask",
+        "fastapi",
+        "click",
+        "pydantic",
+        "celery",
+        "sqlalchemy",
+        "pytest",
+        "httpx",
+        "starlette",
     ],
     "setup.py": [
-        "django", "flask", "fastapi", "click", "pydantic",
+        "django",
+        "flask",
+        "fastapi",
+        "click",
+        "pydantic",
     ],
     "Cargo.toml": [
-        "tokio", "actix", "rocket", "warp", "axum", "serde",
-        "clap", "diesel",
+        "tokio",
+        "actix",
+        "rocket",
+        "warp",
+        "axum",
+        "serde",
+        "clap",
+        "diesel",
     ],
     "go.mod": [
-        "gin", "echo", "fiber", "chi", "mux", "grpc",
+        "gin",
+        "echo",
+        "fiber",
+        "chi",
+        "mux",
+        "grpc",
     ],
     "Gemfile": [
-        "rails", "sinatra", "hanami", "rspec",
+        "rails",
+        "sinatra",
+        "hanami",
+        "rspec",
     ],
     "build.gradle": [
-        "spring", "springboot", "ktor", "micronaut",
+        "spring",
+        "springboot",
+        "ktor",
+        "micronaut",
     ],
     "pom.xml": [
-        "spring", "springboot", "quarkus", "micronaut",
+        "spring",
+        "springboot",
+        "quarkus",
+        "micronaut",
     ],
 }
 
-_SKIP_DIRS = frozenset({
-    "__pycache__", ".git", ".hg", ".svn", "node_modules",
-    ".tox", ".mypy_cache", ".pytest_cache", ".ruff_cache",
-    ".venv", "venv", "dist", "build", ".eggs",
-})
+_SKIP_DIRS = frozenset(
+    {
+        "__pycache__",
+        ".git",
+        ".hg",
+        ".svn",
+        "node_modules",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".venv",
+        "venv",
+        "dist",
+        "build",
+        ".eggs",
+    }
+)
 
 
 @dataclass
@@ -259,13 +406,15 @@ class ProjectScanner:
             except OSError:
                 size_bytes = 0
 
-            files.append(FileInfo(
-                path=str(fpath),
-                language=language,
-                category=category,
-                line_count=line_count,
-                size_bytes=size_bytes,
-            ))
+            files.append(
+                FileInfo(
+                    path=str(fpath),
+                    language=language,
+                    category=category,
+                    line_count=line_count,
+                    size_bytes=size_bytes,
+                )
+            )
 
         lang_counter: Counter[str] = Counter()
         cat_counter: Counter[str] = Counter()
@@ -301,7 +450,10 @@ class ProjectScanner:
         return LANGUAGE_MAP.get(path.suffix.lower(), "")
 
     def _classify_category(
-        self, path: Path, language: str, root: Path,
+        self,
+        path: Path,
+        language: str,
+        root: Path,
     ) -> str:
         """Classify a file into a category."""
         name = path.name
@@ -347,7 +499,8 @@ class ProjectScanner:
                 continue
             try:
                 content = manifest_path.read_text(
-                    encoding="utf-8", errors="replace",
+                    encoding="utf-8",
+                    errors="replace",
                 ).lower()
             except OSError as exc:
                 logger.debug("Could not read %s: %s", manifest_path, exc)
@@ -395,6 +548,7 @@ class ProjectScanner:
     def _parse_pyproject_toml(content: str, fallback: str) -> tuple[str, str]:
         """Extract name and description from pyproject.toml (regex-based)."""
         import re
+
         name = fallback
         description = ""
         m = re.search(r'name\s*=\s*"([^"]+)"', content)
@@ -409,6 +563,7 @@ class ProjectScanner:
     def _parse_cargo_toml(content: str, fallback: str) -> tuple[str, str]:
         """Extract name and description from Cargo.toml (regex-based)."""
         import re
+
         name = fallback
         description = ""
         m = re.search(r'name\s*=\s*"([^"]+)"', content)
@@ -435,7 +590,4 @@ class ProjectScanner:
             rel_parts = path.relative_to(root).parts
         except ValueError:
             return True
-        return any(
-            part in self._skip_dirs or part.startswith(".")
-            for part in rel_parts
-        )
+        return any(part in self._skip_dirs or part.startswith(".") for part in rel_parts)

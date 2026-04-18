@@ -309,13 +309,16 @@ def test_register_with_self_eval_runner() -> None:
 
     runner = SelfEvalRunner()
     runner.register_dimension(
-        "scoring_accuracy", ScoringAccuracyEvaluator(golden_dir=GOLDEN_DIR),
+        "scoring_accuracy",
+        ScoringAccuracyEvaluator(golden_dir=GOLDEN_DIR),
     )
     runner.register_dimension(
-        "scoring_reliability", ReliabilityEvaluator(golden_dir=GOLDEN_DIR),
+        "scoring_reliability",
+        ReliabilityEvaluator(golden_dir=GOLDEN_DIR),
     )
     runner.register_dimension(
-        "scorer_agreement", ScorerAgreementEvaluator(golden_dir=GOLDEN_DIR),
+        "scorer_agreement",
+        ScorerAgreementEvaluator(golden_dir=GOLDEN_DIR),
     )
 
     report = runner.run_all(version="test-v1-scoring")
@@ -338,7 +341,6 @@ def test_register_with_self_eval_runner() -> None:
 # ``min(default_timeout, budget.hard_seconds * 0.9)``.
 # ---------------------------------------------------------------------------
 
-import subprocess  # noqa: E402
 from unittest.mock import MagicMock, patch  # noqa: E402
 
 from nines.core.budget import TimeBudget  # noqa: E402
@@ -347,7 +349,6 @@ from nines.iteration.self_eval import (  # noqa: E402
     LiveCodeCoverageEvaluator,
     LiveTestCountEvaluator,
 )
-
 
 _BUDGET = TimeBudget(soft_seconds=5.0, hard_seconds=10.0)
 _HARD_MARGIN = 0.9  # mirrors ``_budgeted_subprocess_timeout`` default
@@ -360,8 +361,7 @@ def _captured_timeout(mock_run: MagicMock) -> float:
     assert call is not None, "subprocess.run was never invoked"
     timeout_kw = call.kwargs.get("timeout")
     assert timeout_kw is not None, (
-        "subprocess.run invoked without timeout= kwarg "
-        f"(args={call.args}, kwargs={call.kwargs})"
+        f"subprocess.run invoked without timeout= kwarg (args={call.args}, kwargs={call.kwargs})"
     )
     return float(timeout_kw)
 
@@ -375,7 +375,8 @@ def _captured_timeout(mock_run: MagicMock) -> float:
 def test_live_coverage_evaluator_respects_budget(mock_run: MagicMock) -> None:
     """N2: pytest --cov subprocess timeout shrinks to budget.hard*0.9."""
     mock_run.return_value = MagicMock(
-        stdout="TOTAL   100   20   80%\n", returncode=0,
+        stdout="TOTAL   100   20   80%\n",
+        returncode=0,
     )
     ev = LiveCodeCoverageEvaluator(project_root="/fake")
     score = ev.evaluate(budget=_BUDGET)
@@ -395,7 +396,8 @@ def test_live_coverage_evaluator_uses_default_when_no_budget(
     """N2: backward compat — without a budget the original 300s timeout
     is preserved."""
     mock_run.return_value = MagicMock(
-        stdout="TOTAL   100   20   80%\n", returncode=0,
+        stdout="TOTAL   100   20   80%\n",
+        returncode=0,
     )
     ev = LiveCodeCoverageEvaluator(project_root="/fake")
     ev.evaluate()  # no budget kwarg
@@ -413,7 +415,8 @@ def test_live_coverage_evaluator_caps_at_default_when_budget_huge(
     """N2: when the budget is larger than the default, the default wins
     (``min`` semantics)."""
     mock_run.return_value = MagicMock(
-        stdout="TOTAL   100   20   80%\n", returncode=0,
+        stdout="TOTAL   100   20   80%\n",
+        returncode=0,
     )
     ev = LiveCodeCoverageEvaluator(project_root="/fake")
     huge = TimeBudget(soft_seconds=600.0, hard_seconds=600.0)
@@ -433,7 +436,8 @@ def test_live_coverage_evaluator_caps_at_default_when_budget_huge(
 def test_live_test_count_evaluator_respects_budget(mock_run: MagicMock) -> None:
     """N2: pytest --collect-only subprocess timeout shrinks to budget*0.9."""
     mock_run.return_value = MagicMock(
-        stdout="5 tests collected\n", returncode=0,
+        stdout="5 tests collected\n",
+        returncode=0,
     )
     ev = LiveTestCountEvaluator(test_dir="/fake/tests", project_root="/fake")
     score = ev.evaluate(budget=_BUDGET)
@@ -453,7 +457,8 @@ def test_live_test_count_evaluator_uses_default_when_no_budget(
     """N2: backward compat — without a budget the original 120s timeout
     is preserved."""
     mock_run.return_value = MagicMock(
-        stdout="5 tests collected\n", returncode=0,
+        stdout="5 tests collected\n",
+        returncode=0,
     )
     ev = LiveTestCountEvaluator(test_dir="/fake/tests", project_root="/fake")
     ev.evaluate()
@@ -509,7 +514,8 @@ def test_runner_threads_budget_into_live_evaluators(mock_run: MagicMock) -> None
     from nines.iteration.self_eval import SelfEvalRunner
 
     mock_run.return_value = MagicMock(
-        stdout="TOTAL   100   20   80%\n", returncode=0,
+        stdout="TOTAL   100   20   80%\n",
+        returncode=0,
     )
     runner = SelfEvalRunner(default_budget=TimeBudget(5.0, 30.0))
     # register with a dim-specific budget that will dominate.
@@ -574,7 +580,9 @@ def test_budgeted_subprocess_timeout_helper() -> None:
 
     # Custom margin (passes through).
     out = _budgeted_subprocess_timeout(
-        100.0, TimeBudget(5.0, 50.0), margin=0.5,
+        100.0,
+        TimeBudget(5.0, 50.0),
+        margin=0.5,
     )
     assert out == 25.0
 
@@ -584,8 +592,7 @@ def test_budgeted_subprocess_timeout_helper() -> None:
     budget = TimeBudget(5.0, 60.0)
     out = _budgeted_subprocess_timeout(300.0, budget)
     assert out < budget.hard_seconds, (
-        f"subprocess timeout {out} must stay below daemon budget "
-        f"{budget.hard_seconds}"
+        f"subprocess timeout {out} must stay below daemon budget {budget.hard_seconds}"
     )
 
 

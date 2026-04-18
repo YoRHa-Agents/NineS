@@ -31,7 +31,6 @@ from nines.iteration.self_eval import (
     UnitTestCountEvaluator,
 )
 
-
 # ---------------------------------------------------------------------------
 # Backward-compatibility check
 # ---------------------------------------------------------------------------
@@ -210,8 +209,7 @@ class TestDocstringCoverageEvaluator:
 
     def test_full_coverage(self, tmp_path: Path) -> None:
         (tmp_path / "mod.py").write_text(
-            'class Foo:\n    """Foo class."""\n\n'
-            'def bar():\n    """Bar func."""\n    pass\n',
+            'class Foo:\n    """Foo class."""\n\ndef bar():\n    """Bar func."""\n    pass\n',
             encoding="utf-8",
         )
         ev = DocstringCoverageEvaluator(src_dir=tmp_path)
@@ -233,8 +231,7 @@ class TestDocstringCoverageEvaluator:
 
     def test_skips_private(self, tmp_path: Path) -> None:
         (tmp_path / "mod.py").write_text(
-            "def _private():\n    pass\n\n"
-            'def public():\n    """Has doc."""\n    pass\n',
+            'def _private():\n    pass\n\ndef public():\n    """Has doc."""\n    pass\n',
             encoding="utf-8",
         )
         ev = DocstringCoverageEvaluator(src_dir=tmp_path)

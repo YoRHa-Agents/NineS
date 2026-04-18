@@ -98,9 +98,7 @@ class GapDetector:
         """Initialize gap detector."""
         self._tolerance = tolerance
 
-    def detect(
-        self, current: SelfEvalReport, baseline: SelfEvalReport
-    ) -> GapAnalysis:
+    def detect(self, current: SelfEvalReport, baseline: SelfEvalReport) -> GapAnalysis:
         """Compare current report against baseline and categorize gaps.
 
         Parameters
@@ -140,9 +138,7 @@ class GapDetector:
             else:
                 analysis.stagnated.append(gap)
 
-        analysis.priority_gaps = sorted(
-            analysis.regressed, key=lambda g: g.severity, reverse=True
-        )
+        analysis.priority_gaps = sorted(analysis.regressed, key=lambda g: g.severity, reverse=True)
 
         logger.info(
             "Gap analysis: %d improved, %d regressed, %d stagnated, %d priority",

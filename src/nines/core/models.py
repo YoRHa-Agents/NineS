@@ -220,9 +220,7 @@ class CollectionResult:
     source: str
     identifier: str
     data: Any = None
-    collected_at: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    collected_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -242,9 +240,7 @@ class CollectionResult:
             source=data["source"],
             identifier=data["identifier"],
             data=data.get("data"),
-            collected_at=data.get(
-                "collected_at", datetime.now(UTC).isoformat()
-            ),
+            collected_at=data.get("collected_at", datetime.now(UTC).isoformat()),
             metadata=data.get("metadata", {}),
         )
 
@@ -268,18 +264,13 @@ class AnalysisResult:
     target: str
     findings: list[Any] = field(default_factory=list)
     metrics: dict[str, Any] = field(default_factory=dict)
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a plain dictionary."""
         return {
             "target": self.target,
-            "findings": [
-                f.to_dict() if hasattr(f, "to_dict") else f
-                for f in self.findings
-            ],
+            "findings": [f.to_dict() if hasattr(f, "to_dict") else f for f in self.findings],
             "metrics": dict(self.metrics),
             "timestamp": self.timestamp,
         }
@@ -288,17 +279,12 @@ class AnalysisResult:
     def from_dict(cls, data: dict[str, Any]) -> AnalysisResult:
         """Deserialize from a plain dictionary."""
         findings_raw = data.get("findings", [])
-        findings = [
-            Finding.from_dict(f) if isinstance(f, dict) else f
-            for f in findings_raw
-        ]
+        findings = [Finding.from_dict(f) if isinstance(f, dict) else f for f in findings_raw]
         return cls(
             target=data["target"],
             findings=findings,
             metrics=data.get("metrics", {}),
-            timestamp=data.get(
-                "timestamp", datetime.now(UTC).isoformat()
-            ),
+            timestamp=data.get("timestamp", datetime.now(UTC).isoformat()),
         )
 
 

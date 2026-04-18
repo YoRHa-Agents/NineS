@@ -113,7 +113,9 @@ class WorkflowEngine:
                 failed.add(step_name)
                 logger.error(
                     "Step '%s' failed after %.3fs: %s",
-                    step_name, elapsed, exc,
+                    step_name,
+                    elapsed,
+                    exc,
                     exc_info=True,
                 )
                 continue
@@ -143,9 +145,7 @@ class WorkflowEngine:
                 adjacency[dep].append(step.name)
                 in_degree[step.name] += 1
 
-        queue: deque[str] = deque(
-            name for name, deg in in_degree.items() if deg == 0
-        )
+        queue: deque[str] = deque(name for name, deg in in_degree.items() if deg == 0)
         order: list[str] = []
 
         while queue:

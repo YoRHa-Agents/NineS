@@ -8,14 +8,14 @@ import pytest
 
 from nines.core.models import Score
 from nines.eval.analysis import AxisAnalyzer, DimensionStats
-from nines.eval.matrix import MatrixCell, MatrixEvaluator, MatrixResult
+from nines.eval.matrix import MatrixCell, MatrixEvaluator
 from nines.eval.models import EvalResult
-from nines.eval.reporters import JSONReporter, MarkdownReporter, REPORT_JSON_SCHEMA
-
+from nines.eval.reporters import REPORT_JSON_SCHEMA, JSONReporter, MarkdownReporter
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_results() -> list[EvalResult]:
     return [
@@ -56,6 +56,7 @@ def _make_results() -> list[EvalResult]:
 # ---------------------------------------------------------------------------
 # MarkdownReporter
 # ---------------------------------------------------------------------------
+
 
 class TestMarkdownReporter:
     def test_generate_contains_title(self) -> None:
@@ -104,6 +105,7 @@ class TestMarkdownReporter:
 # JSONReporter
 # ---------------------------------------------------------------------------
 
+
 class TestJSONReporter:
     def test_generate_valid_json(self) -> None:
         reporter = JSONReporter()
@@ -150,6 +152,7 @@ class TestJSONReporter:
 # ---------------------------------------------------------------------------
 # AxisAnalyzer
 # ---------------------------------------------------------------------------
+
 
 class TestAxisAnalyzer:
     def test_group_by_dimension(self) -> None:
@@ -206,6 +209,7 @@ class TestAxisAnalyzer:
 # ---------------------------------------------------------------------------
 # MatrixEvaluator
 # ---------------------------------------------------------------------------
+
 
 class TestMatrixEvaluator:
     def test_generate_cells_cartesian(self) -> None:

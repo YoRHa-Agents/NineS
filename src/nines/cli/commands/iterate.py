@@ -239,12 +239,9 @@ def iterate_cmd(
         if verbose:
             click.echo(f"Using live evaluators for project: {root}")
     else:
-        logger.warning(
-            "No project context provided. Use --project-root for meaningful iteration."
-        )
+        logger.warning("No project context provided. Use --project-root for meaningful iteration.")
         click.echo(
-            "Warning: No project context provided. "
-            "Use --project-root for meaningful iteration.",
+            "Warning: No project context provided. Use --project-root for meaningful iteration.",
             err=True,
         )
         runner = _build_stub_evaluators()
@@ -276,10 +273,7 @@ def iterate_cmd(
 
         conv_result = convergence.check(history, threshold=threshold)
         if conv_result.converged:
-            msg = (
-                f"Converged after {round_num} round(s) "
-                f"(variance={conv_result.variance:.6f})"
-            )
+            msg = f"Converged after {round_num} round(s) (variance={conv_result.variance:.6f})"
             click.echo(msg)
             break
 

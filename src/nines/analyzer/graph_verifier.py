@@ -94,10 +94,7 @@ class GraphVerifier:
         if not graph.layers:
             coverage_pct = 0.0
         else:
-            coverage_pct = (
-                len(layered_ids & node_ids) / len(node_ids) * 100.0
-                if node_ids else 0.0
-            )
+            coverage_pct = len(layered_ids & node_ids) / len(node_ids) * 100.0 if node_ids else 0.0
 
         edge_endpoints = set()
         for e in graph.edges:
@@ -117,8 +114,7 @@ class GraphVerifier:
         )
 
         logger.info(
-            "Verification %s: %d issues (%d critical), "
-            "%.1f%% layer coverage, %d orphans",
+            "Verification %s: %d issues (%d critical), %.1f%% layer coverage, %d orphans",
             "PASSED" if result.passed else "FAILED",
             len(issues),
             sum(1 for i in issues if i.severity == "critical"),
@@ -184,9 +180,7 @@ class GraphVerifier:
         # so canonicalize_id never raises.
         root = project_root or "."
 
-        canonical_node_ids = {
-            canonicalize_id(n.id, project_root=root) for n in graph.nodes
-        }
+        canonical_node_ids = {canonicalize_id(n.id, project_root=root) for n in graph.nodes}
         issues: list[VerificationIssue] = []
         for edge in graph.edges:
             canon_source = canonicalize_id(edge.source, project_root=root)
@@ -197,15 +191,17 @@ class GraphVerifier:
             if canon_target not in canonical_node_ids:
                 missing.append(edge.target)
             if missing:
-                issues.append(VerificationIssue(
-                    severity="critical",
-                    category="referential_integrity",
-                    message=(
-                        f"Edge ({edge.source} -> {edge.target}) references "
-                        f"non-existent node(s): {', '.join(missing)}"
-                    ),
-                    node_ids=missing,
-                ))
+                issues.append(
+                    VerificationIssue(
+                        severity="critical",
+                        category="referential_integrity",
+                        message=(
+                            f"Edge ({edge.source} -> {edge.target}) references "
+                            f"non-existent node(s): {', '.join(missing)}"
+                        ),
+                        node_ids=missing,
+                    )
+                )
         return issues
 
     @staticmethod
@@ -264,29 +260,33 @@ class GraphVerifier:
             # Cap the surfaced sample so a 1000-node regression doesn't
             # produce an unreadable issue payload.
             sample = offending_node_ids[:20]
-            issues.append(VerificationIssue(
-                severity="warning",
-                category="id_canonicalisation",
-                message=(
-                    f"{len(offending_node_ids)} node ID(s) are not in "
-                    "canonical form; the builder should normalise them "
-                    "via canonicalize_id() at construction time."
-                ),
-                node_ids=sample,
-            ))
+            issues.append(
+                VerificationIssue(
+                    severity="warning",
+                    category="id_canonicalisation",
+                    message=(
+                        f"{len(offending_node_ids)} node ID(s) are not in "
+                        "canonical form; the builder should normalise them "
+                        "via canonicalize_id() at construction time."
+                    ),
+                    node_ids=sample,
+                )
+            )
 
         if offending_endpoints:
             sample = offending_endpoints[:20]
-            issues.append(VerificationIssue(
-                severity="warning",
-                category="id_canonicalisation",
-                message=(
-                    f"{len(offending_endpoints)} edge endpoint(s) are "
-                    "not in canonical form; the builder should normalise "
-                    "them via canonicalize_id() at construction time."
-                ),
-                node_ids=sample,
-            ))
+            issues.append(
+                VerificationIssue(
+                    severity="warning",
+                    category="id_canonicalisation",
+                    message=(
+                        f"{len(offending_endpoints)} edge endpoint(s) are "
+                        "not in canonical form; the builder should normalise "
+                        "them via canonicalize_id() at construction time."
+                    ),
+                    node_ids=sample,
+                )
+            )
 
         return issues
 
@@ -303,15 +303,16 @@ class GraphVerifier:
         issues: list[VerificationIssue] = []
         for (src, tgt, etype), count in seen.items():
             if count > 1:
-                issues.append(VerificationIssue(
-                    severity="warning",
-                    category="duplicate_edge",
-                    message=(
-                        f"Duplicate edge ({src} -> {tgt}, type={etype}) "
-                        f"appears {count} times"
-                    ),
-                    node_ids=[src, tgt],
-                ))
+                issues.append(
+                    VerificationIssue(
+                        severity="warning",
+                        category="duplicate_edge",
+                        message=(
+                            f"Duplicate edge ({src} -> {tgt}, type={etype}) appears {count} times"
+                        ),
+                        node_ids=[src, tgt],
+                    )
+                )
         return issues
 
     @staticmethod
@@ -327,12 +328,14 @@ class GraphVerifier:
         orphans = [n.id for n in graph.nodes if n.id not in connected]
         issues: list[VerificationIssue] = []
         if orphans:
-            issues.append(VerificationIssue(
-                severity="info",
-                category="orphan_node",
-                message=f"{len(orphans)} node(s) have no edges",
-                node_ids=orphans,
-            ))
+            issues.append(
+                VerificationIssue(
+                    severity="info",
+                    category="orphan_node",
+                    message=f"{len(orphans)} node(s) have no edges",
+                    node_ids=orphans,
+                )
+            )
         return issues
 
     @staticmethod
@@ -349,16 +352,18 @@ class GraphVerifier:
         issues: list[VerificationIssue] = []
 
         if node_ids and len(uncovered) / len(node_ids) > 0.2:
-            issues.append(VerificationIssue(
-                severity="warning",
-                category="missing_layer",
-                message=(
-                    f"{len(uncovered)} of {len(node_ids)} nodes "
-                    f"({len(uncovered) / len(node_ids):.0%}) are not "
-                    f"assigned to any layer"
-                ),
-                node_ids=sorted(uncovered)[:20],
-            ))
+            issues.append(
+                VerificationIssue(
+                    severity="warning",
+                    category="missing_layer",
+                    message=(
+                        f"{len(uncovered)} of {len(node_ids)} nodes "
+                        f"({len(uncovered) / len(node_ids):.0%}) are not "
+                        f"assigned to any layer"
+                    ),
+                    node_ids=sorted(uncovered)[:20],
+                )
+            )
         return issues
 
     @staticmethod
@@ -369,12 +374,14 @@ class GraphVerifier:
         bad = [n.id for n in graph.nodes if n.node_type not in VALID_NODE_TYPES]
         issues: list[VerificationIssue] = []
         if bad:
-            issues.append(VerificationIssue(
-                severity="warning",
-                category="invalid_node_type",
-                message=f"{len(bad)} node(s) have invalid node_type",
-                node_ids=bad[:20],
-            ))
+            issues.append(
+                VerificationIssue(
+                    severity="warning",
+                    category="invalid_node_type",
+                    message=f"{len(bad)} node(s) have invalid node_type",
+                    node_ids=bad[:20],
+                )
+            )
         return issues
 
     @staticmethod
@@ -388,12 +395,14 @@ class GraphVerifier:
                 bad_pairs.append(f"{e.source}->{e.target}")
         issues: list[VerificationIssue] = []
         if bad_pairs:
-            issues.append(VerificationIssue(
-                severity="warning",
-                category="invalid_edge_type",
-                message=f"{len(bad_pairs)} edge(s) have invalid edge_type",
-                node_ids=[],
-            ))
+            issues.append(
+                VerificationIssue(
+                    severity="warning",
+                    category="invalid_edge_type",
+                    message=f"{len(bad_pairs)} edge(s) have invalid edge_type",
+                    node_ids=[],
+                )
+            )
         return issues
 
     @staticmethod
@@ -404,10 +413,12 @@ class GraphVerifier:
         loops = [e.source for e in graph.edges if e.source == e.target]
         issues: list[VerificationIssue] = []
         if loops:
-            issues.append(VerificationIssue(
-                severity="info",
-                category="self_loop",
-                message=f"{len(loops)} self-loop edge(s) detected",
-                node_ids=list(set(loops)),
-            ))
+            issues.append(
+                VerificationIssue(
+                    severity="info",
+                    category="self_loop",
+                    message=f"{len(loops)} self-loop edge(s) detected",
+                    node_ids=list(set(loops)),
+                )
+            )
         return issues

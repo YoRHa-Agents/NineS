@@ -67,9 +67,7 @@ class ConvergenceChecker:
         self._window_size = window_size
         self._min_rounds = min_rounds
 
-    def check(
-        self, history: list[float], threshold: float = 0.05
-    ) -> ConvergenceResult:
+    def check(self, history: list[float], threshold: float = 0.05) -> ConvergenceResult:
         """Check whether the score history has converged.
 
         Parameters
@@ -87,7 +85,8 @@ class ConvergenceChecker:
         if len(history) < self._min_rounds:
             logger.debug(
                 "Not enough rounds (%d < %d) for convergence check",
-                len(history), self._min_rounds,
+                len(history),
+                self._min_rounds,
             )
             return ConvergenceResult(
                 converged=False,
@@ -95,15 +94,17 @@ class ConvergenceChecker:
                 rounds_checked=len(history),
             )
 
-        window = history[-self._window_size:]
+        window = history[-self._window_size :]
         mean = sum(window) / len(window)
         variance = sum((x - mean) ** 2 for x in window) / len(window)
 
         converged = variance <= threshold
         logger.info(
-            "Convergence check: variance=%.6f, threshold=%.6f, converged=%s "
-            "(window=%d values)",
-            variance, threshold, converged, len(window),
+            "Convergence check: variance=%.6f, threshold=%.6f, converged=%s (window=%d values)",
+            variance,
+            threshold,
+            converged,
+            len(window),
         )
 
         return ConvergenceResult(

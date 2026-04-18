@@ -315,7 +315,8 @@ class KeyPointExtractor:
             impact = _infer_impact_from_token_delta(mech.estimated_token_impact, mech.category)
             magnitude = min(
                 1.0,
-                (math.log1p(abs(mech.estimated_token_impact)) / math.log1p(50000)) * mech.confidence,
+                (math.log1p(abs(mech.estimated_token_impact)) / math.log1p(50000))
+                * mech.confidence,
             )
 
             points.append(
@@ -596,7 +597,8 @@ class KeyPointExtractor:
             eng_count += 1
 
         agent_relevant = {
-            k: v for k, v in result.metrics.items()
+            k: v
+            for k, v in result.metrics.items()
             if k in ("agent_impact", "key_points", "total_files_scanned")
         }
         if agent_relevant:
@@ -752,11 +754,13 @@ class KeyPointExtractor:
         return ". ".join(parts) + "."
 
 
-_BENEFICIAL_MECHANISM_CATEGORIES = frozenset({
-    "behavioral_instruction",
-    "safety",
-    "persistence",
-})
+_BENEFICIAL_MECHANISM_CATEGORIES = frozenset(
+    {
+        "behavioral_instruction",
+        "safety",
+        "persistence",
+    }
+)
 
 
 def _infer_impact_from_token_delta(
@@ -807,10 +811,7 @@ def _finding_category_to_keypoint(finding_category: str) -> str:
 
 def _description_words(text: str) -> set[str]:
     """Extract lowercase non-trivial words from a description."""
-    return {
-        w for raw in text.lower().split()
-        if len(w := raw.strip("()[]{}.,;:!?\"'")) > 2
-    }
+    return {w for raw in text.lower().split() if len(w := raw.strip("()[]{}.,;:!?\"'")) > 2}
 
 
 def _descriptions_overlap(a: str, b: str) -> bool:

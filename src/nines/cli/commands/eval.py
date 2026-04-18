@@ -78,8 +78,8 @@ def eval_cmd(
         # Fail-loud: log + fall back to a safe default rather than
         # silently disabling retries.
         logger.warning(
-            "Could not load NinesConfig (%s); falling back to "
-            "default retry attempts=3", exc,
+            "Could not load NinesConfig (%s); falling back to default retry attempts=3",
+            exc,
         )
         max_retries = 3
     retry_policy = RetryPolicy(attempts=max(1, max_retries))

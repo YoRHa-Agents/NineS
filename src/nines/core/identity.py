@@ -103,9 +103,9 @@ def project_fingerprint(path: str | Path) -> str:
         # to a best-effort absolute path; never silently swallow without
         # logging.
         logger.warning(
-            "project_fingerprint: could not resolve %s (%s); "
-            "using absolute fallback",
-            p, exc,
+            "project_fingerprint: could not resolve %s (%s); using absolute fallback",
+            p,
+            exc,
         )
         resolved = p.absolute()
 
@@ -181,14 +181,8 @@ def format_finding_id(prefix: str, index: int, project_id: str | None) -> str:
         raise ValueError(msg)
     if project_id is None:
         return f"{prefix}-{index:04d}"
-    if (
-        len(project_id) != _FINGERPRINT_LEN
-        or not all(c in "0123456789abcdef" for c in project_id)
-    ):
-        msg = (
-            f"project_id must be {_FINGERPRINT_LEN} lowercase hex chars, "
-            f"got {project_id!r}"
-        )
+    if len(project_id) != _FINGERPRINT_LEN or not all(c in "0123456789abcdef" for c in project_id):
+        msg = f"project_id must be {_FINGERPRINT_LEN} lowercase hex chars, got {project_id!r}"
         raise ValueError(msg)
     return f"{prefix}-{project_id}-{index:04d}"
 
