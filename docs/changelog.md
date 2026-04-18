@@ -12,6 +12,26 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 > Backward-compatible: legacy v3.0.0 reports continue to parse via `formula_version=1` defaults; legacy `AI-NNNN` finding-IDs keep parsing alongside new `AI-{fp}-NNNN`. The first observable schema break (`EvaluationContext` Protocol) is deferred to Wave 2 / v2.3.0-rc1.
 
+### ⚠️ Breaking Output Shape Changes (read this before upgrading from v3.0.0)
+
+The values are still numbers, but **what those numbers mean has changed**. A naive parser that compares against v3.0.0 constants will silently get wrong answers. Gate on the new schema-version fields below.
+
+| Field | v3.0.0 (before) | v2.2.0-rc1 (now) | How to detect the new format |
+|---|---|---|---|
+| `agent_impact.context_economics.break_even_interactions` | constant `2` (regardless of overhead/savings) | derived `ceil(overhead_tokens / max(per_interaction_savings_tokens, 1))` — observed `{6, 7, 8}` on the §3.1 caveman / DevolaFlow / UA fixture triplet | `agent_impact.context_economics.formula_version == 2` |
+| `agent_impact.context_economics.economics_score` | absent | **NEW** — float in `[0.0, 1.0]`; replaces ad-hoc consumption of `savings_ratio` for downstream ROI rankings. Computed as `clamp(saved × retention × diversity / overhead, 0, 1)` | `economics_score in payload` *and* `formula_version == 2` |
+| `agent_impact.context_economics.formula_version` | absent (implicitly v1) | **NEW** — integer; value `2`. `from_dict` defaults to `1` for legacy reports so v1 round-trips silently | gate every consumer on `formula_version == 2` |
+| `report_metadata` (top-level of `analyze --format json`) | absent | **NEW** — `{id_namespace_version: 2, analyzer_schema_version: 1, nines_version: <str>}` so dashboards can detect the new format without sniffing finding IDs | check `payload["report_metadata"]["id_namespace_version"] == 2` |
+| Finding IDs (`AI-NNNN` family in `agent_impact.py`) | unscoped — `AI-0000` collided across every project (3 collisions / 271 IDs in §3.1) | namespaced — `AI-{8-hex-fp}-NNNN`, e.g. `AI-45961152-0000` for caveman | the same `report_metadata.id_namespace_version` flag (also see `parse_finding_id` for both forms) |
+
+**Operator action — within 30 seconds of upgrading:**
+
+1. Search your dashboards/integrations for `break_even_interactions == 2`. If you find any, the legacy comparison is now **always false** for non-trivial repos; switch to gating on `formula_version`.
+2. If you dedupe findings on raw `id` strings, switch to `(project_id, prefix, idx)` tuples via `nines.core.identity.parse_finding_id`. Otherwise three different repos' first agent-impact rollups will dedupe to one.
+3. Have downstream tooling read `report_metadata.id_namespace_version` once at parse time and branch accordingly. Reports lacking the field are pre-v2.2.0; treat them as v1.
+
+The legacy parsers themselves still run — `from_dict` defaults `formula_version=1`, `parse_finding_id` accepts both `AI-0007` and `AI-deadbeef-0007`. The break is **interpretive** (a v3.0.0 reader silently gets a different number for `break_even_interactions`), not structural (no fields are removed).
+
 ### Added (Wave 1 POCs)
 
 - **C02 — Project-scoped finding-ID namespacing** (`src/nines/core/identity.py`, ~225 lines). Exports `project_fingerprint(project_root) -> str` (8-char `blake2s` of resolved path + optional git remote), `format_finding_id(prefix, idx, project_id)`, and a backward-compat `parse_finding_id` that handles both legacy `AI-0007` and namespaced `AI-12345678-0007`. Six `f"AI-{idx:04d}"` sites in `agent_impact.py` now use the namespaced format. Empirical proof: 271 / 271 unique IDs across the §3.1 fixture triplet (was 265 / 271 with 6 collisions); 3 distinct fingerprints (`45961152`, `05645815`, `8c1e11cc`). 23 unit tests including a 2 000-path collision-rate stress test. See [`references/project-identity.md`](https://github.com/.../tree/feat/v2.2.0-paradigm-extension/references/project-identity.md).

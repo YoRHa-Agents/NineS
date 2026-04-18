@@ -194,13 +194,21 @@ the namespaced parser. JSON dashboards that deduplicated by raw
   forks have a deprecation window. Documented in
   `docs/migration/v2.2.0.md`.
 
-### Planned (Wave 1 follow-up)
+### Wave 1 follow-up — shipped (C02a)
 
-- **`report_metadata.id_namespace_version: int = 2`** field — design
-  said to add this to all analyzer JSON reports; the C02 POC scope
-  deferred it. Wave 1 follow-up adds it to `AgentImpactReport.to_dict()`
-  (`agent_impact.py` lines 211-220) and to the analyzer pipeline's
-  top-level output.
+- **`report_metadata.id_namespace_version: int = 2`** field — added to
+  the top level of `nines analyze --format json` output. Built by
+  `AnalysisPipeline.build_report_metadata()` (in
+  `src/nines/analyzer/pipeline.py`) and injected by the analyze CLI
+  command before serialization. The block also exposes
+  `analyzer_schema_version: int = 1` (reserved for future top-level
+  shape bumps) and `nines_version: str` (looked up via
+  `importlib.metadata.version("nines")`, fallback to
+  `nines.__version__`). Downstream parsers should gate on
+  `report_metadata.id_namespace_version == 2` before consuming
+  namespaced finding IDs (`AI-{8-hex-fp}-NNNN`); legacy reports omit
+  the block entirely. See `tests/cli/test_analyze.py` for the
+  contract tests.
 
 ## 4. Developer Workflow — Adding a New Analyzer / Evaluator
 
@@ -302,7 +310,7 @@ six sites.
 | `src/nines/core/identity.py`                      | **shipped** (C02) | `project_fingerprint`, `format_finding_id`, `parse_finding_id`         |
 | `src/nines/analyzer/agent_impact.py`              | **modified** (C02) | Six AI-prefix sites use `format_finding_id`; `analyze()` computes fp  |
 | `tests/core/test_identity.py`                     | **shipped** (C02) | 23 cases incl. 2 000-path collision stress + legacy parse tests        |
-| `report_metadata.id_namespace_version: int = 2`   | *planned* (Wave 1 follow-up) | Field added to all analyzer JSON reports                          |
+| `report_metadata.id_namespace_version: int = 2`   | **shipped** (C02a) | Top-level field in `analyze --format json` output; built by `AnalysisPipeline.build_report_metadata()` |
 | `src/nines/iteration/context.py`                  | *planned* (C01)   | `EvaluationContext` frozen dataclass; reuses `project_fingerprint`     |
 | `src/nines/iteration/self_eval.py`                | *planned* (C01)   | `DimensionEvaluator.evaluate(ctx)` Protocol bump                       |
 | `src/nines/cli/commands/self_eval.py`             | *planned* (C01)   | Builds `EvaluationContext` from CLI; wires `context_fingerprint` to JSON |

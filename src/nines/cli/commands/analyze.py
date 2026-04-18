@@ -84,7 +84,15 @@ def analyze_cmd(
     findings_count = len(result.findings)
 
     if output_format == "json":
-        report = json.dumps(result.to_dict(), indent=2, default=str)
+        # Top-level ``report_metadata`` carries schema-versioning info so
+        # downstream parsers can detect the C02 namespaced finding-ID
+        # format (``id_namespace_version=2``) and the C09 derived
+        # economics formula version without sniffing individual records.
+        # Legacy parsers that don't know about ``report_metadata``
+        # silently ignore the extra key — non-breaking by design.
+        payload = result.to_dict()
+        payload["report_metadata"] = AnalysisPipeline.build_report_metadata()
+        report = json.dumps(payload, indent=2, default=str)
     else:
         has_impact = "agent_impact" in metrics
         if has_impact:
