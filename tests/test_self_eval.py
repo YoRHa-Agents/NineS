@@ -658,3 +658,117 @@ def test_runner_logs_warning_on_missing_src_dir(
     )
     # The run still completes (ctx=None fallback).
     assert report.get_score("ca") is not None
+
+
+# ---------------------------------------------------------------------------
+# C08 — Weighted MetricRegistry integration
+# ---------------------------------------------------------------------------
+
+
+def test_runner_default_registry_populates_weighted_overall() -> None:
+    """run_all() with no explicit registry loads the bundled TOML and
+    fills weighted_overall + group_means + metric_weights."""
+    from nines.iteration.self_eval import (
+        LiveCodeCoverageEvaluator,  # noqa: F401 — kept for parity
+    )
+
+    runner = SelfEvalRunner()
+    runner.register_dimension("code_coverage", CodeCoverageEvaluator(coverage_pct=80.0))
+    runner.register_dimension("test_count", UnitTestCountEvaluator(count=1200))
+    runner.register_dimension("module_count", ModuleCountEvaluator(count=80))
+
+    report = runner.run_all()
+
+    assert report.weighted_overall > 0.0, "weighted_overall should be populated"
+    assert "hygiene" in report.group_means, (
+        f"hygiene should appear in group_means; got {list(report.group_means)}"
+    )
+    # capability is excluded because no capability dim was registered
+    assert "capability" not in report.group_means
+    # metric_weights snapshot covers ALL bundled metrics, not just the
+    # 3 we registered, so reports remain reproducible.
+    assert len(report.metric_weights) >= 25, (
+        f"expected >=25 metric weights from default registry, "
+        f"got {len(report.metric_weights)}"
+    )
+    # Backward-compat: legacy unweighted overall is still reported.
+    assert 0.0 < report.overall <= 1.0
+
+
+def test_runner_custom_registry_overrides_default() -> None:
+    """Passing a custom registry replaces the bundled defaults entirely."""
+    from nines.eval.metrics_registry import MetricDefinition, MetricRegistry
+
+    custom = MetricRegistry()
+    custom.register(
+        MetricDefinition(name="custom_cov", weight=1.0, group="hygiene"),
+    )
+    custom.register(
+        MetricDefinition(name="hygiene", weight=1.0, group="_groups"),
+    )
+    assert custom.validate() == []
+
+    class CustomCovEvaluator:
+        def evaluate(self) -> DimensionScore:
+            return DimensionScore(name="custom_cov", value=0.6, max_value=1.0)
+
+    runner = SelfEvalRunner(registry=custom)
+    runner.register_dimension("custom_cov", CustomCovEvaluator())
+
+    report = runner.run_all()
+
+    assert report.weighted_overall == pytest.approx(0.6)
+    assert report.group_means == {"hygiene": pytest.approx(0.6)}
+    assert report.metric_weights == {"custom_cov": 1.0, "hygiene": 1.0}
+
+
+def test_report_to_dict_round_trip_preserves_weighted_fields() -> None:
+    """SelfEvalReport.to_dict / from_dict round-trip the C08 fields."""
+    report = SelfEvalReport(
+        scores=[DimensionScore(name="x", value=0.5)],
+        overall=0.5,
+        weighted_overall=0.91,
+        group_means={"capability": 0.92, "hygiene": 0.86},
+        metric_weights={"x": 0.5, "y": 0.5},
+    )
+    data = report.to_dict()
+    assert data["weighted_overall"] == pytest.approx(0.91)
+    assert data["group_means"]["capability"] == pytest.approx(0.92)
+    assert data["metric_weights"] == {"x": 0.5, "y": 0.5}
+
+    restored = SelfEvalReport.from_dict(data)
+    assert restored.weighted_overall == pytest.approx(0.91)
+    assert restored.group_means == {
+        "capability": pytest.approx(0.92),
+        "hygiene": pytest.approx(0.86),
+    }
+    assert restored.metric_weights == {"x": 0.5, "y": 0.5}
+
+
+def test_runner_invalid_registry_skips_weighted_aggregation(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A registry that fails validate() leaves weighted_overall=0.0 but
+    keeps the legacy overall intact (Risk-Med mitigation per design)."""
+    from nines.eval.metrics_registry import MetricDefinition, MetricRegistry
+
+    bad = MetricRegistry()
+    bad.register(MetricDefinition(name="a", weight=0.4, group="capability"))
+    bad.register(MetricDefinition(name="b", weight=0.3, group="capability"))
+    # Sum = 0.7, fails validate()
+    assert bad.validate() != []
+
+    runner = SelfEvalRunner(registry=bad)
+    runner.register_dimension("a", CodeCoverageEvaluator(coverage_pct=80.0))
+
+    with caplog.at_level("WARNING", logger="nines.iteration.self_eval"):
+        report = runner.run_all()
+
+    assert report.weighted_overall == 0.0
+    assert report.group_means == {}
+    assert report.metric_weights == {}
+    # Legacy unweighted overall is still computed.
+    assert report.overall > 0.0
+    assert any(
+        "MetricRegistry.validate" in rec.getMessage() for rec in caplog.records
+    ), "expected warning about validate() failures"

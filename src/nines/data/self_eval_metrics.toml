@@ -1,0 +1,152 @@
+# NineS self-evaluation metric registry — C08 Weighted MetricRegistry
+#
+# Loaded by `nines self-eval` via `MetricRegistry.from_toml(...)`.
+# See src/nines/eval/metrics_registry.py for the schema.
+#
+# Outer split (must sum to 1.0):
+#   capability  = 0.70   ← per-dim capability evaluators (D01..D20)
+#   hygiene     = 0.30   ← live code-coverage / module / lint metrics
+#
+# Each [metrics.<group>] subtable's `weight` entries must sum to 1.0
+# (validated by MetricRegistry.validate() within ±0.01 tolerance).
+
+[groups]
+capability = 0.70
+hygiene    = 0.30
+
+# ---------------------------------------------------------------------
+# Capability dimensions (sum to 1.0)
+# ---------------------------------------------------------------------
+# Threshold rationale:
+#   * 6 high-weight (0.10) "core" dims get a calibration band
+#     (min_acceptable, max_excellent) so a perfect 1.0 raw score still
+#     reads as <1.0 *until* the underlying evaluator can demonstrate
+#     headroom beyond the current measurement bound — the §4.10
+#     saturation breaker.
+#   * 2 medium-weight (0.05) dims get a tight band that keeps raw 1.0
+#     at full credit but penalises drift below 0.7.
+#   * Remaining "support" dims have no threshold so they pass
+#     normalised values through unchanged.
+
+[metrics.capability.scoring_accuracy]
+weight    = 0.10
+direction = "maximize"
+threshold = [0.7, 1.05]
+
+[metrics.capability.scoring_reliability]
+weight    = 0.10
+direction = "maximize"
+threshold = [0.7, 1.05]
+
+[metrics.capability.eval_coverage]
+weight    = 0.05
+direction = "maximize"
+threshold = [0.7, 1.0]
+
+[metrics.capability.report_quality]
+weight    = 0.05
+direction = "maximize"
+threshold = [0.7, 1.0]
+
+[metrics.capability.scorer_agreement]
+weight    = 0.03
+direction = "maximize"
+threshold = [0.7, 1.0]
+
+[metrics.capability.source_coverage]
+weight    = 0.02
+direction = "maximize"
+
+[metrics.capability.source_freshness]
+weight    = 0.02
+direction = "maximize"
+
+[metrics.capability.change_detection]
+weight    = 0.02
+direction = "maximize"
+
+[metrics.capability.data_completeness]
+weight    = 0.02
+direction = "maximize"
+
+[metrics.capability.collection_throughput]
+weight    = 0.02
+direction = "maximize"
+
+[metrics.capability.decomposition_coverage]
+weight    = 0.10
+direction = "maximize"
+threshold = [0.6, 1.05]
+
+[metrics.capability.abstraction_quality]
+weight    = 0.03
+direction = "maximize"
+threshold = [0.7, 1.05]
+
+[metrics.capability.code_review_accuracy]
+weight    = 0.10
+direction = "maximize"
+threshold = [0.7, 1.05]
+
+[metrics.capability.index_recall]
+weight    = 0.10
+direction = "maximize"
+threshold = [0.7, 1.05]
+
+[metrics.capability.structure_recognition]
+weight    = 0.03
+direction = "maximize"
+threshold = [0.7, 1.0]
+
+[metrics.capability.pipeline_latency]
+weight    = 0.03
+direction = "maximize"
+threshold = [0.7, 1.0]
+
+[metrics.capability.sandbox_isolation]
+weight    = 0.03
+direction = "maximize"
+threshold = [0.7, 1.0]
+
+[metrics.capability.convergence_rate]
+weight    = 0.03
+direction = "maximize"
+
+[metrics.capability.cross_vertex_synergy]
+weight    = 0.02
+direction = "maximize"
+
+[metrics.capability.agent_analysis_quality]
+weight    = 0.10
+direction = "maximize"
+threshold = [0.7, 1.05]
+
+# ---------------------------------------------------------------------
+# Hygiene dimensions (sum to 1.0)
+# ---------------------------------------------------------------------
+# Thresholds operate on raw values (percent for code_coverage /
+# docstring_coverage, integer counts for test_count / module_count).
+
+[metrics.hygiene.code_coverage]
+weight    = 0.40
+direction = "maximize"
+threshold = [70.0, 95.0]
+
+[metrics.hygiene.lint_cleanliness]
+weight    = 0.20
+direction = "maximize"
+
+[metrics.hygiene.docstring_coverage]
+weight    = 0.15
+direction = "maximize"
+threshold = [80.0, 100.0]
+
+[metrics.hygiene.test_count]
+weight    = 0.15
+direction = "maximize"
+threshold = [500.0, 1500.0]
+
+[metrics.hygiene.module_count]
+weight    = 0.10
+direction = "maximize"
+threshold = [50.0, 130.0]

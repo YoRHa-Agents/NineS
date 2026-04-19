@@ -1,6 +1,6 @@
 [project]
 name = "nines"
-version = "3.2.1"
+version = "3.2.2"
 description = "NineS — A multi-vertex evaluation, collection, analysis, and self-iteration system for AI agents"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -24,6 +24,12 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/nines"]
+
+# C08: ship the bundled MetricRegistry weights alongside the package
+# so installed wheels (not just editable installs) can locate
+# data/self_eval_metrics.toml via load_default_registry().
+[tool.hatch.build.targets.wheel.force-include]
+"src/nines/data/self_eval_metrics.toml" = "nines/data/self_eval_metrics.toml"
 
 [dependency-groups]
 dev = [
