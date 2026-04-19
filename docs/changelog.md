@@ -4,6 +4,58 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v3.2.2 — 2026-04-19 (C08 Weighted MetricRegistry)
+
+**Theme:** Land C08 from the v2.2.0 paradigm-extension accept list — replace the flat unweighted mean in `SelfEvalRunner.run_all()` with a weighted, threshold-calibrated `MetricRegistry` so the §4.10 saturation (19/20 capability dims pinned at 1.000) finally has measurable headroom to optimise against.
+
+**Empirical (NineS self-eval baseline):**
+
+- `before_overall = 0.9766` (CLI 70/30 weighted; legacy)
+- `after_weighted_overall = 0.8970` (registry-driven; new field) — Δ −0.0796
+- Capability dims at `normalized = 1.000`: **19/20 → 12/20** (−7)
+- Capability dims in `[0.5, 0.95)` range: **1/20 → 8/20** (+7)
+- Hygiene dims in `[0.5, 0.95)` range: **1/5 → 3/5** (+2)
+- Total dims now offering measurable headroom: **2 → 11**
+- `registry.validate()` errors: 0; capability/hygiene/`_groups` weight sums all = 1.000000
+- Proof: `.local/v3.2.2/benchmark/c08_proof.txt`
+
+**Status:** Patch release; aggregated into v3.3.0 minor. Verdict per design: **BENEFIT_CONFIRMED** (`weighted_overall < 0.95` AND `≥4 capability dims in [0.5, 0.95)`).
+
+### Added
+
+- **`nines.eval.metrics_registry`** (~430 LOC + 28 tests). Public surface:
+  - `class Direction(StrEnum): MAXIMIZE | MINIMIZE` — score direction for normalisation.
+  - `@dataclass(frozen=True) MetricDefinition(name, weight, direction=MAXIMIZE, normalizer=None, threshold=None, group="default")` — construction-time guards reject negative weights, blank names, inverted thresholds.
+  - `class MetricRegistry` — `register`, `get`, `metrics`, `groups`, `weight_sum_for_group`, `normalized(name, value, *, max_value=1.0)` (custom normalizer wins; threshold band applied per direction; falls back to `value/max_value` clamped), `weighted_mean(group, scores)` (missing scores excluded from denominator), `validate()` (errors when group sums miss `1.0 ± 0.01`), `weights_dict()`, `from_toml(path)` / `from_dict(data)`, `default_registry_path()`, `load_default_registry()`.
+- **`src/nines/data/self_eval_metrics.toml`** — bundled weights + thresholds. Outer split `capability=0.70` / `hygiene=0.30` via the reserved `_groups` meta-group. Inner-group weights sum to `1.0` exactly. Tighter thresholds for the §4.10 saturation breakers (`decomposition_coverage=(0.6, 1.05)`, `code_review_accuracy=(0.7, 1.05)`, `index_recall=(0.7, 1.05)`, `agent_analysis_quality=(0.7, 1.05)`, etc.) plus standard rubric bands for hygiene (`code_coverage=(70, 95)`, `test_count=(500, 1500)`, `module_count=(50, 130)`, `docstring_coverage=(80, 100)`).
+- **`SelfEvalReport.weighted_overall`, `group_means`, `metric_weights`** — new transparent fields surfaced in JSON output and round-tripped via `to_dict` / `from_dict`. `metric_weights` is a snapshot of the active registry so reports remain reproducible after the TOML mutates on disk.
+- **`SelfEvalRunner(registry=...)` kwarg** — registry threads through to `run_all()`. Default loads `data/self_eval_metrics.toml` lazily inside `run_all` (avoids the `nines.eval.__init__` → `mock_executor` → `iteration.self_eval` import cycle). Empty groups (e.g. `--capability-only` runs that don't register hygiene dims) are excluded from the outer aggregate so partial-coverage runs still produce a sensible `weighted_overall`. Invalid registries fail loudly via `logger.warning` and leave `weighted_overall=0.0`, `group_means={}`, `metric_weights={}` so the legacy `overall` stays the source of truth (Risk-Med mitigation per design).
+- **`nines self-eval --metrics-config PATH`** — CLI option to override the bundled defaults. Validation runs up front; failures abort with exit 2 listing every error.
+
+### Tests + lint
+
+- **Test suite: 1386 → 1420 (+34 tests)** with zero regressions; full suite green.
+  - `tests/test_metrics_registry.py` (28 tests): definition guards, register/lookup, `weight_sum_for_group` single + multi, `normalized` no-threshold + MAXIMIZE band + ceiling-above-1.0 saturation breaker + MINIMIZE band + custom normalizer override + clamp + KeyError on unknown name, `weighted_mean` basic + missing-score denominator + empty-group + cross-group isolation, `validate` valid + non-summing + drift tolerance, `from_toml` round-trip + bundled-file validation + path resolution + bad-direction rejection + bad-threshold rejection, `weights_dict`.
+  - `tests/test_self_eval.py` (+4): default registry populates `weighted_overall`, custom registry overrides defaults, `to_dict`/`from_dict` preserves C08 fields, invalid registry skips weighted aggregation but keeps legacy `overall`.
+  - `tests/test_self_eval_cli.py` (+2): `--metrics-config` loads alternate weights, default config populates `weighted_overall`.
+- **Ruff: 0 → 0 errors** maintained (added `StrEnum` for `Direction`, dropped the obsolete `sys.version_info` tomllib guard, organised CLI imports).
+
+### Backward compatibility
+
+- `SelfEvalReport.overall` (legacy unweighted mean) preserved alongside `weighted_overall` for one minor release per the C08 design's Risk-Med mitigation.
+- CLI `_build_json_output` keeps the existing `overall = 0.7 × cap_mean + 0.3 × hyg_mean` formula plus `capability_mean` / `hygiene_mean` / `weights` blocks — operators get the C08 fields *additively* via `report.to_dict()`.
+- The `--capability-only` CLI flag still works (capability group contributes; hygiene group skipped from the outer aggregate).
+
+### Files changed
+
+`src/nines/eval/metrics_registry.py` (+429 new), `src/nines/data/self_eval_metrics.toml` (+152 new), `src/nines/iteration/self_eval.py` (+138 / −0), `src/nines/cli/commands/self_eval.py` (+36 / −0), `tests/test_metrics_registry.py` (+415 new), `tests/test_self_eval.py` (+114 / −0), `tests/test_self_eval_cli.py` (+107 / −0), `pyproject.toml` (+6 / −0; hatch `force-include` for the bundled TOML), `.gitignore` (+2 / −0; `!src/nines/data/` exception so package data ships).
+
+### Gap closure update
+
+- ✅ §4.10 19/20 capability dims saturated at 1.000 → **MEASURABLY DE-SATURATED**: 7 capability dims dropped from 1.000 into the calibrated `[0.5, 0.95)` headroom band, and the new `weighted_overall=0.8970` is materially distinct from the legacy `overall=0.9766`. Future C09/C12 work now has signal to optimise against.
+
+---
+
 ## v3.2.1 — 2026-04-18 (C01 Full Evaluator Migration)
 
 **Theme:** Complete C01 evaluator migration. Phase 1 (v3.2.0) only made 3/20 capability evaluators project-aware; this patch closes the remaining gap so foreign-repo self-eval no longer silently inflates 8 more dims with NineS's own data.
