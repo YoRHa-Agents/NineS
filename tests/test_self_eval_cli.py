@@ -296,3 +296,140 @@ def test_cli_default_metrics_config_populates_weighted_overall(
     assert payload["weighted_overall"] > 0.0
     assert "capability" in payload["group_means"]
     assert len(payload["metric_weights"]) >= 25
+
+
+# ---------------------------------------------------------------------------
+# C12 — --breakdown / --breakdown-format flags
+# ---------------------------------------------------------------------------
+
+
+def test_cli_breakdown_flag_appends_panels_to_text_output(tmp_path: Path) -> None:
+    """``--breakdown`` augments the text report with per-dim panels.
+
+    Verifies the C12 sub-skill block appears at the end of the report
+    after the existing capability/hygiene tables.
+    """
+    from click.testing import CliRunner
+
+    from nines.cli.main import cli
+
+    out_dir = tmp_path / "out"
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "self-eval",
+            "--project-root",
+            ".",
+            "--src-dir",
+            "src/nines",
+            "--test-dir",
+            "tests",
+            "--capability-only",
+            "--evaluator-timeout",
+            "30",
+            "--breakdown",
+            "--output-dir",
+            str(out_dir),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    text = (out_dir / "self_eval_report.txt").read_text()
+    # Existing flat sections still rendered.
+    assert "Capability Dimensions" in text
+    # C12 panel section appended.
+    assert "Sub-Skill Breakdown" in text
+    # At least the annotated D11/D13/D14/D15/D20 dims show up as panels.
+    for dim in (
+        "decomposition_coverage",
+        "code_review_accuracy",
+        "index_recall",
+        "structure_recognition",
+        "agent_analysis_quality",
+    ):
+        assert dim in text, f"missing dim panel: {dim}"
+
+
+def test_cli_breakdown_format_json_embeds_breakdown_block(tmp_path: Path) -> None:
+    """``--breakdown --breakdown-format json`` embeds the breakdown
+    panels as a top-level ``breakdown`` key inside the JSON report."""
+    from click.testing import CliRunner
+
+    from nines.cli.main import cli
+
+    out_dir = tmp_path / "out"
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "-f",
+            "json",
+            "self-eval",
+            "--project-root",
+            ".",
+            "--src-dir",
+            "src/nines",
+            "--test-dir",
+            "tests",
+            "--capability-only",
+            "--evaluator-timeout",
+            "30",
+            "--breakdown",
+            "--breakdown-format",
+            "json",
+            "--output-dir",
+            str(out_dir),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    payload = json.loads((out_dir / "self_eval_report.json").read_text())
+    assert "breakdown" in payload, sorted(payload.keys())
+    bd = payload["breakdown"]
+    assert bd["panel_count"] >= 20  # capability-only run = 20 dims
+    assert bd["total_subskills"] >= 30  # 5 dims × ~4 sub-skills + mirrors
+    assert bd["dims_with_breakdown"] >= 5  # the 5 annotated capability evaluators
+    assert isinstance(bd["panels"], list)
+    annotated_dims = {p["dim_name"] for p in bd["panels"] if p["has_breakdown"]}
+    assert {
+        "decomposition_coverage",
+        "code_review_accuracy",
+        "index_recall",
+        "structure_recognition",
+        "agent_analysis_quality",
+    }.issubset(annotated_dims)
+
+
+def test_cli_default_no_breakdown_preserves_legacy_output(tmp_path: Path) -> None:
+    """Without ``--breakdown`` the JSON output does NOT carry a
+    ``breakdown`` key — backward compat for existing consumers."""
+    from click.testing import CliRunner
+
+    from nines.cli.main import cli
+
+    out_dir = tmp_path / "out"
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "-f",
+            "json",
+            "self-eval",
+            "--project-root",
+            ".",
+            "--src-dir",
+            "src/nines",
+            "--test-dir",
+            "tests",
+            "--capability-only",
+            "--evaluator-timeout",
+            "30",
+            "--output-dir",
+            str(out_dir),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    payload = json.loads((out_dir / "self_eval_report.json").read_text())
+    assert "breakdown" not in payload, sorted(payload.keys())

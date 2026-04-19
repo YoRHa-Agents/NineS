@@ -859,6 +859,43 @@ class LiveCodeCoverageEvaluator:
             source = "pytest"
             coverage_pct = self._run_pytest_cov(project_root, budget=budget)
 
+        # C12: attempt to surface line / branch sub-skills when a
+        # coverage file is wired up.  When only the aggregate line
+        # number is available (the pytest-stdout path), we emit a
+        # single line_coverage sub-skill so the panel still has
+        # something to display.
+        breakdown_data: dict[str, float] | None = None
+        if self._coverage_file is not None and self._coverage_file.exists():
+            suffix = self._coverage_file.suffix.lower()
+            if suffix == ".xml":
+                breakdown_data = self._parse_coverage_breakdown_xml(self._coverage_file)
+            elif suffix == ".json":
+                breakdown_data = self._parse_coverage_breakdown_json(self._coverage_file)
+
+        subskills_block: list[dict[str, Any]] = []
+        if breakdown_data:
+            for kind in ("line", "branch", "function"):
+                if kind in breakdown_data:
+                    subskills_block.append(
+                        {
+                            "name": f"{kind}_coverage",
+                            "value": float(breakdown_data[kind]),
+                            "max_value": 100.0,
+                            "weight": 1.0,
+                            "metadata": {"unit": "percent", "source": source},
+                        }
+                    )
+        if not subskills_block:
+            subskills_block = [
+                {
+                    "name": "line_coverage",
+                    "value": float(coverage_pct),
+                    "max_value": 100.0,
+                    "weight": 1.0,
+                    "metadata": {"unit": "percent", "source": source},
+                }
+            ]
+
         return DimensionScore(
             name="code_coverage",
             value=coverage_pct,
@@ -868,6 +905,9 @@ class LiveCodeCoverageEvaluator:
                 "source": source,
                 "project_root": str(project_root),
                 "cov_package": self._cov_package,
+                # C12 sub-skill block
+                "subskills": subskills_block,
+                "rollup_method": "weighted_mean",
             },
         )
 
@@ -964,6 +1004,29 @@ class LiveCodeCoverageEvaluator:
         return float(line_rate) * 100.0
 
     @staticmethod
+    def _parse_coverage_breakdown_xml(path: Path) -> dict[str, float] | None:
+        """C12: extract ``line``/``branch`` rates from coverage.xml when present.
+
+        Returns ``None`` when the file can't be parsed; otherwise a
+        dict like ``{"line": 95.2, "branch": 88.0}`` (each in
+        percent).  Branch coverage is only included when the file
+        actually carries a ``branch-rate`` attribute.
+        """
+        try:
+            tree = ET.parse(path)  # noqa: S314
+            root = tree.getroot()
+            out: dict[str, float] = {}
+            line_rate = root.get("line-rate")
+            if line_rate is not None:
+                out["line"] = float(line_rate) * 100.0
+            branch_rate = root.get("branch-rate")
+            if branch_rate is not None:
+                out["branch"] = float(branch_rate) * 100.0
+            return out or None
+        except Exception:  # noqa: BLE001 — best-effort parse for sub-skills
+            return None
+
+    @staticmethod
     def _parse_coverage_json(path: Path) -> float:
         """Parse coverage.json and return coverage percentage."""
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -972,6 +1035,34 @@ class LiveCodeCoverageEvaluator:
         except (KeyError, TypeError) as exc:
             msg = "coverage.json missing 'totals.percent_covered'"
             raise ValueError(msg) from exc
+
+    @staticmethod
+    def _parse_coverage_breakdown_json(path: Path) -> dict[str, float] | None:
+        """C12: extract per-aspect rates from coverage.json when present.
+
+        coverage.py's JSON ``totals`` block exposes
+        ``percent_covered``, ``percent_covered_display``,
+        ``num_branches``/``covered_branches``, etc.  Returns whatever
+        of those map onto our line / branch / function buckets.
+        """
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            totals = data.get("totals") or {}
+            out: dict[str, float] = {}
+            if "percent_covered" in totals:
+                out["line"] = float(totals["percent_covered"])
+            if (
+                totals.get("num_branches", 0) > 0
+                and "covered_branches" in totals
+            ):
+                out["branch"] = (
+                    float(totals["covered_branches"])
+                    / float(totals["num_branches"])
+                    * 100.0
+                )
+            return out or None
+        except Exception:  # noqa: BLE001 — best-effort parse for sub-skills
+            return None
 
 
 class LiveTestCountEvaluator:
