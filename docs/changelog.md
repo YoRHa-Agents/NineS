@@ -4,6 +4,55 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v3.2.3 — 2026-04-19 (C11a Rule-Based Mechanism Diversification)
+
+**Theme:** Land C11a from the v2.2.0 paradigm-extension accept list — replace the v3.2.2 hard-coded "any keyword fires the legacy 5 mechanisms with `confidence=1.0`" detection branch (§4.3 baseline) with a rule-based `MechanismDetector` driven by `nines.analyzer.mechanism_rules.DEFAULT_MECHANISM_RULES`, so different repos surface different mechanism subsets. Per the design split, this is **C11a rule-based ONLY** — no LLM judge is involved (C11b deferred).
+
+**Empirical (3 reference repos: caveman, DevolaFlow, Understand-Anything; full breakdown in `.local/v3.2.3/benchmark/c11a_proof.txt`):**
+
+- Mechanism diversity (union across 3 samples): **5 → 9** (+4)
+- Intersection (mechanisms shared by all 3 samples): **5 → 4** (−1)
+- Per-sample mechanism counts: caveman **5 → 6**, DevolaFlow **5 → 8**, UA **5 → 6**
+- Per-sample unique mechanisms: was `{}` for all; now `{DevolaFlow: churn_aware_routing, UA: reasoning_depth_calibration}`
+- Confidence distribution: **100% at 1.0 → spread `[0.51, 0.89]`**, mean 0.734, stdev 0.139, `frac_in_[0.5, 0.9) = 1.00`
+- Verdict per task spec: **BENEFIT_CONFIRMED** (`diversity ≥ 8 AND intersection ≤ 4 AND ≥1 sample has unique`)
+
+**Status:** Patch release; aggregated into v3.3.0 minor. Closes the §4.3 (5-mechanism template lock) and partially relieves §4.4 (KP category collapse) gaps from the v2.2.0 baseline.
+
+### Added
+
+- **`src/nines/analyzer/mechanism_rules.py`** (~490 LOC + 35 tests). Public surface:
+  - `@dataclass(frozen=True) MechanismRule(name, category, description, indicators, counter_indicators=(), path_hints=(), min_indicator_hits_per_file=2, min_files=1, min_confidence=0.3, token_impact_sign=1, source="default")` with helpers `match_file(rel_path, content_lower) -> FileMatch | None`, `evidence_predicate(matches) -> bool`, `confidence_estimator(matches) -> float ∈ [0, 1]`, `magnitude_estimator(total_content_tokens) -> int`.
+  - `@dataclass(frozen=True) FileMatch(path, indicator_hits, counter_hits, content_length)` with `density` (hits per 1 000 chars).
+  - `DEFAULT_MECHANISM_RULES`: 11-rule tuple = legacy 5 (`behavioral_rules`, `token_compression`, `safety_guardrails`, `multi_platform_sync`, `drift_prevention` — preserved with stricter predicates and tagged `source="legacy"`) + 6 new ContextOS-derived rules (`active_forgetting/context_pruning`, `reasoning_depth_calibration/meta_reasoning`, `productive_contradiction/validation`, `churn_aware_routing/context_routing`, `self_healing_index/indexing`, `skillbook_evolution/in_context_learning`, all tagged `source="contextos"`).
+  - Confidence formula: `score = 0.40 + 0.50 * avg_hit_fraction + min(0.25, 0.05 * n_files) − min(0.30, 0.10 * avg_counter_hits)`, clamped to `[0, 1]` and rounded to 2 dp. The `0.40` anchor guarantees predicate-passing matches clear the `0.30` emission gate by default; counter-indicators can still drag the score below the gate when they dominate (proven by the new `test_low_confidence_mechanism_filtered_out`).
+- **`MechanismDetector(rules=None)`** in `src/nines/analyzer/agent_impact.py` — encapsulates the rule loop so it can be tested independently and customised by passing a different rule list. Defaults to `DEFAULT_MECHANISM_RULES`. Reads each artifact at most once (cached lower-cased content), then for each rule: (1) accumulates `FileMatch` per artifact via `match_file`, (2) skips when `evidence_predicate` is `False`, (3) computes confidence via `confidence_estimator` and skips when `score <= rule.min_confidence`, (4) emits exactly one `AgentMechanism` per surviving rule. Rejects duplicate rule names at construction time so reports stay deterministic.
+- **`AgentImpactAnalyzer(project_id=None, *, mechanism_detector=None)`** — new keyword-only constructor argument that lets callers (and the new `TestC11aDiversification` test) inject a custom detector while keeping the v3.2.2 positional `project_id` signature working unchanged.
+
+### Changed
+
+- `AgentImpactAnalyzer._detect_mechanisms` now delegates to `self._mechanism_detector.detect(target, artifacts, file_reader=..., token_estimator=...)` instead of the in-line "any indicator fires the bucket" branch and `confidence = min(1.0, len(files) * 0.3 + 0.1)` formula. The legacy 5 mechanism *names* and category slugs are preserved; the predicates are tightened so they no longer always fire (e.g. `multi_platform_sync` now needs ≥ 2 distinct indicators or one indicator + a `.cursor/` / `.claude/` / `.windsurf/` / `.codex/` path hint). The 6 new rules use `min_indicator_hits_per_file=1` because each indicator is a domain-specific phrase from the ContextOS taxonomy (e.g. `ttl`, `lru`, `chain of thought`, `cache invalidation`, `re-index`, `skillbook`).
+- Module docstring of `agent_impact.py` documents the C11a delegation and explicitly notes that no LLM is invoked from this module.
+
+### Removed
+
+- `AgentImpactAnalyzer._collect_mechanism_evidence` — no longer needed; per-rule predicates replace the centralised `category_evidence` dict.
+
+### Tests + lint
+
+- **Test suite: 1420 → 1458 (+38 tests)** with zero regressions; full suite green in 33.6 s.
+  - `tests/test_mechanism_rules.py` (35 tests): `FileMatch.density` basic + zero-content; `MechanismRule` predicate fires on positive evidence + skips below threshold + skips no-files + path-hint synthetic hit + `min_files` aggregate threshold; confidence no-matches-zero + always-in-`[0, 1]` + above-min-for-predicate-passing + counter-indicator penalty; magnitude positive sign + negative for compression + returns `int` + zero-tokens; `DEFAULT_MECHANISM_RULES` count = 11 + legacy-5 present + legacy tagged `source="legacy"` + 6 ContextOS present + ContextOS tagged + `token_compression` negative sign + all rules have indicators + all min_confidence ≥ 0.3; `MechanismDetector` default-rules + custom-subset + empty-rules-empty-output + no-artifacts-empty + duplicate-name rejection + emits one mechanism per passing rule + skips no-evidence rule + emitted confidence above gate + sorted by `(category, name)` + compression sign negative + sorted evidence files + per-rule dedup.
+  - `tests/test_agent_impact.py` (+3 tests in `TestC11aDiversification`): 3 distinct evidence inputs → 3 distinct mechanism subsets (proves §4.3 fix; `churn_aware_routing` unique to repo2, `skillbook_evolution` unique to repo3); legacy 5 mechanism names remain in the default registry (backward-compat guard); rules with confidence at or below `min_confidence` are gated out (proves the emission threshold actually filters).
+- `uv run ruff check src/nines tests/` → 0 errors.
+- `uv run pytest tests/` → 1458 passed (was 1420).
+
+### Deferred (not in v3.2.3)
+
+- **C11b — LLM-judge fallback for ambiguous cases** (rule-score in `[0.3, 0.6]` band routed to `gpt-4o-mini` / `claude-haiku`). Per design 04 §C11 this is shipped opt-in only with `provider="none"` default and an `NINES_ALLOW_EXTERNAL_LLM=1` environment gate; not bundled into v3.2.3 because the rule-based path already met `BENEFIT_CONFIRMED` empirically.
+- **C12 — AgentBoard-style analytical sub-skill panels** (still tracked; depends on full C06 golden harness).
+
+---
+
 ## v3.2.2 — 2026-04-19 (C08 Weighted MetricRegistry)
 
 **Theme:** Land C08 from the v2.2.0 paradigm-extension accept list — replace the flat unweighted mean in `SelfEvalRunner.run_all()` with a weighted, threshold-calibrated `MetricRegistry` so the §4.10 saturation (19/20 capability dims pinned at 1.000) finally has measurable headroom to optimise against.
