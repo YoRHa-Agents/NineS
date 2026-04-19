@@ -4,6 +4,14 @@ Analyzes how a repository influences AI Agent effectiveness through
 mechanism decomposition, context economics estimation, and
 Agent-facing artifact detection.
 
+Mechanism detection (v3.2.3, C11a) is delegated to a rule-based
+:class:`MechanismDetector` driven by the
+``nines.analyzer.mechanism_rules.DEFAULT_MECHANISM_RULES`` registry, which
+preserves the legacy 5 mechanisms (with stricter predicates) and adds 6
+ContextOS-derived mechanisms so different repos surface different mechanism
+subsets.  No LLM is involved in this module; the optional LLM-judge fallback
+is deferred to C11b.
+
 Covers: FR-313.
 """
 
@@ -15,10 +23,18 @@ import re
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from nines.analyzer.mechanism_rules import (
+    DEFAULT_MECHANISM_RULES,
+    FileMatch,
+    MechanismRule,
+)
 from nines.core.identity import format_finding_id, project_fingerprint
 from nines.core.models import Finding, KnowledgeUnit
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -246,6 +262,143 @@ class AgentImpactReport:
         )
 
 
+class MechanismDetector:
+    """Rule-based detector for Agent-influence mechanisms (C11a).
+
+    Encapsulates the mechanism-detection pipeline so it can be:
+
+    1. Tested independently of :class:`AgentImpactAnalyzer`.
+    2. Customised by passing a different rule list (e.g. a subset for
+       focused audits, or a superset that loads project-specific rules).
+    3. Eventually wrapped by an LLM-judge fallback (C11b — *not* in this
+       module; this class is rule-based ONLY).
+
+    The detector reads each candidate artifact at most once, lower-cases the
+    content, then loops over rules.  For each rule it:
+
+    1. Calls :meth:`MechanismRule.match_file` per artifact, accumulating
+       :class:`FileMatch` objects.
+    2. Skips the rule when :meth:`MechanismRule.evidence_predicate` is
+       ``False``.
+    3. Computes confidence via :meth:`MechanismRule.confidence_estimator`;
+       skips the rule when the score is ``<= rule.min_confidence``.
+    4. Emits exactly one :class:`AgentMechanism` per surviving rule.
+
+    De-duplication is implicit because each rule contributes at most one
+    mechanism, and rule names are unique inside the registry.
+
+    Attributes
+    ----------
+    rules:
+        Tuple of :class:`MechanismRule` instances driving detection.
+    """
+
+    def __init__(self, rules: list[MechanismRule] | None = None) -> None:
+        """Construct a detector.
+
+        Parameters
+        ----------
+        rules:
+            Optional iterable of :class:`MechanismRule`.  ``None`` (the
+            default) loads
+            :data:`nines.analyzer.mechanism_rules.DEFAULT_MECHANISM_RULES`.
+        """
+        self.rules: tuple[MechanismRule, ...] = (
+            tuple(rules) if rules is not None else DEFAULT_MECHANISM_RULES
+        )
+        # Reject duplicate rule names early so reports stay deterministic.
+        seen: set[str] = set()
+        for rule in self.rules:
+            if rule.name in seen:
+                raise ValueError(
+                    f"duplicate mechanism rule name: {rule.name!r}",
+                )
+            seen.add(rule.name)
+
+    def detect(
+        self,
+        target: Path,
+        artifacts: list[str],
+        *,
+        file_reader: Callable[[Path], str] | None = None,
+        token_estimator: Callable[[str], int] | None = None,
+    ) -> list[AgentMechanism]:
+        """Run all rules over ``artifacts`` and return surviving mechanisms.
+
+        Parameters
+        ----------
+        target:
+            Root directory containing the artifact paths.
+        artifacts:
+            Repository-relative paths of Agent-facing files.
+        file_reader:
+            Optional override for reading file content.  Defaults to
+            :meth:`AgentImpactAnalyzer._read_file_safe`.
+        token_estimator:
+            Optional override for token estimation.  Defaults to
+            :meth:`AgentImpactAnalyzer._estimate_tokens`.
+
+        Returns
+        -------
+        list[AgentMechanism]
+            Detected mechanisms, sorted by ``(category, name)``.
+        """
+        reader = file_reader if file_reader is not None else AgentImpactAnalyzer._read_file_safe
+        tokenizer = (
+            token_estimator if token_estimator is not None else AgentImpactAnalyzer._estimate_tokens
+        )
+
+        # Cache file reads — every rule consults the same content.
+        cached_files: list[tuple[str, str, str]] = []
+        for rel_path in artifacts:
+            raw = reader(target / rel_path)
+            if not raw:
+                continue
+            cached_files.append((rel_path, raw, raw.lower()))
+
+        if not cached_files:
+            return []
+
+        emitted: list[AgentMechanism] = []
+        for rule in self.rules:
+            matches: list[FileMatch] = []
+            evidence_raw: dict[str, str] = {}
+            for rel_path, raw, lower in cached_files:
+                file_match = rule.match_file(rel_path, lower)
+                if file_match is None:
+                    continue
+                matches.append(file_match)
+                evidence_raw[rel_path] = raw
+
+            if not rule.evidence_predicate(matches):
+                continue
+
+            confidence = rule.confidence_estimator(matches)
+            if confidence <= rule.min_confidence:
+                continue
+
+            total_tokens = sum(tokenizer(raw) for raw in evidence_raw.values())
+            token_impact = rule.magnitude_estimator(total_tokens)
+            files_sorted = sorted(evidence_raw.keys())
+            description = (
+                f"{rule.description} (evidence from {len(files_sorted)} file(s))"
+            )
+
+            emitted.append(
+                AgentMechanism(
+                    id=f"mech-{uuid.uuid4().hex[:8]}",
+                    name=rule.name,
+                    category=rule.category,
+                    description=description,
+                    evidence_files=files_sorted,
+                    estimated_token_impact=token_impact,
+                    confidence=confidence,
+                )
+            )
+
+        return sorted(emitted, key=lambda mech: (mech.category, mech.name))
+
+
 class AgentImpactAnalyzer:
     """Analyzes repositories for their impact on AI Agent effectiveness.
 
@@ -343,7 +496,12 @@ class AgentImpactAnalyzer:
 
     _TOKENS_PER_WORD = 1.3
 
-    def __init__(self, project_id: str | None = None) -> None:
+    def __init__(
+        self,
+        project_id: str | None = None,
+        *,
+        mechanism_detector: MechanismDetector | None = None,
+    ) -> None:
         """Initialize agent impact analyzer.
 
         Parameters
@@ -351,9 +509,16 @@ class AgentImpactAnalyzer:
         project_id:
             Optional pre-computed project fingerprint.  When ``None``,
             :meth:`analyze` computes one from the target path.
+        mechanism_detector:
+            Optional :class:`MechanismDetector` override (C11a).  Defaults
+            to :class:`MechanismDetector` constructed with the bundled
+            ``DEFAULT_MECHANISM_RULES``.
         """
         self._agent_patterns = [re.compile(p, re.IGNORECASE) for p in self.AGENT_ARTIFACT_PATTERNS]
         self._project_id: str | None = project_id
+        self._mechanism_detector: MechanismDetector = (
+            mechanism_detector if mechanism_detector is not None else MechanismDetector()
+        )
 
     def analyze(self, path: str | Path) -> AgentImpactReport:
         """Run full Agent impact analysis on a repository.
@@ -599,9 +764,12 @@ class AgentImpactAnalyzer:
     ) -> list[AgentMechanism]:
         """Identify discrete mechanisms that influence Agent behavior.
 
-        Reads each Agent-facing file and classifies detected patterns into
-        mechanism categories: behavioral instruction, context compression,
-        safety, distribution, and persistence.
+        Delegates to the rule-based :class:`MechanismDetector` (C11a).
+        Each rule decides for itself whether evidence in the repository's
+        Agent-facing files is strong enough to emit a mechanism, instead
+        of every category firing whenever any keyword appears (the v3.2.2
+        behaviour that produced the §4.3 "always 5 mechanisms with
+        confidence 1.0" baseline).
 
         Parameters
         ----------
@@ -615,78 +783,12 @@ class AgentImpactAnalyzer:
         list[AgentMechanism]
             All detected mechanisms, sorted by category then name.
         """
-        mechanisms: list[AgentMechanism] = []
-        category_evidence: dict[str, dict[str, list[str]]] = {}
-
-        for rel_path in artifacts:
-            content = self._read_file_safe(target / rel_path).lower()
-            if not content:
-                continue
-
-            self._collect_mechanism_evidence(
-                rel_path,
-                content,
-                category_evidence,
-            )
-
-        for category, sub_mechs in sorted(category_evidence.items()):
-            for name, files in sorted(sub_mechs.items()):
-                total_content = ""
-                for f in files:
-                    total_content += self._read_file_safe(target / f) + " "
-                token_impact = self._estimate_tokens(total_content)
-                if category == "context_compression":
-                    token_impact = -token_impact
-
-                confidence = min(1.0, len(files) * 0.3 + 0.1)
-                mechanisms.append(
-                    AgentMechanism(
-                        id=f"mech-{uuid.uuid4().hex[:8]}",
-                        name=name,
-                        category=category,
-                        description=self._describe_mechanism(category, name, files),
-                        evidence_files=sorted(files),
-                        estimated_token_impact=token_impact,
-                        confidence=round(confidence, 2),
-                    )
-                )
-
-        return mechanisms
-
-    def _collect_mechanism_evidence(
-        self,
-        rel_path: str,
-        content: str,
-        evidence: dict[str, dict[str, list[str]]],
-    ) -> None:
-        """Scan content of a single file for mechanism indicators.
-
-        Populates ``evidence`` mapping of
-        ``{category: {mechanism_name: [file_paths]}}``.
-
-        Parameters
-        ----------
-        rel_path:
-            Relative path of the file being scanned.
-        content:
-            Lowercased file content.
-        evidence:
-            Accumulator dict mutated in place.
-        """
-        checks: list[tuple[str, str, list[str]]] = [
-            ("behavioral_instruction", "behavioral_rules", self.BEHAVIORAL_INDICATORS),
-            ("context_compression", "token_compression", self.COMPRESSION_INDICATORS),
-            ("safety", "safety_guardrails", self.SAFETY_INDICATORS),
-            ("distribution", "multi_platform_sync", self.DISTRIBUTION_INDICATORS),
-            ("persistence", "drift_prevention", self.PERSISTENCE_INDICATORS),
-        ]
-
-        for category, mech_name, indicators in checks:
-            if any(ind in content for ind in indicators):
-                bucket = evidence.setdefault(category, {})
-                bucket.setdefault(mech_name, [])
-                if rel_path not in bucket[mech_name]:
-                    bucket[mech_name].append(rel_path)
+        return self._mechanism_detector.detect(
+            target,
+            artifacts,
+            file_reader=self._read_file_safe,
+            token_estimator=self._estimate_tokens,
+        )
 
     def _describe_mechanism(
         self,
