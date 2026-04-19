@@ -1,6 +1,12 @@
 """Self-evaluation and self-iteration (MAPIM loop)."""
 
 from nines.iteration.baseline import BaselineManager, ComparisonResult
+from nines.iteration.breakdown_reporter import (
+    BreakdownReport,
+    BreakdownReporter,
+    DimensionPanel,
+    SubSkill,
+)
 from nines.iteration.convergence import ConvergenceChecker, ConvergenceResult
 from nines.iteration.gap_detector import Gap, GapAnalysis, GapDetector
 from nines.iteration.gates import (
@@ -32,11 +38,14 @@ from nines.iteration.tracker import IterationTracker, ProgressReport
 
 __all__ = [
     "BaselineManager",
+    "BreakdownReport",
+    "BreakdownReporter",
     "CodeCoverageEvaluator",
     "ComparisonResult",
     "ConvergenceChecker",
     "ConvergenceResult",
     "DimensionEvaluator",
+    "DimensionPanel",
     "DimensionScore",
     "EconomicsScoreGate",
     "Gap",
@@ -59,6 +68,7 @@ __all__ = [
     "SelfEvalReport",
     "SelfEvalRunner",
     "Snapshot",
+    "SubSkill",
     "Suggestion",
     "TestCountEvaluator",
     "UnitTestCountEvaluator",

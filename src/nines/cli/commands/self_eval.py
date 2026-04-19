@@ -9,6 +9,7 @@ from pathlib import Path
 import click
 
 from nines.eval.metrics_registry import MetricRegistry, load_default_registry
+from nines.iteration.breakdown_reporter import BreakdownReporter
 from nines.iteration.capability_evaluators import (
     AbstractionQualityEvaluator,
     AgentAnalysisQualityEvaluator,
@@ -306,6 +307,23 @@ def _build_json_output(
         "in the report and the run continues."
     ),
 )
+@click.option(
+    "--breakdown/--no-breakdown",
+    "breakdown",
+    default=False,
+    show_default=True,
+    help=(
+        "C12: emit AgentBoard-style sub-skill breakdown panels alongside "
+        "the flat dimension report.  Default off for backward compat."
+    ),
+)
+@click.option(
+    "--breakdown-format",
+    type=click.Choice(["text", "json", "markdown"], case_sensitive=False),
+    default="text",
+    show_default=True,
+    help="C12: render the breakdown as ``text``, ``json``, or ``markdown``.",
+)
 @click.pass_context
 def self_eval_cmd(
     ctx: click.Context,
@@ -319,6 +337,8 @@ def self_eval_cmd(
     golden_dir: str,
     metrics_config: str | None,
     evaluator_timeout: float,
+    breakdown: bool,
+    breakdown_format: str,
 ) -> None:
     """Run self-evaluation across all capability dimensions."""
     verbose = ctx.obj.get("verbose", False)
@@ -443,14 +463,37 @@ def self_eval_cmd(
     # Pass the SelfEvalReport object directly so renderers see every
     # field on it (notably ``timeouts`` from C04, plus any future
     # additions).  Release follow-up N1.
+    breakdown_payload: dict | None = None
+    breakdown_text: str | None = None
+    if breakdown:
+        # C12: build the sub-skill breakdown once, then layer it onto
+        # the chosen output format.  We always compute the dict-form
+        # payload so JSON output can embed it verbatim under a top-level
+        # ``breakdown`` key, and we render the human-friendly form only
+        # for text/markdown surfaces.
+        reporter = BreakdownReporter()
+        bd_report = reporter.from_self_eval(report)
+        breakdown_payload = bd_report.to_dict()
+        if output_format != "json" or breakdown_format.lower() in ("text", "markdown"):
+            breakdown_text = reporter.generate(
+                bd_report,
+                fmt=breakdown_format.lower(),  # type: ignore[arg-type]
+            )
+
     if output_format == "json":
         output_text = _build_json_output(report, capability_scores, hygiene_scores)
+        if breakdown_payload is not None:
+            payload = json.loads(output_text)
+            payload["breakdown"] = breakdown_payload
+            output_text = json.dumps(payload, indent=2, default=str)
     else:
         output_text = _format_text_report(
             report,
             capability_scores,
             hygiene_scores,
         )
+        if breakdown_text is not None:
+            output_text = output_text + "\n\n" + breakdown_text
 
     if output_dir:
         out = Path(output_dir)
