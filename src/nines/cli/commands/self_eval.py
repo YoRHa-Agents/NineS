@@ -8,6 +8,7 @@ from pathlib import Path
 
 import click
 
+from nines.eval.metrics_registry import MetricRegistry, load_default_registry
 from nines.iteration.capability_evaluators import (
     AbstractionQualityEvaluator,
     AgentAnalysisQualityEvaluator,
@@ -182,6 +183,16 @@ def _format_text_report(
                 f"({score.normalized:.1%})"
             )
 
+    # C08: surface the weighted aggregate so operators can see the
+    # registry-driven score alongside the legacy unweighted ``overall``.
+    if report.weighted_overall or report.group_means:
+        lines.append("")
+        lines.append(
+            f"  === Weighted (C08): {report.weighted_overall:.4f} ==="
+        )
+        for group, mean in sorted(report.group_means.items()):
+            lines.append(f"    {group}: {mean:.4f}")
+
     return "\n".join(lines)
 
 
@@ -276,6 +287,15 @@ def _build_json_output(
     help="Golden test set directory for V1 scoring evaluators (D01/D03/D05).",
 )
 @click.option(
+    "--metrics-config",
+    type=click.Path(exists=True, dir_okay=False),
+    default=None,
+    help=(
+        "Path to a TOML file overriding the bundled C08 metric "
+        "weights/thresholds (default: src/nines/data/self_eval_metrics.toml)."
+    ),
+)
+@click.option(
     "--evaluator-timeout",
     type=float,
     default=60.0,
@@ -297,6 +317,7 @@ def self_eval_cmd(
     capability_only: bool,
     samples_dir: str,
     golden_dir: str,
+    metrics_config: str | None,
     evaluator_timeout: float,
 ) -> None:
     """Run self-evaluation across all capability dimensions."""
@@ -310,12 +331,27 @@ def self_eval_cmd(
     # C01 Phase 1: strict_ctx=True so the CLI refuses to silently fall
     # back to NineS's own src/nines for foreign-repo runs. Operators get
     # an immediate ConfigError if they forget to wire ``--src-dir``.
+    # C08: build the MetricRegistry from --metrics-config (or the
+    # bundled default) and validate up front so a misconfigured TOML
+    # surfaces immediately rather than during run_all().  Validation
+    # errors are reported via Click and abort the run with exit 2.
+    if metrics_config:
+        registry = MetricRegistry.from_toml(metrics_config)
+    else:
+        registry = load_default_registry()
+    registry_errors = registry.validate()
+    if registry_errors:
+        for err in registry_errors:
+            click.echo(f"metrics-config error: {err}", err=True)
+        ctx.exit(2)
+
     runner = SelfEvalRunner(
         default_budget=TimeBudget(
             soft_seconds=min(20.0, max(1.0, evaluator_timeout / 2)),
             hard_seconds=max(1.0, float(evaluator_timeout)),
         ),
         strict_ctx=True,
+        registry=registry,
     )
 
     # C01 Phase 1: build the EvaluationContext that gets threaded through

@@ -35,6 +35,8 @@ build/
 # NineS generated outputs
 data/
 reports/
+# C08: in-tree package data (bundled MetricRegistry weights) — keep tracked
+!src/nines/data/
 
 # Build outputs
 site/

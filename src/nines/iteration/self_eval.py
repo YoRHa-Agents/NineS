@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Protocol, cast, runtime_checkab
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from nines.eval.metrics_registry import MetricRegistry
     from nines.iteration.context import EvaluationContext
 
 from nines.core.budget import (
@@ -271,6 +272,20 @@ class SelfEvalReport:
     #: (project_root + src_dir).  ``None`` when the report was generated
     #: without an :class:`EvaluationContext` (legacy / back-compat path).
     context_fingerprint: str | None = None
+    #: C08: weighted-mean aggregate using the :class:`MetricRegistry`
+    #: passed to :class:`SelfEvalRunner`.  ``0.0`` when no registry was
+    #: supplied (legacy / back-compat path).  Preserved alongside
+    #: :attr:`overall` for one minor deprecation window per design.
+    weighted_overall: float = 0.0
+    #: C08: per-group weighted means, e.g.
+    #: ``{"capability": 0.91, "hygiene": 0.86}``.  Empty when no
+    #: registry was supplied.
+    group_means: dict[str, float] = field(default_factory=dict)
+    #: C08: ``{metric_name: weight}`` snapshot from the active
+    #: :class:`MetricRegistry` so reports remain reproducible even
+    #: after the TOML changes on disk.  Empty when no registry was
+    #: supplied.
+    metric_weights: dict[str, float] = field(default_factory=dict)
 
     def get_score(self, dimension: str) -> DimensionScore | None:
         """Return score."""
@@ -289,6 +304,9 @@ class SelfEvalReport:
             "duration": self.duration,
             "timeouts": list(self.timeouts),
             "context_fingerprint": self.context_fingerprint,
+            "weighted_overall": self.weighted_overall,
+            "group_means": dict(self.group_means),
+            "metric_weights": dict(self.metric_weights),
         }
 
     @classmethod
@@ -302,6 +320,9 @@ class SelfEvalReport:
             duration=data.get("duration", 0.0),
             timeouts=list(data.get("timeouts", [])),
             context_fingerprint=data.get("context_fingerprint"),
+            weighted_overall=float(data.get("weighted_overall", 0.0)),
+            group_means=dict(data.get("group_means", {})),
+            metric_weights=dict(data.get("metric_weights", {})),
         )
 
 
@@ -321,6 +342,7 @@ class SelfEvalRunner:
         default_budget: TimeBudget | None = None,
         *,
         strict_ctx: bool = False,
+        registry: MetricRegistry | None = None,
     ) -> None:
         """Initialize self eval runner.
 
@@ -342,6 +364,21 @@ class SelfEvalRunner:
             ``nines self-eval`` CLI sets ``strict_ctx=True`` so
             foreign-repo runs can never silently re-evaluate NineS
             itself (closes baseline §4.8).
+        registry:
+            C08.  Optional :class:`~nines.eval.metrics_registry.MetricRegistry`
+            used by :meth:`run_all` to compute the new
+            :attr:`SelfEvalReport.weighted_overall` /
+            :attr:`SelfEvalReport.group_means` /
+            :attr:`SelfEvalReport.metric_weights` fields.  When
+            ``None`` the runner loads
+            :func:`~nines.eval.metrics_registry.load_default_registry`
+            (the bundled ``data/self_eval_metrics.toml``) so the
+            weighted aggregate is always available; pass an explicit
+            registry to swap weights/thresholds without editing the
+            on-disk TOML.  When the registry fails ``validate()``
+            the runner logs the errors and skips weighted
+            aggregation, keeping :attr:`SelfEvalReport.overall`
+            (legacy unweighted mean) intact.
         """
         self._evaluators: dict[str, DimensionEvaluator] = {}
         self._budgets: dict[str, TimeBudget] = {}
@@ -350,6 +387,11 @@ class SelfEvalRunner:
             hard_seconds=60.0,
         )
         self._strict_ctx = bool(strict_ctx)
+        # C08: store the registry as-given; load_default_registry()
+        # is invoked lazily inside run_all() when registry is None
+        # so legacy callers (and tests that monkeypatch the default
+        # registry path) never pay the TOML-parse cost up front.
+        self._registry = registry
 
     def register_dimension(
         self,
@@ -575,6 +617,99 @@ class SelfEvalRunner:
         if scores:
             overall = sum(s.normalized for s in scores) / len(scores)
 
+        # C08 — weighted aggregation via the MetricRegistry.
+        # When the registry fails validate() we log loudly and
+        # leave the new fields empty so the legacy ``overall`` stays
+        # the source of truth (Risk-Med mitigation per design).
+        weighted_overall = 0.0
+        group_means: dict[str, float] = {}
+        metric_weights: dict[str, float] = {}
+        # C08 — lazy import to avoid the eager nines.eval.__init__
+        # cycle (mock_executor -> iteration.self_eval).
+        from nines.eval.metrics_registry import (
+            GROUPS_META_GROUP,
+            load_default_registry,
+        )
+
+        registry = self._registry
+        if registry is None:
+            try:
+                registry = load_default_registry()
+            except (FileNotFoundError, ValueError) as exc:
+                logger.warning(
+                    "C08: default MetricRegistry unavailable (%s); "
+                    "weighted_overall stays 0.0",
+                    exc,
+                )
+                registry = None
+        if registry is not None:
+            errors = registry.validate()
+            if errors:
+                logger.warning(
+                    "C08: MetricRegistry.validate() returned %d "
+                    "error(s); weighted aggregation skipped: %s",
+                    len(errors),
+                    errors,
+                )
+            else:
+                metric_weights = registry.weights_dict()
+                # Build the per-metric normalised score map by
+                # asking the registry to apply its threshold/normalizer
+                # per dim.  When a metric has no registry-side
+                # threshold, ``normalized()`` falls back to
+                # ``value / max_value`` so existing evaluator outputs
+                # in [0, 1] flow through unchanged.
+                normalised: dict[str, float] = {}
+                for s in scores:
+                    if registry.get(s.name) is None:
+                        continue
+                    try:
+                        normalised[s.name] = registry.normalized(
+                            s.name,
+                            s.value,
+                            max_value=s.max_value,
+                        )
+                    except Exception as exc:  # pragma: no cover - defensive
+                        logger.warning(
+                            "C08: registry.normalized(%r) failed: %s",
+                            s.name,
+                            exc,
+                        )
+                # Per-group weighted means (capability / hygiene / ...).
+                # Only groups that have at least one matching score
+                # contribute to the outer aggregate — empty groups are
+                # excluded from group_means entirely so partial-
+                # coverage runs (e.g. --capability-only, or unit
+                # tests with a 3-dim subset) don't spuriously drag
+                # weighted_overall down.
+                for group in registry.groups():
+                    if group == GROUPS_META_GROUP:
+                        continue
+                    has_score = any(
+                        d.group == group and d.name in normalised
+                        for d in registry.metrics().values()
+                    )
+                    if not has_score:
+                        continue
+                    group_means[group] = registry.weighted_mean(
+                        group, normalised
+                    )
+                # Outer weighted overall: combine the per-group means
+                # using the reserved ``_groups`` meta-group weights,
+                # restricted to the groups we actually evaluated.
+                if group_means:
+                    weighted_overall = registry.weighted_mean(
+                        GROUPS_META_GROUP, group_means
+                    )
+                    # Fall back to a simple mean when the meta-group
+                    # is missing or all its weights resolved to zero.
+                    if weighted_overall == 0.0 and any(
+                        v != 0.0 for v in group_means.values()
+                    ):
+                        weighted_overall = sum(group_means.values()) / len(
+                            group_means
+                        )
+
         duration = time.monotonic() - start
         return SelfEvalReport(
             scores=scores,
@@ -584,6 +719,9 @@ class SelfEvalRunner:
             duration=duration,
             timeouts=timeouts,
             context_fingerprint=ctx.fingerprint() if ctx is not None else None,
+            weighted_overall=weighted_overall,
+            group_means=group_means,
+            metric_weights=metric_weights,
         )
 
 

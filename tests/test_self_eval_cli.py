@@ -189,3 +189,110 @@ def test_format_text_report_omits_timeouts_line_when_empty() -> None:
     hyg = [s for s in report.scores if s.name == "lint_cleanliness"]
     text = _format_text_report(report, cap, hyg)
     assert "Timeouts" not in text
+
+
+# ---------------------------------------------------------------------------
+# C08 — --metrics-config option + weighted aggregate JSON output
+# ---------------------------------------------------------------------------
+
+
+def test_cli_metrics_config_loads_alternate_weights(tmp_path: Path) -> None:
+    """--metrics-config PATH builds the registry from the supplied TOML."""
+    from click.testing import CliRunner
+
+    from nines.cli.main import cli
+
+    custom = tmp_path / "weights.toml"
+    custom.write_text(
+        """
+[groups]
+hygiene = 1.0
+
+[metrics.hygiene.code_coverage]
+weight    = 0.50
+threshold = [50.0, 95.0]
+
+[metrics.hygiene.lint_cleanliness]
+weight = 0.50
+""",
+        encoding="utf-8",
+    )
+
+    out_dir = tmp_path / "out"
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "-f",
+            "json",
+            "self-eval",
+            "--project-root",
+            ".",
+            "--src-dir",
+            "src/nines",
+            "--test-dir",
+            "tests",
+            "--capability-only",  # skip live hygiene evaluators (faster)
+            "--metrics-config",
+            str(custom),
+            "--evaluator-timeout",
+            "30",
+            "--output-dir",
+            str(out_dir),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    payload = json.loads((out_dir / "self_eval_report.json").read_text())
+    # The alternate registry has only hygiene metrics; capability run with
+    # --capability-only never matches → group_means is empty (fall-through
+    # to legacy ``overall`` for the headline number). weighted_overall is
+    # 0.0 because no capability dim mapped to the custom registry's metrics
+    # and we registered no hygiene evaluators.
+    assert payload["weighted_overall"] == 0.0
+    # metric_weights still snapshots the registry that was loaded.
+    assert payload["metric_weights"] == {
+        "code_coverage": 0.5,
+        "lint_cleanliness": 0.5,
+        "hygiene": 1.0,
+    }
+
+
+def test_cli_default_metrics_config_populates_weighted_overall(
+    tmp_path: Path,
+) -> None:
+    """No --metrics-config → bundled TOML loads → weighted_overall populated."""
+    from click.testing import CliRunner
+
+    from nines.cli.main import cli
+
+    out_dir = tmp_path / "out"
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "-f",
+            "json",
+            "self-eval",
+            "--project-root",
+            ".",
+            "--src-dir",
+            "src/nines",
+            "--test-dir",
+            "tests",
+            "--capability-only",  # skip live hygiene for speed
+            "--evaluator-timeout",
+            "30",
+            "--output-dir",
+            str(out_dir),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    payload = json.loads((out_dir / "self_eval_report.json").read_text())
+    # capability dims registered → weighted_overall reflects capability mean
+    # (the bundled meta-group has both capability=0.7 and hygiene=0.3, but
+    # outer aggregation skips empty groups).
+    assert payload["weighted_overall"] > 0.0
+    assert "capability" in payload["group_means"]
+    assert len(payload["metric_weights"]) >= 25
