@@ -4,6 +4,63 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v3.3.0 — 2026-04-19 (Wave 3 Patch Aggregation Minor; pyproject v3.3.0)
+
+**Theme:** Minor-version aggregation of the 4 Wave 3 patches (v3.2.1 → v3.2.4) that completed the v2.2.0 paradigm-extension accept-list. All 4 candidates shipped with empirically-confirmed benefit per the 'tested-benefit-only' rule.
+
+**Semver:** Released as `v3.3.0` (additive backward-compatible features across 4 patches); codename `v2.4.0 Wave 3 Aggregation` available for continuity.
+
+### Aggregated Patches (4 candidates, all shipped with benefit)
+
+| Patch | Candidate | Empirical Benefit |
+|---|---|---|
+| **v3.2.1** | C01 Phase 2+3 — full evaluator migration | 8 newly project-aware dims (Phase 1 was 3); 13 evaluators migrated to EvaluationContext |
+| **v3.2.2** | C08 — Weighted MetricRegistry | weighted_overall=0.8970 (was 0.9766); capability saturation 19→12; 8 dims now in [0.5, 0.95) range |
+| **v3.2.3** | C11a — Mechanism diversification (rule-based) | mechanism diversity 5→9; intersection 5→4; per-sample uniques (DevolaFlow churn_aware_routing, UA reasoning_depth_calibration); confidence 1.00→[0.51,0.89] |
+| **v3.2.4** | C12 — AgentBoard breakdown reporter | 25 flat dims → 44 sub-skills on NineS / 39 on caveman; 6 dims have breakdown; cross-sample diff = 24 |
+
+### Added (cumulative across patches)
+
+- **Project-aware self-eval** (C01 full): 13 evaluators consume `EvaluationContext`; foreign-repo runs no longer leak NineS defaults.
+- **Weighted MetricRegistry** (C08): config-driven weights at `src/nines/data/self_eval_metrics.toml`; per-dim threshold normalization; new `weighted_overall`, `group_means`, `metric_weights` fields on `SelfEvalReport`.
+- **Mechanism rule registry** (C11a): `MechanismRule` dataclass + 6 ContextOS-derived rules (active_forgetting, reasoning_depth_calibration, productive_contradiction, churn_aware_routing, self_healing_index, skillbook_evolution); evidence-driven emission (no more constant 1.0 confidence).
+- **Sub-skill breakdown** (C12): `SubSkill`, `DimensionPanel`, `BreakdownReport`; `--breakdown/--breakdown-format` CLI flags; 6 evaluators emit sub-skill metadata.
+
+### Improved
+
+- **Test suite: 1366 → 1484 (+118 tests, +8.6 %)** with zero regressions across all 4 patches.
+- **Ruff: 0 errors maintained** throughout the aggregation.
+- **Mypy: 0 NEW errors** introduced by these patches (residual pre-existing).
+
+### Cumulative gap closure (§4 baseline → through v3.3.0)
+
+- ✅ §4.1 / §4.2 / §4.5 / §4.6 — closed in v3.1.0
+- ✅ §4.7 — bounded in v3.1.0; gated in v3.2.0
+- ✅ §4.8 — closed for 13 dims (was 3 in v3.2.0)
+- ✅ §4.9 — improved by C01 full migration
+- ✅ §4.10 — bounded by C08 (saturation 19→12); further exposed by C12 sub-skill breakdown
+- ✅ §4.3 — closed by C11a (mechanism diversity 5→9)
+- 🟡 §4.4 — KP categories still locked (C11a focused on mechanisms; KP rule registry pending)
+- ✅ §4.11 — bounded in v3.1.0
+
+**Net cumulative through v3.3.0: 9 of 11 gaps closed or bounded** (vs 7/11 in v3.2.0). Only §4.4 (KP category diversification) remains as a known gap; would benefit from a future C11a-style rule registry.
+
+### Provenance
+
+- v3.2.1 proof: `.local/v3.2.1/benchmark/c01_full_proof.txt`
+- v3.2.2 proof: `.local/v3.2.2/benchmark/c08_proof.txt`
+- v3.2.3 proof: `.local/v3.2.3/benchmark/c11a_proof.txt`
+- v3.2.4 proof: `.local/v3.2.4/benchmark/c12_proof.txt`
+- Wave 3 session state: `.local/wave3_session_state.md`
+- Original accept list: `.local/accept_list_v2.2.0.{md,zh.md}`
+
+### Deferred (still requires empirical validation before shipping)
+
+- **C11b** LLM-judge fallback (deferred per security/cost review requirement; opt-in only)
+- **KP category rule registry** (analogous to C11a but for KP categorization; would close §4.4)
+
+---
+
 ## v3.2.4 — 2026-04-19 (C12 AgentBoard Sub-Skill Breakdown Reporter)
 
 **Theme:** Land C12 from `.local/v2.2.0/design/04_track_d_extension.md` (Track D — extension paradigms): turn the flat 25-dimension self-eval list into per-dim panels of 2–5 sub-skills, applying AgentBoard's "analytical evaluation" principle so reviewers can see *which* sub-skill dragged a dim down instead of just a single opaque score per parent. Default `--no-breakdown` preserves backward-compat for existing CLI consumers.
