@@ -531,3 +531,130 @@ class TestAnalyzeEndToEnd:
         report = analyzer.analyze(tmp_path / "nonexistent")
         assert report.agent_facing_artifacts == []
         assert report.mechanisms == []
+
+
+class TestC11aDiversification:
+    """C11a (v3.2.3) tests — rule-based MechanismDetector replaces v3.2.2's
+    hard-coded ``always-fire`` 5-mechanism path.
+
+    These pin the contract that:
+
+    1. Different evidence inputs → different mechanism subsets (the §4.3 fix).
+    2. The legacy 5 mechanism names remain available (backward compat for
+       downstream consumers that filter by name).
+    3. Rules whose confidence falls at or below ``min_confidence`` are not
+       emitted.
+    """
+
+    def test_three_evidence_inputs_yield_three_subsets(
+        self,
+        analyzer: AgentImpactAnalyzer,
+        tmp_path: Path,
+    ) -> None:
+        """Three distinct repos must produce three distinct mechanism
+        subsets — the central regression guard for the §4.3 ``every repo
+        emits the same 5 mechanisms with confidence 1.0`` baseline."""
+        # Repo 1 — pure compression skill (caveman-style).
+        repo1 = tmp_path / "repo1"
+        repo1.mkdir()
+        (repo1 / "SKILL.md").write_text(
+            "# Caveman compression skill\n"
+            "Always compress every token. Never use verbose phrasing.\n"
+            "Style: terse, concise, abbreviate aggressively.\n"
+            "Safety fallback: restore on warning. Backup the original.\n"
+        )
+
+        # Repo 2 — workflow with explicit churn-aware routing + active
+        # forgetting + cross-checking.
+        repo2 = tmp_path / "repo2"
+        repo2.mkdir()
+        (repo2 / "AGENTS.md").write_text(
+            "# Workflow framework\n"
+            "Always sync rules across platforms. Deploy via CI workflow.\n"
+            "Drift prevention enforces invariants and constraints.\n"
+            "Prune stale memory entries; expire context older than the TTL.\n"
+            "Cache invalidation triggers a freshness check on outdated docs.\n"
+            "Run a consistency check; cross-check the audit findings.\n"
+        )
+
+        # Repo 3 — RAG plugin with reasoning-depth flag + skillbook.
+        repo3 = tmp_path / "repo3"
+        repo3.mkdir()
+        (repo3 / "CLAUDE.md").write_text(
+            "# RAG plugin\n"
+            "Provides multi-pass step-by-step retrieval with extended thinking.\n"
+            "Maintains a skillbook of learned strategies, evolving via in-context learn.\n"
+        )
+
+        rep1 = analyzer.analyze(repo1)
+        rep2 = analyzer.analyze(repo2)
+        rep3 = analyzer.analyze(repo3)
+
+        names1 = {m.name for m in rep1.mechanisms}
+        names2 = {m.name for m in rep2.mechanisms}
+        names3 = {m.name for m in rep3.mechanisms}
+
+        # Each repo emits a different mechanism subset (no two are equal).
+        assert names1 != names2
+        assert names2 != names3
+        assert names1 != names3
+
+        # Repo 2 is the only one with churn-aware routing (the central
+        # ContextOS-derived mechanism the v3.2.2 detector cannot see).
+        assert "churn_aware_routing" in names2
+        assert "churn_aware_routing" not in names1
+        assert "churn_aware_routing" not in names3
+
+        # Repo 3 is the only one with skillbook_evolution.
+        assert "skillbook_evolution" in names3
+        assert "skillbook_evolution" not in names1
+        assert "skillbook_evolution" not in names2
+
+    def test_legacy_five_names_remain_available(self) -> None:
+        """The original 5 mechanism names from v3.2.2 must remain emittable
+        so downstream consumers that filter by name see no breaking change."""
+        from nines.analyzer.agent_impact import MechanismDetector
+
+        det = MechanismDetector()
+        names = {r.name for r in det.rules}
+        legacy = {
+            "behavioral_rules",
+            "token_compression",
+            "safety_guardrails",
+            "multi_platform_sync",
+            "drift_prevention",
+        }
+        assert legacy <= names
+
+    def test_low_confidence_mechanism_filtered_out(self, tmp_path: Path) -> None:
+        """A rule whose confidence falls at/under ``min_confidence`` (e.g.
+        because counter-indicators dominate) must NOT appear in the
+        analyzer's output."""
+        from nines.analyzer.agent_impact import (
+            AgentImpactAnalyzer,
+            MechanismDetector,
+        )
+        from nines.analyzer.mechanism_rules import MechanismRule
+
+        # A rule that demands ``a, b`` indicators and is heavily penalised by
+        # the ``X``-style counter-indicators that dominate the file.  Even
+        # when the predicate fires, the score should drop below the gate.
+        custom_rule = MechanismRule(
+            name="sensitive_rule",
+            category="custom",
+            description="d",
+            indicators=("a", "b"),
+            counter_indicators=("nope1", "nope2", "nope3", "nope4"),
+            min_indicator_hits_per_file=2,
+            min_confidence=0.99,  # impossibly high gate
+        )
+        det = MechanismDetector(rules=[custom_rule])
+        analyzer = AgentImpactAnalyzer(mechanism_detector=det)
+
+        (tmp_path / "AGENTS.md").write_text(
+            "a and b appear here together with nope1 nope2 nope3 nope4 nope1"
+        )
+        report = analyzer.analyze(tmp_path)
+        names = {m.name for m in report.mechanisms}
+        # Gated out → not emitted.
+        assert "sensitive_rule" not in names
