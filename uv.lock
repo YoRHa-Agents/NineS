@@ -619,7 +619,7 @@ wheels = [
 
 [[package]]
 name = "nines"
-version = "3.0.0"
+version = "3.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
@@ -632,14 +632,16 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "mkdocs-macros-plugin" },
-    { name = "mkdocs-material" },
-    { name = "mkdocs-static-i18n" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
     { name = "tomli-w" },
+]
+docs = [
+    { name = "mkdocs-macros-plugin" },
+    { name = "mkdocs-material" },
+    { name = "mkdocs-static-i18n" },
 ]
 
 [package.metadata]
@@ -655,14 +657,16 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "mkdocs-macros-plugin", specifier = ">=1.0" },
-    { name = "mkdocs-material", specifier = ">=9.5" },
-    { name = "mkdocs-static-i18n", specifier = ">=1.2" },
     { name = "mypy", specifier = ">=1.9" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-cov", specifier = ">=5.0" },
     { name = "ruff", specifier = ">=0.4" },
     { name = "tomli-w", specifier = ">=1.2.0" },
+]
+docs = [
+    { name = "mkdocs-macros-plugin", specifier = ">=1.0" },
+    { name = "mkdocs-material", specifier = ">=9.5" },
+    { name = "mkdocs-static-i18n", specifier = ">=1.2" },
 ]
 
 [[package]]
