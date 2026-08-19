@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import click
 
@@ -188,9 +189,7 @@ def _format_text_report(
     # registry-driven score alongside the legacy unweighted ``overall``.
     if report.weighted_overall or report.group_means:
         lines.append("")
-        lines.append(
-            f"  === Weighted (C08): {report.weighted_overall:.4f} ==="
-        )
+        lines.append(f"  === Weighted (C08): {report.weighted_overall:.4f} ===")
         for group, mean in sorted(report.group_means.items()):
             lines.append(f"    {group}: {mean:.4f}")
 
@@ -463,7 +462,7 @@ def self_eval_cmd(
     # Pass the SelfEvalReport object directly so renderers see every
     # field on it (notably ``timeouts`` from C04, plus any future
     # additions).  Release follow-up N1.
-    breakdown_payload: dict | None = None
+    breakdown_payload: dict[str, Any] | None = None
     breakdown_text: str | None = None
     if breakdown:
         # C12: build the sub-skill breakdown once, then layer it onto

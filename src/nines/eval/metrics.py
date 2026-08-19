@@ -13,7 +13,7 @@ Covers: FR-108, FR-109, FR-110 (reliability metrics).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from math import comb, nan
+from math import comb, nan, sqrt
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -155,5 +155,5 @@ class ReliabilityCalculator:
         if abs(mean) < 1e-15:
             return nan
         variance = sum((x - mean) ** 2 for x in scores) / n
-        std = variance**0.5
+        std = sqrt(variance)
         return 1.0 - std / mean
