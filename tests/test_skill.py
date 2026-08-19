@@ -65,6 +65,17 @@ class TestManifestGeneration:
         reparsed = tomllib.loads(toml_str)
         assert reparsed["manifest"]["author"] == "YoRHa-Agents"
 
+    def test_manifest_command_descriptions_mention_graph_capabilities(self) -> None:
+        manifest = SkillManifest()
+        parsed = tomllib.loads(manifest.generate())
+
+        analyze = parsed["commands"]["nines-analyze"]["description"]
+        assert "Use `--strategy graph`" in analyze
+        assert "multi-language" in analyze
+
+        self_eval = parsed["commands"]["nines-self-eval"]["description"]
+        assert "all 24 capability dimensions" in self_eval
+
 
 class TestCursorAdapterGeneratesSkillMd:
     """Test that CursorAdapter emits SKILL.md and command files."""
@@ -98,6 +109,22 @@ class TestCursorAdapterGeneratesSkillMd:
     def test_cursor_adapter_runtime_name(self) -> None:
         adapter = CursorAdapter()
         assert adapter.runtime_name == "cursor"
+
+    def test_cursor_skill_md_has_knowledge_graph_section(self) -> None:
+        adapter = CursorAdapter()
+        files = adapter.emit(SkillManifest())
+
+        skill_md = next(f for f in files if f.relative_path == "SKILL.md")
+        assert "## Knowledge Graph Analysis" in skill_md.content
+        assert "(introduced in v3.0.0)" in skill_md.content
+        assert "nines analyze --target-path ./repo --strategy graph" in skill_md.content
+        # Section sits between Prerequisites and the reference navigation guide.
+        assert skill_md.content.index("## Prerequisites") < skill_md.content.index(
+            "## Knowledge Graph Analysis"
+        )
+        assert skill_md.content.index("## Knowledge Graph Analysis") < skill_md.content.index(
+            "## Reference Navigation Guide"
+        )
 
 
 class TestClaudeAdapterGeneratesCommands:

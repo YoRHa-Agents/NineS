@@ -18,6 +18,34 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from nines.skill.manifest import SkillManifest
 
+# Shared markdown section describing the `graph` decomposition strategy.
+# Emitted into every runtime's main instruction file so all agents learn
+# about knowledge-graph analysis, regardless of runtime.
+_KNOWLEDGE_GRAPH_SECTION: list[str] = [
+    "## Knowledge Graph Analysis",
+    "",
+    (
+        "The `graph` decomposition strategy (introduced in v3.0.0) "
+        "builds a complete knowledge graph:"
+    ),
+    "- **Multi-language scanning** — 30+ languages, 7 file categories, framework detection",
+    (
+        "- **Cross-language import graph** — AST (Python) + regex (JS/TS/Go/Rust) "
+        "dependency resolution"
+    ),
+    "- **Typed knowledge graph** — 11 node types, 10 edge types, architecture layers",
+    "- **Graph verification** — Referential integrity, orphan detection, layer coverage",
+    "- **Analysis summary** — Fan-in/fan-out rankings, entry point detection, agent impact text",
+    (
+        "- **4 new self-eval dimensions** (D21-D24) — Graph coverage, verification, "
+        "layer quality, summary completeness"
+    ),
+    "",
+    "```bash",
+    "nines analyze --target-path ./repo --strategy graph",
+    "```",
+]
+
 
 @dataclass(frozen=True)
 class EmittedFile:
@@ -81,6 +109,8 @@ class CursorAdapter:
             "",
             f"The `{manifest.cli_binary}` CLI binary must be on `$PATH`.",
             f"All commands delegate to `{manifest.cli_binary} <subcommand>` via the Shell tool.",
+            "",
+            *_KNOWLEDGE_GRAPH_SECTION,
             "",
             "## Reference Navigation Guide",
             "",
@@ -262,6 +292,8 @@ class CodexAdapter:
             "```bash",
             f"{manifest.cli_binary} <command> [options]",
             "```",
+            "",
+            *_KNOWLEDGE_GRAPH_SECTION,
         ]
         return EmittedFile(
             relative_path="SKILL.md",
@@ -332,6 +364,8 @@ class CopilotAdapter:
             "## Usage",
             "",
             f"All commands delegate to `{manifest.cli_binary} <subcommand>` via the Shell tool.",
+            "",
+            *_KNOWLEDGE_GRAPH_SECTION,
         ]
         return [
             EmittedFile(

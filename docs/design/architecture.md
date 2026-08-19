@@ -108,11 +108,6 @@ src/nines/
 │   ├── installer.py         # SkillInstaller: install/uninstall orchestration, version management
 │   ├── cursor_adapter.py    # CursorSkillEmitter: .cursor/skills/nines/ generation
 │   ├── claude_adapter.py    # ClaudeCodeEmitter: .claude/commands/nines/ + CLAUDE.md section
-│   ├── templates/           # Jinja2 or string templates for generated skill files
-│   │   ├── cursor_skill.md.j2
-│   │   ├── cursor_command.md.j2
-│   │   ├── claude_command.md.j2
-│   │   └── claude_section.md.j2
 │   └── models.py            # SkillManifest, InstallResult, AdapterConfig
 │
 └── cli/                     # CLI Commands (Click/Typer)
@@ -716,7 +711,7 @@ cli                  ✓     ✓       ✓         ✓         ✓          ✓ 
 | **R5** | `cli/` may import from any module (it is the composition root) | CLI assembles the full dependency graph at entry |
 | **R6** | `sandbox/` depends only on `core/` | Sandbox must be lightweight and independently testable |
 | **R7** | `iteration/` depends on `core/` and `eval/` (for self-eval scorer reuse) | Minimal cross-vertex coupling; uses eval's scoring infrastructure |
-| **R8** | `skill/` depends only on `core/` | Skill generation reads config and templates, no runtime coupling |
+| **R8** | `skill/` depends only on `core/` | Skill generation reads config and emits files inline from the adapters, no runtime coupling |
 
 ### 3.4 Acyclicity Proof
 

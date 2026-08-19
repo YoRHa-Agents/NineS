@@ -202,6 +202,15 @@ class TestCodexSkillMdGenerated:
         assert "version:" in content
         assert "author:" in content
 
+    def test_codex_skill_md_has_knowledge_graph_section(self, tmp_path: Path) -> None:
+        adapter = CodexAdapter()
+        adapter.generate_skill_dir(tmp_path)
+
+        skill_md = tmp_path / ".codex" / "skills" / "nines" / "SKILL.md"
+        content = skill_md.read_text(encoding="utf-8")
+        assert "## Knowledge Graph Analysis" in content
+        assert "(introduced in v3.0.0)" in content
+
     def test_codex_skill_md_has_all_commands(self, tmp_path: Path) -> None:
         adapter = CodexAdapter()
         adapter.generate_skill_dir(tmp_path)
@@ -300,6 +309,13 @@ class TestCopilotInstructionsGenerated:
         content = written.read_text(encoding="utf-8")
         assert "Prerequisites" in content
         assert "nines" in content
+
+    def test_copilot_has_knowledge_graph_section(self, tmp_path: Path) -> None:
+        adapter = CopilotAdapter()
+        written = adapter.generate_instructions(tmp_path)
+        content = written.read_text(encoding="utf-8")
+        assert "## Knowledge Graph Analysis" in content
+        assert "(introduced in v3.0.0)" in content
 
     def test_copilot_custom_manifest(self, tmp_path: Path) -> None:
         manifest = SkillManifest(name="custom-nines", description="Custom NineS")

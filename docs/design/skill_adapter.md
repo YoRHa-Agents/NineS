@@ -3,7 +3,17 @@
 > **Task**: T17 — Skill Adapter: Multi-Runtime Installation & Template System
 > **Input**: `docs/design/skill_interface_spec.md`, `docs/research/gsd_analysis.md`
 > **Consumers**: `src/nines/skill/` implementation, `nines install` CLI command
-> **Last Modified**: 2026-04-11
+> **Last Modified**: 2026-08-19
+
+!!! warning "Implementation deviation (2026-08-19)"
+    This document proposes a Jinja2-based `TemplateEngine` with a bundled
+    `src/nines/skill/templates/` directory (see §6). That part of the design
+    was never implemented: the shipped adapters in
+    `src/nines/skill/adapters.py` generate all files as inline Python string
+    lists, and the unused `templates/` directory has been removed from the
+    source tree. `SkillManifest` (`src/nines/skill/manifest.py`) plus the
+    adapter classes are the single source of truth for generated skill files.
+    §6 is retained below as design history only.
 
 ---
 

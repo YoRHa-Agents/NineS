@@ -1356,7 +1356,7 @@ When `--target all`, the installer iterates over detected runtimes and installs 
 
 ### A.5 Single-Source Multi-Target
 
-**Decision:** Commands are defined once in the manifest and Python templates, then emitted per-runtime by adapter classes.
+**Decision:** Commands are defined once in the manifest, then emitted per-runtime by adapter classes that generate files as inline Python strings (the originally planned bundled template files were never adopted and have been removed).
 
 **Rationale:** Direct adoption of GSD's core architecture pattern. Prevents content drift between runtimes and makes adding new runtime targets a matter of writing a new `SkillEmitter` subclass.
 
