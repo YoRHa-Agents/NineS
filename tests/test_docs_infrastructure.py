@@ -80,8 +80,9 @@ def test_i18n_pairs_exist(repo_root: Path, mkdocs_data: dict) -> None:
 
 def test_deploy_workflow_has_i18n_dependency(repo_root: Path) -> None:
     wf = (repo_root / ".github/workflows/deploy-pages.yml").read_text(encoding="utf-8")
-    assert "pip install" in wf
-    assert "mkdocs-static-i18n" in wf
+    assert "uv sync --only-group docs" in wf
+    docs_group = (repo_root / "pyproject.toml").read_text(encoding="utf-8")
+    assert "mkdocs-static-i18n" in docs_group
 
 
 def test_version_hook_reads_version(repo_root: Path) -> None:

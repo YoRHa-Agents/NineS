@@ -1,5 +1,8 @@
 # 路线图
 
+!!! warning "历史文档 / Historical document"
+    本文档描述 v1–v3.0 时期的计划，已由 v3.3.0 现状取代，仅作历史参考。 / This document describes plans from the v1–v3.0 era and has been superseded by the current v3.3.0 state. Kept for historical reference only.
+
 <!-- auto-updated: version from src/nines/__init__.py -->
 
 NineS 的开发遵循与三顶点能力模型对齐的阶段性路线图。当前版本为 {{ nines_version }}。

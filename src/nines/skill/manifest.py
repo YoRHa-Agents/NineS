@@ -47,8 +47,9 @@ def _default_commands() -> list[CommandDef]:
         CommandDef(
             name="nines-analyze",
             description=(
-                "Analyze and decompose collected knowledge into "
-                "structured units or knowledge graphs."
+                "Analyze and decompose collected knowledge into structured units. "
+                "Use `--strategy graph` for full knowledge graph with multi-language "
+                "scanning, verification, and summary."
             ),
             argument_hint=(
                 "<target> [--strategy functional|concern|layer|graph] "
@@ -58,7 +59,7 @@ def _default_commands() -> list[CommandDef]:
         ),
         CommandDef(
             name="nines-self-eval",
-            description="Run self-evaluation across all capability dimensions.",
+            description="Run self-evaluation across all 24 capability dimensions.",
             argument_hint="[--dimensions DIM,...] [--baseline VERSION] [--compare] [--report]",
             capability="self-eval",
         ),

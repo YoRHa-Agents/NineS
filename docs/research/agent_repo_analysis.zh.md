@@ -15,7 +15,7 @@ AI 化仓库的存在是为了改变 Agent 的行为方式。一个提示技能�
 
 所需的分析范式转变是从 **"代码写得好不好？"** 到 **"这个仓库如何影响 Agent 的效能？"** 这一重新定义需要新的评估维度、新的指标以及新的实验方法论——而软件工程社区才刚刚开始将其形式化。
 
-本文综合了上下文工程、评估方法论和基准测试设计等领域的研究，以建立分析 AI 化仓库的严谨框架。本文借鉴了 Anthropic 的上下文工程模型、LangChain 的故障模式分类法、生产环境压缩研究（Factory.ai、ACON、Caveman）以及在 [T03 基准评估研究](T03_benchmark_evaluation_research.md) 和[外部框架调研](external_frameworks.md)中调查的基准测试生态系统的发现。
+本文综合了上下文工程、评估方法论和基准测试设计等领域的研究，以建立分析 AI 化仓库的严谨框架。本文借鉴了 Anthropic 的上下文工程模型、LangChain 的故障模式分类法、生产环境压缩研究（Factory.ai、ACON、Caveman）以及在 [T03 基准评估研究](../archive/research/T03_benchmark_evaluation_research.md) 和[外部框架调研](external_frameworks.md)中调查的基准测试生态系统的发现。
 
 ---
 
@@ -392,7 +392,7 @@ AI 化仓库的对照评估需要三个实验条件，而非两个。标准的�
 
 ### 6.1 基准与评估框架
 
-以下框架提供了评估 AI Agent 性能的成熟方法论。它们的优势和差距在[外部框架调研](external_frameworks.md)和 [T03 基准评估研究](T03_benchmark_evaluation_research.md)中有详细分析。
+以下框架提供了评估 AI Agent 性能的成熟方法论。它们的优势和差距在[外部框架调研](external_frameworks.md)和 [T03 基准评估研究](../archive/research/T03_benchmark_evaluation_research.md)中有详细分析。
 
 | 框架 | 关注点 | 对 AI 仓库分析的关键贡献 |
 |------|-------|------------------------|
@@ -552,7 +552,7 @@ MAPIM 自改进循环（见[综合报告](synthesis_report.md) §3.5）意味着
 - GitHub Copilot Research (SPACE Framework): [github.blog/research-quantifying-copilot-impact](https://github.blog/research-quantifying-copilot-impact)
 
 ### NineS 内部参考
-- [T03 基准评估研究](T03_benchmark_evaluation_research.md)
+- [T03 基准评估研究](../archive/research/T03_benchmark_evaluation_research.md)
 - [外部框架调研](external_frameworks.md)
 - [综合报告](synthesis_report.md)
 - [领域知识](domain_knowledge.md)

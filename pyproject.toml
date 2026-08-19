@@ -38,6 +38,11 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.9",
     "tomli-w>=1.2.0",
+    # tests/test_docs_infrastructure.py imports yaml directly; previously
+    # satisfied only transitively via the mkdocs packages (now in `docs`).
+    "pyyaml>=6.0",
+]
+docs = [
     "mkdocs-material>=9.5",
     "mkdocs-macros-plugin>=1.0",
     "mkdocs-static-i18n>=1.2",

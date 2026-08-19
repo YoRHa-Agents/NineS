@@ -43,7 +43,29 @@ site/
 .coverage
 
 # Local directories
-.local/
 
 # Temp scripts
 run_tests.sh
+
+# Agent runtime skill artifacts — regenerate via `nines install --target <runtime>`
+.cursor/skills/
+.claude/
+.codex/
+.windsurfrules
+.github/copilot-instructions.md
+
+# DevolaFlow local workspace (whitelist team-collab subdirs; everything else private)
+# Per feedback_for_v12.1.0.md — narrow whitelist replaces v9.2.3 broad ignore.
+# Team-tracked: .local/memory/specs/ (A-4) + .local/research/ (W-7/W-19 artifacts).
+.local/*
+!.local/.gitignore
+!.local/memory/
+.local/memory/*
+!.local/memory/specs/
+!.local/memory/specs/**
+!.local/research/
+!.local/research/**
+!.local/human/
+.local/human/*
+!.local/human/input/
+!.local/human/input/**

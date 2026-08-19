@@ -1,5 +1,8 @@
 # T03 Research Report: Benchmarks & Evaluation Frameworks for AI Agent Effectiveness
 
+!!! warning "Historical document / 历史文档"
+    This research snapshot dates from the v1–v3.0 era and has been superseded by the current v3.3.0 state. It is kept for historical reference only. / 本调研纪要形成于 v1–v3.0 时期，已由 v3.3.0 现状取代，仅作历史参考。
+
 > **Task**: Research L3 — Benchmarks, evaluation frameworks, and metrics for measuring AI Agent effectiveness with focus on context management, tool usage, and compression impact.
 >
 > **Date**: 2026-04-12

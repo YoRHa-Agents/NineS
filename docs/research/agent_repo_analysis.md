@@ -15,7 +15,7 @@ AI-oriented repositories exist to change how an Agent behaves. A prompt skill fi
 
 The analytical shift required is from **"is the code well-written?"** to **"how does this repository affect Agent effectiveness?"** This reframing demands new evaluation dimensions, new metrics, and new experimental methodologies that the software engineering community has only begun to formalize.
 
-This document synthesizes research across context engineering, evaluation methodology, and benchmark design to establish a rigorous framework for analyzing AI-oriented repositories. It draws on findings from Anthropic's context engineering model, LangChain's failure mode taxonomy, production compression research (Factory.ai, ACON, Caveman), and the benchmark ecosystem surveyed in the [T03 Benchmark Evaluation Research](T03_benchmark_evaluation_research.md) and [External Frameworks Survey](external_frameworks.md).
+This document synthesizes research across context engineering, evaluation methodology, and benchmark design to establish a rigorous framework for analyzing AI-oriented repositories. It draws on findings from Anthropic's context engineering model, LangChain's failure mode taxonomy, production compression research (Factory.ai, ACON, Caveman), and the benchmark ecosystem surveyed in the [T03 Benchmark Evaluation Research](../archive/research/T03_benchmark_evaluation_research.md) and [External Frameworks Survey](external_frameworks.md).
 
 ---
 
@@ -392,7 +392,7 @@ The following anti-patterns represent common methodological errors that produce 
 
 ### 6.1 Benchmark and Evaluation Frameworks
 
-The following frameworks provide established methodologies for evaluating AI Agent performance. Their strengths and gaps are analyzed in detail in the [External Frameworks Survey](external_frameworks.md) and the [T03 Benchmark Evaluation Research](T03_benchmark_evaluation_research.md).
+The following frameworks provide established methodologies for evaluating AI Agent performance. Their strengths and gaps are analyzed in detail in the [External Frameworks Survey](external_frameworks.md) and the [T03 Benchmark Evaluation Research](../archive/research/T03_benchmark_evaluation_research.md).
 
 | Framework | Focus | Key Contribution to AI Repo Analysis |
 |-----------|-------|--------------------------------------|
@@ -552,7 +552,7 @@ The MAPIM self-improvement loop (see [Synthesis Report](synthesis_report.md) §3
 - GitHub Copilot Research (SPACE Framework): [github.blog/research-quantifying-copilot-impact](https://github.blog/research-quantifying-copilot-impact)
 
 ### NineS Internal References
-- [T03 Benchmark Evaluation Research](T03_benchmark_evaluation_research.md)
+- [T03 Benchmark Evaluation Research](../archive/research/T03_benchmark_evaluation_research.md)
 - [External Frameworks Survey](external_frameworks.md)
 - [Synthesis Report](synthesis_report.md)
 - [Domain Knowledge](domain_knowledge.md)

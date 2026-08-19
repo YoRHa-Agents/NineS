@@ -77,6 +77,8 @@ nines install --target cursor --uninstall
 nines install --target all --uninstall
 ```
 
+Generated skill artifacts (`.cursor/skills/`, `.claude/`, `.codex/`, `.github/copilot-instructions.md`) are not tracked in git (gitignored); after cloning the repository, run the commands above to generate them.
+
 ### Usage Examples
 
 #### Evaluate agent capabilities
@@ -244,8 +246,7 @@ NineS/
     iteration/            # Self-evaluation & self-iteration
     orchestrator/         # Workflow engine
     sandbox/              # Isolation layer
-    skill/                # Agent skill adapters
-      templates/          # SKILL.md and command templates
+    skill/                # Agent skill adapters (skill files generated inline)
     cli/                  # CLI entry point
       commands/           # Per-vertex CLI subcommands
   tests/                  # Unit tests
