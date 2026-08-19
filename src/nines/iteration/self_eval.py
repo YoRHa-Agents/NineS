@@ -637,8 +637,7 @@ class SelfEvalRunner:
                 registry = load_default_registry()
             except (FileNotFoundError, ValueError) as exc:
                 logger.warning(
-                    "C08: default MetricRegistry unavailable (%s); "
-                    "weighted_overall stays 0.0",
+                    "C08: default MetricRegistry unavailable (%s); weighted_overall stays 0.0",
                     exc,
                 )
                 registry = None
@@ -691,24 +690,16 @@ class SelfEvalRunner:
                     )
                     if not has_score:
                         continue
-                    group_means[group] = registry.weighted_mean(
-                        group, normalised
-                    )
+                    group_means[group] = registry.weighted_mean(group, normalised)
                 # Outer weighted overall: combine the per-group means
                 # using the reserved ``_groups`` meta-group weights,
                 # restricted to the groups we actually evaluated.
                 if group_means:
-                    weighted_overall = registry.weighted_mean(
-                        GROUPS_META_GROUP, group_means
-                    )
+                    weighted_overall = registry.weighted_mean(GROUPS_META_GROUP, group_means)
                     # Fall back to a simple mean when the meta-group
                     # is missing or all its weights resolved to zero.
-                    if weighted_overall == 0.0 and any(
-                        v != 0.0 for v in group_means.values()
-                    ):
-                        weighted_overall = sum(group_means.values()) / len(
-                            group_means
-                        )
+                    if weighted_overall == 0.0 and any(v != 0.0 for v in group_means.values()):
+                        weighted_overall = sum(group_means.values()) / len(group_means)
 
         duration = time.monotonic() - start
         return SelfEvalReport(
@@ -1051,14 +1042,9 @@ class LiveCodeCoverageEvaluator:
             out: dict[str, float] = {}
             if "percent_covered" in totals:
                 out["line"] = float(totals["percent_covered"])
-            if (
-                totals.get("num_branches", 0) > 0
-                and "covered_branches" in totals
-            ):
+            if totals.get("num_branches", 0) > 0 and "covered_branches" in totals:
                 out["branch"] = (
-                    float(totals["covered_branches"])
-                    / float(totals["num_branches"])
-                    * 100.0
+                    float(totals["covered_branches"]) / float(totals["num_branches"]) * 100.0
                 )
             return out or None
         except Exception:  # noqa: BLE001 — best-effort parse for sub-skills

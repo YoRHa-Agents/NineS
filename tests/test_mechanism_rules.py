@@ -139,7 +139,10 @@ class TestMechanismRuleConfidence:
 
     def test_confidence_no_matches_is_zero(self) -> None:
         rule = MechanismRule(
-            name="r1", category="c", description="d", indicators=("x",),
+            name="r1",
+            category="c",
+            description="d",
+            indicators=("x",),
         )
         assert rule.confidence_estimator([]) == 0.0
 
@@ -186,27 +189,40 @@ class TestMagnitudeEstimator:
 
     def test_positive_sign_default(self) -> None:
         rule = MechanismRule(
-            name="r1", category="c", description="d", indicators=("a",), token_impact_sign=1,
+            name="r1",
+            category="c",
+            description="d",
+            indicators=("a",),
+            token_impact_sign=1,
         )
         assert rule.magnitude_estimator(500) == 500
 
     def test_negative_sign_for_compression(self) -> None:
         rule = MechanismRule(
-            name="r1", category="context_compression", description="d",
-            indicators=("a",), token_impact_sign=-1,
+            name="r1",
+            category="context_compression",
+            description="d",
+            indicators=("a",),
+            token_impact_sign=-1,
         )
         assert rule.magnitude_estimator(500) == -500
 
     def test_returns_int(self) -> None:
         rule = MechanismRule(
-            name="r1", category="c", description="d", indicators=("a",),
+            name="r1",
+            category="c",
+            description="d",
+            indicators=("a",),
         )
         result = rule.magnitude_estimator(123)
         assert isinstance(result, int)
 
     def test_zero_tokens_yields_zero(self) -> None:
         rule = MechanismRule(
-            name="r1", category="c", description="d", indicators=("a",),
+            name="r1",
+            category="c",
+            description="d",
+            indicators=("a",),
         )
         assert rule.magnitude_estimator(0) == 0
 
@@ -267,9 +283,7 @@ class TestDefaultRegistry:
         }
 
     def test_token_compression_negative_sign(self) -> None:
-        compression = next(
-            r for r in DEFAULT_MECHANISM_RULES if r.name == "token_compression"
-        )
+        compression = next(r for r in DEFAULT_MECHANISM_RULES if r.name == "token_compression")
         assert compression.token_impact_sign == -1
 
     def test_all_rules_have_indicators(self) -> None:

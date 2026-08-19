@@ -118,8 +118,7 @@ class MetricDefinition:
             raise ValueError(msg)
         if self.weight < 0:
             msg = (
-                f"MetricDefinition({self.name!r}).weight must be non-negative; "
-                f"got {self.weight!r}"
+                f"MetricDefinition({self.name!r}).weight must be non-negative; got {self.weight!r}"
             )
             raise ValueError(msg)
         if self.threshold is not None:
@@ -379,10 +378,7 @@ class MetricRegistry:
                 if threshold_raw is None:
                     threshold = None
                 else:
-                    if (
-                        not isinstance(threshold_raw, (list, tuple))
-                        or len(threshold_raw) != 2
-                    ):
+                    if not isinstance(threshold_raw, (list, tuple)) or len(threshold_raw) != 2:
                         msg = (
                             f"metric {metric_name!r} in group {group_name!r}: "
                             f"threshold must be a 2-element list, got "
@@ -408,9 +404,9 @@ class _RegistryDefaults:
     """Marker container for ``default_registry_path`` resolution."""
 
     package_data: Path = field(
-        default_factory=lambda: Path(__file__).resolve().parent.parent
-        / "data"
-        / "self_eval_metrics.toml"
+        default_factory=lambda: (
+            Path(__file__).resolve().parent.parent / "data" / "self_eval_metrics.toml"
+        )
     )
 
 

@@ -688,8 +688,7 @@ def test_runner_default_registry_populates_weighted_overall() -> None:
     # metric_weights snapshot covers ALL bundled metrics, not just the
     # 3 we registered, so reports remain reproducible.
     assert len(report.metric_weights) >= 25, (
-        f"expected >=25 metric weights from default registry, "
-        f"got {len(report.metric_weights)}"
+        f"expected >=25 metric weights from default registry, got {len(report.metric_weights)}"
     )
     # Backward-compat: legacy unweighted overall is still reported.
     assert 0.0 < report.overall <= 1.0
@@ -769,6 +768,6 @@ def test_runner_invalid_registry_skips_weighted_aggregation(
     assert report.metric_weights == {}
     # Legacy unweighted overall is still computed.
     assert report.overall > 0.0
-    assert any(
-        "MetricRegistry.validate" in rec.getMessage() for rec in caplog.records
-    ), "expected warning about validate() failures"
+    assert any("MetricRegistry.validate" in rec.getMessage() for rec in caplog.records), (
+        "expected warning about validate() failures"
+    )

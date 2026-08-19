@@ -35,8 +35,7 @@ def test_subskill_defaults_carry_unit_max_and_full_weight() -> None:
 
 def test_subskill_normalized_handles_non_unit_max() -> None:
     """Code-coverage style sub-skills (max=100) normalise to [0,1]."""
-    sub = SubSkill(name="line_coverage", parent_dim="code_coverage",
-                   value=86.0, max_value=100.0)
+    sub = SubSkill(name="line_coverage", parent_dim="code_coverage", value=86.0, max_value=100.0)
     assert sub.normalized == pytest.approx(0.86)
 
 
@@ -113,8 +112,9 @@ def test_panel_rollup_min_and_max() -> None:
 def test_panel_rollup_empty_returns_zero() -> None:
     """Empty sub-skill lists collapse to 0.0 instead of raising."""
     for method in ("mean", "weighted_mean", "min", "max"):
-        panel = DimensionPanel(dim_name="d", parent_dim_value=0.5, subskills=[],
-                               rollup_method=method)
+        panel = DimensionPanel(
+            dim_name="d", parent_dim_value=0.5, subskills=[], rollup_method=method
+        )
         assert panel.rollup() == 0.0
 
 
@@ -123,8 +123,9 @@ def test_panel_rollup_single_subskill_matches_value() -> None:
     regardless of method."""
     sub = SubSkill(name="only", parent_dim="d", value=0.73, max_value=1.0)
     for method in ("mean", "weighted_mean", "min", "max"):
-        panel = DimensionPanel(dim_name="d", parent_dim_value=0.0,
-                               subskills=[sub], rollup_method=method)
+        panel = DimensionPanel(
+            dim_name="d", parent_dim_value=0.0, subskills=[sub], rollup_method=method
+        )
         assert panel.rollup() == pytest.approx(0.73)
 
 
@@ -134,8 +135,9 @@ def test_panel_rollup_weighted_mean_zero_weight_falls_back_to_mean() -> None:
         SubSkill(name="a", parent_dim="d", value=0.4, weight=0.0),
         SubSkill(name="b", parent_dim="d", value=0.8, weight=0.0),
     ]
-    panel = DimensionPanel(dim_name="d", parent_dim_value=0.0,
-                           subskills=subs, rollup_method="weighted_mean")
+    panel = DimensionPanel(
+        dim_name="d", parent_dim_value=0.0, subskills=subs, rollup_method="weighted_mean"
+    )
     assert panel.rollup() == pytest.approx(0.6)
 
 
@@ -143,10 +145,10 @@ def test_panel_coverage_count_and_has_breakdown() -> None:
     """``coverage_count`` reports the sub-skill count; ``has_breakdown``
     is True only when at least 2 sub-skills are present (mirror panels
     don't count as real granularity)."""
-    one = DimensionPanel(dim_name="d", parent_dim_value=0.5,
-                         subskills=_make_subs([(0.5, 1.0)]))
-    two = DimensionPanel(dim_name="d", parent_dim_value=0.5,
-                         subskills=_make_subs([(0.5, 1.0), (0.6, 1.0)]))
+    one = DimensionPanel(dim_name="d", parent_dim_value=0.5, subskills=_make_subs([(0.5, 1.0)]))
+    two = DimensionPanel(
+        dim_name="d", parent_dim_value=0.5, subskills=_make_subs([(0.5, 1.0), (0.6, 1.0)])
+    )
     assert one.coverage_count() == 1
     assert two.coverage_count() == 2
     assert one.has_breakdown() is False
