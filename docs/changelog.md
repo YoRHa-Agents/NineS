@@ -4,6 +4,48 @@ All notable changes to NineS are documented here. This project follows [Semantic
 
 ---
 
+## v3.4.0 — 2026-08-19 (Repo Hygiene, Cross-Tool Rules & CI Baseline)
+
+**Theme:** Infrastructure minor — no runtime feature work. Aggregates two merged PRs: [#32](https://github.com/YoRHa-Agents/NineS/pull/32) (repo cleanup: untrack generated and private artifacts, make the skill generators the single source of truth, add a cross-tool rules entry point, stand up CI, archive stale docs) and [#33](https://github.com/YoRHa-Agents/NineS/pull/33) (turn the new CI green: zero mypy strict errors, zero ruff format drift, golden-set test skips).
+
+**Semver:** Released as `v3.4.0` (additive backward-compatible; no public Python API changes — generated skill output, packaging metadata, CI, and docs infrastructure only).
+
+### Added
+
+- **Cross-tool rules entry point** ([#32](https://github.com/YoRHa-Agents/NineS/pull/32)): repository conventions now live in `.rules/soul.mdc` (source) and compile into the root `AGENTS.md`, which Cursor, Claude Code, Codex, and GitHub Copilot all recognize natively — no per-IDE rule files. Covers project overview, dev commands, code style, testing requirements, the documentation protocol, the no-committed-skill-artifacts rule, and the `.local/` whitelist convention. Compilation is pinned by `.rules/compile-config.yaml` + `.rules/.compile-hashes.json`.
+- **CI workflow** ([#32](https://github.com/YoRHa-Agents/NineS/pull/32)): new `.github/workflows/ci.yml` runs `ruff check` + `ruff format --check`, mypy strict, and pytest with coverage under one concurrency group with auto-cancel; the version-consistency check is folded in from the deleted `version-check.yml`.
+
+### Changed
+
+- **Skill generators are the single source of truth** ([#32](https://github.com/YoRHa-Agents/NineS/pull/32)): the hand-written Knowledge Graph section migrated from the tracked `.cursor` SKILL.md into `src/nines/skill/adapters.py` (section title de-versioned; body notes the feature was introduced in v3.0.0), so Codex and Copilot outputs now gain the same graph section (Claude keeps its compact command-index format); `nines-analyze` / `nines-self-eval` manifest descriptions aligned verbatim with the more accurate previously-tracked wording.
+- **Agent runtime artifacts are install-time products, not source** ([#32](https://github.com/YoRHa-Agents/NineS/pull/32)): `.cursor/skills/nines/` untracked and all agent runtime skill artifacts (`.cursor/skills/`, `.claude/`, `.codex/`, `.github/copilot-instructions.md`) gitignored — they regenerate via `nines install --target <runtime>`.
+- **`deploy-pages.yml` installs locked docs dependencies via uv** ([#32](https://github.com/YoRHa-Agents/NineS/pull/32)): the mkdocs packages moved from `dev` into a dedicated `[dependency-groups].docs` group resolved from `uv.lock`, replacing unpinned `pip install`s; verified in an isolated venv that the docs group alone builds the site with `mkdocs build --strict`.
+- **mkdocs site version derived at build time** ([#32](https://github.com/YoRHa-Agents/NineS/pull/32)): the dead `extra.nines_version` value is dropped from `mkdocs.yml`; `docs/hooks/version_hook.py` injects the package version during the build, so releases no longer hand-edit the site version.
+- **pyyaml is an explicit dev dependency** ([#32](https://github.com/YoRHa-Agents/NineS/pull/32)): `tests/test_docs_infrastructure.py` imports `yaml` directly; it was previously satisfied only transitively via the mkdocs packages, which moved to the `docs` group.
+- **Golden-set tests skip when the data is absent** ([#33](https://github.com/YoRHa-Agents/NineS/pull/33)): the 4 `tests/test_v1_evaluators.py` golden-set tests now conditionally skip when `data/golden_test_set` is missing — the set is manually calibrated deployment-machine data, gitignored and never committed, with no generation command, so fresh clones and CI can never have it. The tests still execute on real deployments.
+
+### Removed
+
+- **`src/nines/skill/templates/`** ([#32](https://github.com/YoRHa-Agents/NineS/pull/32)): never loaded by any adapter (the Jinja2 `TemplateEngine` design was never implemented); the implementation deviation is recorded in the design docs.
+- **`.local/v2.3.0` benchmark evidence untracked** ([#32](https://github.com/YoRHa-Agents/NineS/pull/32)): the three C06 evidence logs force-added in v3.2.0 are private evidence, not runtime dependencies; files kept locally.
+
+### Docs
+
+- **Stale roadmaps and research notes archived** ([#32](https://github.com/YoRHa-Agents/NineS/pull/32)): the outdated v1/v2 roadmap trio (`v2_iteration_plan`, `growth_evaluation_plan`, `development/roadmap`, with their `.zh.md` variants) moved to `docs/archive/roadmap/`, each with a bilingual Historical banner; the nav gains an Archive group. Two internal research notes (the T03 benchmark survey and the v2.2.0 paradigm-extension findings) moved to `docs/archive/research/` (kept out of nav). 15 relative links fixed; `mkdocs build --strict` passes with zero warnings.
+
+### Fixed
+
+- **All 10 pre-existing mypy strict errors resolved (8 files)** ([#33](https://github.com/YoRHa-Agents/NineS/pull/33)): precise annotations only — `math.sqrt` over `** 0.5`, a `type[ScorerProtocol]` registry, typed `json.loads` / `resp.json()` locals, `str()` at the call site, `dict[str, Any]` payloads — plus removal of two dead `type: ignore` comments. No logic changes.
+- **13 legacy unformatted files reformatted** ([#33](https://github.com/YoRHa-Agents/NineS/pull/33)): mechanical `ruff format` pass so the CI `ruff format --check` job passes.
+
+### Tests + lint
+
+- `ruff check src/ tests/` → 0 errors; `ruff format --check src/ tests/` → clean (was 13 files failing).
+- `mypy src/nines/` (strict) → 0 errors (was 10).
+- `pytest tests/` → green; the 4 golden-set tests skip on machines without `data/golden_test_set` and run everywhere else.
+
+---
+
 ## v3.3.0 — 2026-04-19 (Wave 3 Patch Aggregation Minor; pyproject v3.3.0)
 
 **Theme:** Minor-version aggregation of the 4 Wave 3 patches (v3.2.1 → v3.2.4) that completed the v2.2.0 paradigm-extension accept-list. All 4 candidates shipped with empirically-confirmed benefit per the 'tested-benefit-only' rule.
