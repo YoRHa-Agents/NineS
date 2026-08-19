@@ -101,6 +101,7 @@ plugins:
             Review Findings: 评审发现
             Code Review: 代码评审
             MVP Acceptance: MVP 验收
+            Archive: 归档
             About: 关于
             Design Philosophy: 设计理念
             Evaluation Criteria: 评估标准
@@ -134,7 +135,7 @@ markdown_extensions:
       permalink: true
 
 extra:
-  nines_version: "2.0.0"
+  # nines_version 由 docs/hooks/version_hook.py 在构建时从 src/nines/__init__.py 注入
   version:
     provider: mike
   social:
@@ -185,13 +186,14 @@ nav:
   - Development:
     - Contributing: development/contributing.md
     - Development Plan: development/plan.md
-    - Roadmap: development/roadmap.md
-    - Growth Evaluation Plan: roadmap/growth_evaluation_plan.md
-    - V2 Iteration Plan: roadmap/v2_iteration_plan.md
     - Changelog: changelog.md
     - Review Findings: design/review_findings.md
     - Code Review: review/code_review_findings.md
     - MVP Acceptance: validation/mvp_acceptance.md
+  - Archive:
+    - Roadmap: archive/roadmap/roadmap.md
+    - Growth Evaluation Plan: archive/roadmap/growth_evaluation_plan.md
+    - V2 Iteration Plan: archive/roadmap/v2_iteration_plan.md
   - About:
     - Design Philosophy: design-philosophy.md
     - Evaluation Criteria: evaluation-criteria.md

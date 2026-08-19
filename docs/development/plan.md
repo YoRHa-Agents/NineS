@@ -2,7 +2,7 @@
 
 <!-- auto-updated: version from src/nines/__init__.py -->
 
-This page describes **how** NineS is engineered day to day: methodology, Git workflow, releases, automation, quality gates, and documentation practices. For **what** ships **when**, see the [Roadmap](roadmap.md). The current package version is **{{ nines_version }}**.
+This page describes **how** NineS is engineered day to day: methodology, Git workflow, releases, automation, quality gates, and documentation practices. For **what** ships **when**, see the [Roadmap](../archive/roadmap/roadmap.md). The current package version is **{{ nines_version }}**.
 
 ---
 
@@ -154,7 +154,7 @@ Before merging, contributors should satisfy the following gates (see [Contributi
 
 **Makefile targets:** `make test`, `make lint`, `make format`, `make typecheck`, `make coverage`.
 
-**Project coverage aspirations** (from the [Roadmap](roadmap.md), not necessarily enforced as a hard CI threshold today):
+**Project coverage aspirations** (from the [Roadmap](../archive/roadmap/roadmap.md), not necessarily enforced as a hard CI threshold today):
 
 - Docstring coverage toward **≥80%** on public APIs.
 - CLI command coverage toward **≥70%** where applicable.
@@ -208,7 +208,7 @@ make coverage
 
 **Site generator:** MkDocs **Material** with **suffix-based i18n** (`mkdocs-static-i18n`): English `page.md`, Chinese `page.zh.md`.
 
-**Structure:** Pages live under `docs/`; navigation is declared in `mkdocs.yml`. Development docs include [Contributing](contributing.md), this plan, and the [Roadmap](roadmap.md).
+**Structure:** Pages live under `docs/`; navigation is declared in `mkdocs.yml`. Development docs include [Contributing](contributing.md), this plan, and the [Roadmap](../archive/roadmap/roadmap.md).
 
 **Macros:** The `mkdocs-macros-plugin` loads `docs/hooks/version_hook.py`, exposing **`{{ nines_version }}`** (and `project_name`) parsed from `src/nines/__init__.py`. Use the macro in prose where the current version should track releases automatically.
 
@@ -227,5 +227,5 @@ make coverage
 | Document | Purpose |
 |----------|---------|
 | [Contributing](contributing.md) | Setup, style, PR checklist, module matrix |
-| [Roadmap](roadmap.md) | Priorities, timeline, metrics, risks |
+| [Roadmap](../archive/roadmap/roadmap.md) | Priorities, timeline, metrics, risks |
 | [CLI reference](../user-guide/cli-reference.md) | `nines` commands including MAPIM iteration |

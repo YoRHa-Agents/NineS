@@ -1,5 +1,8 @@
 # NineS v2 Iteration Roadmap
 
+!!! warning "Historical document / 历史文档"
+    This document describes plans from the v1–v3.0 era and has been superseded by the current v3.3.0 state. It is kept for historical reference only. / 本文档描述 v1–v3.0 时期的计划，已由 v3.3.0 现状取代，仅作历史参考。
+
 > **Date**: 2026-04-12 | **Baseline**: v1 (overall 0.8787) | **Status**: Planning
 
 ---
