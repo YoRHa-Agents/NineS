@@ -186,18 +186,34 @@ class DecompositionCoverageEvaluator:
                         # C12: emit zero sub-skills so the panel
                         # exists even on empty/non-Python repos.
                         "subskills": [
-                            {"name": "file_coverage", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.20,
-                             "metadata": {"reason": "empty_source"}},
-                            {"name": "element_coverage", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.40,
-                             "metadata": {"reason": "empty_source"}},
-                            {"name": "function_capture", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.20,
-                             "metadata": {"reason": "empty_source"}},
-                            {"name": "class_capture", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.20,
-                             "metadata": {"reason": "empty_source"}},
+                            {
+                                "name": "file_coverage",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.20,
+                                "metadata": {"reason": "empty_source"},
+                            },
+                            {
+                                "name": "element_coverage",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.40,
+                                "metadata": {"reason": "empty_source"},
+                            },
+                            {
+                                "name": "function_capture",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.20,
+                                "metadata": {"reason": "empty_source"},
+                            },
+                            {
+                                "name": "class_capture",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.20,
+                                "metadata": {"reason": "empty_source"},
+                            },
                         ],
                         "rollup_method": "weighted_mean",
                     },
@@ -218,17 +234,15 @@ class DecompositionCoverageEvaluator:
             # function-vs-class capture rates and package coverage so
             # the D11 score is not just a single opaque ratio.
             functions, classes, packages = _count_ast_breakdown(py_files)
-            captured_funcs = sum(
-                1 for u in units if getattr(u, "unit_type", None) == "function"
-            )
-            captured_classes = sum(
-                1 for u in units if getattr(u, "unit_type", None) == "class"
-            )
+            captured_funcs = sum(1 for u in units if getattr(u, "unit_type", None) == "function")
+            captured_classes = sum(1 for u in units if getattr(u, "unit_type", None) == "class")
             file_coverage = _safe_ratio(len(reviews), len(py_files))
             element_coverage = _safe_ratio(len(units), total_elements)
             function_capture = _safe_ratio(captured_funcs, functions)
-            class_capture = _safe_ratio(captured_classes, classes) if classes else (
-                1.0 if captured_classes == 0 else 0.0
+            class_capture = (
+                _safe_ratio(captured_classes, classes)
+                if classes
+                else (1.0 if captured_classes == 0 else 0.0)
             )
             # ``packages`` (count of __init__.py files) is recorded in
             # the metadata for downstream tooling but not used as a
@@ -375,15 +389,27 @@ class AbstractionQualityEvaluator:
                         "well_classified": 0,
                         "src_dir": str(src_dir),
                         "subskills": [
-                            {"name": "tag_coverage", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.40,
-                             "metadata": {"reason": "no_units"}},
-                            {"name": "type_validity", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.40,
-                             "metadata": {"reason": "no_units"}},
-                            {"name": "unit_density", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.20,
-                             "metadata": {"reason": "no_units"}},
+                            {
+                                "name": "tag_coverage",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.40,
+                                "metadata": {"reason": "no_units"},
+                            },
+                            {
+                                "name": "type_validity",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.40,
+                                "metadata": {"reason": "no_units"},
+                            },
+                            {
+                                "name": "unit_density",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.20,
+                                "metadata": {"reason": "no_units"},
+                            },
                         ],
                         "rollup_method": "weighted_mean",
                     },
@@ -396,11 +422,7 @@ class AbstractionQualityEvaluator:
             # two ingredients (tag coverage + type validity) plus a
             # density sub-skill that rewards reaching at least one
             # unit per analysed file (saturates at 1.0/file).
-            tagged = sum(
-                1
-                for u in units
-                if (u.metadata.get("tags", "") or "").strip()
-            )
+            tagged = sum(1 for u in units if (u.metadata.get("tags", "") or "").strip())
             valid_typed = sum(1 for u in units if u.unit_type in _VALID_UNIT_TYPES)
             tag_coverage = _safe_ratio(tagged, len(units))
             type_validity = _safe_ratio(valid_typed, len(units))
@@ -535,18 +557,34 @@ class CodeReviewAccuracyEvaluator:
                         "valid_findings": 0,
                         "src_dir": str(src_dir),
                         "subskills": [
-                            {"name": "finding_quality_rate", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.40,
-                             "metadata": {"reason": "no_findings"}},
-                            {"name": "complexity_check_rate", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.20,
-                             "metadata": {"reason": "no_findings"}},
-                            {"name": "severity_balance", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.20,
-                             "metadata": {"reason": "no_findings"}},
-                            {"name": "false_positive_signal", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.20,
-                             "metadata": {"reason": "no_findings"}},
+                            {
+                                "name": "finding_quality_rate",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.40,
+                                "metadata": {"reason": "no_findings"},
+                            },
+                            {
+                                "name": "complexity_check_rate",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.20,
+                                "metadata": {"reason": "no_findings"},
+                            },
+                            {
+                                "name": "severity_balance",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.20,
+                                "metadata": {"reason": "no_findings"},
+                            },
+                            {
+                                "name": "false_positive_signal",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.20,
+                                "metadata": {"reason": "no_findings"},
+                            },
                         ],
                         "rollup_method": "weighted_mean",
                     },
@@ -568,17 +606,11 @@ class CodeReviewAccuracyEvaluator:
             # complement of finding_quality_rate.
             severity_buckets: dict[str, int] = {}
             for finding in all_findings:
-                key = (
-                    finding.severity
-                    if finding.severity in _VALID_SEVERITIES
-                    else "unknown"
-                )
+                key = finding.severity if finding.severity in _VALID_SEVERITIES else "unknown"
                 severity_buckets[key] = severity_buckets.get(key, 0) + 1
             distinct_sev = sum(1 for v in severity_buckets.values() if v > 0)
             severity_balance = _safe_ratio(distinct_sev, len(_VALID_SEVERITIES))
-            false_positive_rate = _safe_ratio(
-                len(all_findings) - valid_count, len(all_findings)
-            )
+            false_positive_rate = _safe_ratio(len(all_findings) - valid_count, len(all_findings))
             fp_signal = max(0.0, 1.0 - false_positive_rate)
 
             return DimensionScore(
@@ -737,18 +769,34 @@ class IndexRecallEvaluator:
                         "queries_tested": 0,
                         "src_dir": str(src_dir),
                         "subskills": [
-                            {"name": "query_hit_rate", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.40,
-                             "metadata": {"reason": "empty_index"}},
-                            {"name": "exact_match_rate", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.25,
-                             "metadata": {"reason": "empty_index"}},
-                            {"name": "partial_match_rate", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.20,
-                             "metadata": {"reason": "empty_index"}},
-                            {"name": "latency_score", "value": 0.0,
-                             "max_value": 1.0, "weight": 0.15,
-                             "metadata": {"reason": "empty_index"}},
+                            {
+                                "name": "query_hit_rate",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.40,
+                                "metadata": {"reason": "empty_index"},
+                            },
+                            {
+                                "name": "exact_match_rate",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.25,
+                                "metadata": {"reason": "empty_index"},
+                            },
+                            {
+                                "name": "partial_match_rate",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.20,
+                                "metadata": {"reason": "empty_index"},
+                            },
+                            {
+                                "name": "latency_score",
+                                "value": 0.0,
+                                "max_value": 1.0,
+                                "weight": 0.15,
+                                "metadata": {"reason": "empty_index"},
+                            },
                         ],
                         "rollup_method": "weighted_mean",
                     },
@@ -781,9 +829,7 @@ class IndexRecallEvaluator:
                         searchable_first = (
                             f"{first_id} {first_unit.source} {first_unit.content}".lower()
                         )
-                        top1_keywords_match = any(
-                            kw.lower() in searchable_first for kw in keywords
-                        )
+                        top1_keywords_match = any(kw.lower() in searchable_first for kw in keywords)
                 if top1_keywords_match:
                     exact_match_hits += 1
                 if found and not top1_keywords_match:
@@ -980,33 +1026,24 @@ class StructureRecognitionEvaluator:
             # non-saturated sub-skills (the AgentBoard headroom signal).
             actual_pkg_count = max(len(actual_pkgs), 1)
             detected_pkg_count = len(report.packages)
-            package_ratio = (
-                min(1.0, detected_pkg_count / actual_pkg_count)
-                if actual_pkgs
-                else 0.0
-            )
+            package_ratio = min(1.0, detected_pkg_count / actual_pkg_count) if actual_pkgs else 0.0
             module_ratio = (
                 1.0
                 - min(
                     1.0,
-                    abs(report.python_module_count - actual_py_count)
-                    / max(actual_py_count, 1),
+                    abs(report.python_module_count - actual_py_count) / max(actual_py_count, 1),
                 )
                 if actual_py_count
                 else 0.0
             )
-            framework_detection = float(
-                check_details.get("py_file_type_detected", False)
-            )
+            framework_detection = float(check_details.get("py_file_type_detected", False))
             # Layout inference scales with the proportion of files that
             # actually wired up at least one dependency edge — the
             # parser caps the contribution at 1.0 per file even on a
             # graph-rich repo so the score stays in [0, 1].
             edge_count = len(report.dependency_map.edges)
             layout_inference = (
-                min(1.0, edge_count / max(actual_py_count, 1))
-                if actual_py_count
-                else 0.0
+                min(1.0, edge_count / max(actual_py_count, 1)) if actual_py_count else 0.0
             )
             # Coupling inference scales with how many modules have
             # coupling metrics computed; saturates once every module

@@ -380,9 +380,7 @@ class MechanismDetector:
             total_tokens = sum(tokenizer(raw) for raw in evidence_raw.values())
             token_impact = rule.magnitude_estimator(total_tokens)
             files_sorted = sorted(evidence_raw.keys())
-            description = (
-                f"{rule.description} (evidence from {len(files_sorted)} file(s))"
-            )
+            description = f"{rule.description} (evidence from {len(files_sorted)} file(s))"
 
             emitted.append(
                 AgentMechanism(

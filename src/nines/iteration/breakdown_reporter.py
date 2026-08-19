@@ -300,14 +300,14 @@ class BreakdownReporter:
     @staticmethod
     def _panel_from_score(score: DimensionScore) -> DimensionPanel:
         """Build a single :class:`DimensionPanel` from one score."""
-        raw_subskills = score.metadata.get("subskills") if isinstance(
-            score.metadata, dict
-        ) else None
+        raw_subskills = (
+            score.metadata.get("subskills") if isinstance(score.metadata, dict) else None
+        )
         rollup_method: RollupMethod = "weighted_mean"
         if isinstance(score.metadata, dict):
             method = score.metadata.get("rollup_method")
             if method in ("mean", "weighted_mean", "min", "max"):
-                rollup_method = method  # type: ignore[assignment]
+                rollup_method = method
 
         subskills: list[SubSkill] = []
         if isinstance(raw_subskills, list) and raw_subskills:
@@ -426,9 +426,7 @@ class BreakdownReporter:
             )
             buckets = s.get("bucket_counts", {})
             if buckets:
-                bucket_line = "  Buckets: " + ", ".join(
-                    f"{k}={v}" for k, v in buckets.items()
-                )
+                bucket_line = "  Buckets: " + ", ".join(f"{k}={v}" for k, v in buckets.items())
                 lines.append(bucket_line)
         lines.append("")
 
@@ -460,12 +458,8 @@ class BreakdownReporter:
         ]
         s = breakdown.summary
         if s:
-            lines.append(
-                f"- **Sub-skills in [0.7, 0.95):** {s.get('subskills_in_0.7_to_0.95', 0)}"
-            )
-            lines.append(
-                f"- **Sub-skills in [0.5, 0.95):** {s.get('subskills_in_0.5_to_0.95', 0)}"
-            )
+            lines.append(f"- **Sub-skills in [0.7, 0.95):** {s.get('subskills_in_0.7_to_0.95', 0)}")
+            lines.append(f"- **Sub-skills in [0.5, 0.95):** {s.get('subskills_in_0.5_to_0.95', 0)}")
         lines.append("")
 
         for panel in breakdown.panels:

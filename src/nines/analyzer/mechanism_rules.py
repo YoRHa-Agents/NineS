@@ -178,9 +178,9 @@ class MechanismRule:
         if not matches:
             return 0.0
         max_indicators = max(len(self.indicators), 1)
-        avg_hit_fraction = sum(
-            min(1.0, m.indicator_hits / max_indicators) for m in matches
-        ) / len(matches)
+        avg_hit_fraction = sum(min(1.0, m.indicator_hits / max_indicators) for m in matches) / len(
+            matches
+        )
         coverage_bonus = min(0.25, 0.05 * len(matches))
         avg_counter = sum(m.counter_hits for m in matches) / len(matches)
         counter_penalty = min(0.30, 0.10 * avg_counter)

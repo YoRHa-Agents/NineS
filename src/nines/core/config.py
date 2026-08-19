@@ -337,7 +337,9 @@ def from_env(config: NinesConfig | None = None) -> NinesConfig:
     if config is None:
         config = NinesConfig()
 
-    field_types = {f.name: f.type for f in fields(config) if not f.name.startswith("_")}
+    # ``from __future__ import annotations`` makes ``f.type`` a string at
+    # runtime; str() keeps mypy happy without changing the value.
+    field_types = {f.name: str(f.type) for f in fields(config) if not f.name.startswith("_")}
 
     for env_key, field_name in _ENV_MAP.items():
         env_val = os.environ.get(env_key)

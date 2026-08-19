@@ -210,9 +210,9 @@ class ScorerRegistry:
 
     def __init__(self) -> None:
         """Initialize scorer registry."""
-        self._registry: dict[str, type] = {}
+        self._registry: dict[str, type[ScorerProtocol]] = {}
 
-    def register(self, name: str, scorer_cls: type) -> None:
+    def register(self, name: str, scorer_cls: type[ScorerProtocol]) -> None:
         """Register a scorer class by name."""
         if name in self._registry:
             raise EvalError(f"Scorer '{name}' already registered")
@@ -223,8 +223,7 @@ class ScorerRegistry:
         """Return a scorer instance by name."""
         if name not in self._registry:
             raise EvalError(f"Unknown scorer: '{name}'. Available: {list(self._registry.keys())}")
-        instance = self._registry[name](**kwargs)
-        return instance  # type: ignore[return-value]
+        return self._registry[name](**kwargs)
 
     def list_available(self) -> list[str]:
         """List available."""

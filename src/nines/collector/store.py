@@ -327,7 +327,9 @@ class DataStore:
             if not raw:
                 return []
             try:
-                return json.loads(raw)
+                # Column is written via json.dumps(list[str]); trust the schema.
+                parsed: list[str] = json.loads(raw)
+                return parsed
             except (json.JSONDecodeError, TypeError):
                 logger.warning(
                     "Malformed JSON in paper id=%s field=%s: %r",

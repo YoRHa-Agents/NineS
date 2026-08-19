@@ -138,8 +138,7 @@ class ScoringAccuracyEvaluator:
             an empty fixture) instead of NineS's own.
         """
         golden_dir = (
-            ctx.golden_dir if ctx is not None and ctx.golden_dir is not None
-            else self._golden_dir
+            ctx.golden_dir if ctx is not None and ctx.golden_dir is not None else self._golden_dir
         )
         tasks = load_golden_tasks(golden_dir)
         if not tasks:
@@ -221,8 +220,7 @@ class ReliabilityEvaluator:
     ) -> DimensionScore:
         """Run each golden task multiple times and check consistency."""
         golden_dir = (
-            ctx.golden_dir if ctx is not None and ctx.golden_dir is not None
-            else self._golden_dir
+            ctx.golden_dir if ctx is not None and ctx.golden_dir is not None else self._golden_dir
         )
         tasks = load_golden_tasks(golden_dir)
         if not tasks:
@@ -301,8 +299,7 @@ class ScorerAgreementEvaluator:
     ) -> DimensionScore:
         """Score all golden tasks with both scorers and measure agreement."""
         golden_dir = (
-            ctx.golden_dir if ctx is not None and ctx.golden_dir is not None
-            else self._golden_dir
+            ctx.golden_dir if ctx is not None and ctx.golden_dir is not None else self._golden_dir
         )
         tasks = load_golden_tasks(golden_dir)
         if not tasks:

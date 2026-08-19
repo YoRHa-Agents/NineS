@@ -76,8 +76,7 @@ class EvalCoverageEvaluator:
         from nines.eval.models import TaskDefinition
 
         sample_dir = (
-            ctx.samples_dir if ctx is not None and ctx.samples_dir is not None
-            else self._sample_dir
+            ctx.samples_dir if ctx is not None and ctx.samples_dir is not None else self._sample_dir
         )
         toml_files = sorted(sample_dir.glob("*.toml"))
         total = len(toml_files)

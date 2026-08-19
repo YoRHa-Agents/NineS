@@ -29,6 +29,15 @@ from nines.iteration.v1_evaluators import (
 
 GOLDEN_DIR = Path("data/golden_test_set")
 
+# ``data/`` is gitignored (runtime data curated on the deployment machine, never
+# committed), so fresh clones and CI have no golden test set.  Tests that need
+# the real curated set skip when it's absent and still run in real deployments.
+requires_golden_set = pytest.mark.skipif(
+    not GOLDEN_DIR.is_dir(),
+    reason="requires locally curated data/golden_test_set (gitignored; see D01 in "
+    "docs/architecture/self-eval-dimensions.md)",
+)
+
 
 # ---------------------------------------------------------------------------
 # Protocol conformance
@@ -50,6 +59,7 @@ def test_protocol_conformance(cls: type) -> None:
 # ---------------------------------------------------------------------------
 
 
+@requires_golden_set
 def test_load_golden_tasks_from_real_dir() -> None:
     """Golden tasks load from the real data/golden_test_set directory."""
     tasks = load_golden_tasks(GOLDEN_DIR)
@@ -118,6 +128,7 @@ def _write_golden_task(
 # ---------------------------------------------------------------------------
 
 
+@requires_golden_set
 def test_scoring_accuracy_with_real_golden_set() -> None:
     """ScoringAccuracyEvaluator loads real golden tasks and produces a score."""
     evaluator = ScoringAccuracyEvaluator(golden_dir=GOLDEN_DIR)
@@ -179,6 +190,7 @@ def test_scoring_accuracy_fuzzy_scorer(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+@requires_golden_set
 def test_reliability_with_real_golden_set() -> None:
     """ReliabilityEvaluator loads real golden tasks and checks consistency."""
     evaluator = ReliabilityEvaluator(golden_dir=GOLDEN_DIR)
@@ -228,6 +240,7 @@ def test_reliability_respects_max_tasks(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+@requires_golden_set
 def test_scorer_agreement_with_real_golden_set() -> None:
     """ScorerAgreementEvaluator loads real golden tasks and computes agreement."""
     evaluator = ScorerAgreementEvaluator(golden_dir=GOLDEN_DIR)

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-REPORT_JSON_SCHEMA = {
+REPORT_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": ["version", "generated_at", "summary", "results"],
     "properties": {

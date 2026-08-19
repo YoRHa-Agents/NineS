@@ -170,12 +170,14 @@ class GitHubCollector:
         if since:
             params["since"] = since
         resp = self._request("GET", f"/repos/{owner}/{name}/commits", params=params)
-        return resp.json()
+        commits: list[dict[str, Any]] = resp.json()
+        return commits
 
     def get_releases(self, owner: str, name: str) -> list[dict[str, Any]]:
         """Fetch releases for a repository."""
         resp = self._request("GET", f"/repos/{owner}/{name}/releases", params={"per_page": 10})
-        return resp.json()
+        releases: list[dict[str, Any]] = resp.json()
+        return releases
 
     # ------------------------------------------------------------------
     # SourceCollector protocol (async facade)

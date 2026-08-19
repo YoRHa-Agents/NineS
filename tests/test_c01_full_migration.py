@@ -47,7 +47,7 @@ def _make_project(root: Path, with_py: bool = True) -> EvaluationContext:
     src.mkdir(parents=True)
     if with_py:
         (src / "app.py").write_text(
-            "def public_func():\n    \"\"\"docstring.\"\"\"\n    return 1\n",
+            'def public_func():\n    """docstring."""\n    return 1\n',
             encoding="utf-8",
         )
         (src / "__init__.py").write_text("", encoding="utf-8")
@@ -309,7 +309,5 @@ def test_d16_pipeline_latency_no_py_files_does_not_fall_back_to_nines(
     score = PipelineLatencyEvaluator().evaluate(ctx=ctx)
     target = score.metadata.get("target", "")
     # target must point at ctx.src_dir, not the NineS constructor default
-    assert "src/nines" not in target, (
-        f"Silent fallback to NineS detected! target={target!r}"
-    )
+    assert "src/nines" not in target, f"Silent fallback to NineS detected! target={target!r}"
     assert str(ctx.src_dir) in target
